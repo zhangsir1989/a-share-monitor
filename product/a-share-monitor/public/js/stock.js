@@ -408,11 +408,17 @@ document.addEventListener('DOMContentLoaded', init);
 function getStockType(code) {
   if (!code) return '';
   // 处理带市场前缀的代码
-  const cleanCode = code.replace(/^(sh|sz)/i, '');
+  const cleanCode = code.replace(/^(sh|sz|bj)/i, '');
+  const prefix = code.match(/^(sh|sz|bj)/i)?.[1]?.toLowerCase() || '';
   
-  // 上证指数（特定代码）
+  // 上证指数（特定代码，必须有 sh 前缀或默认为上海）
   if (cleanCode === '000001' || cleanCode === '000016' || cleanCode === '000300' || 
-      cleanCode === '000688' || cleanCode === '000852') return '上证指数';
+      cleanCode === '000688' || cleanCode === '000852') {
+    // 如果明确有 sz 前缀，则是深圳股票（如 sz000001 平安银行）
+    if (prefix === 'sz') return 'A 股';
+    // 否则是上证指数
+    return '上证指数';
+  }
   // 深证指数（以 399 开头）
   if (cleanCode.startsWith('399')) return '深证指数';
   // ETF
