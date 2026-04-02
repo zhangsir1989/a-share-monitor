@@ -295,11 +295,14 @@ async function fetchIntradayData(code) {
     
     for (let i = 0; i < 240; i++) {
       let timeStr;
+      // 上午：0-119 → 9:30-11:29 (120 分钟)
       if (i < 120) {
         const hour = 9 + Math.floor((30 + i) / 60);
         const minute = (30 + i) % 60;
         timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-      } else {
+      }
+      // 下午：120-239 → 13:00-14:59 (120 分钟)
+      else {
         const hour = 13 + Math.floor((i - 120) / 60);
         const minute = (i - 120) % 60;
         timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;

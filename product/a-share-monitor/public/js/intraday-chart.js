@@ -92,6 +92,7 @@ class IntradayChart {
   setData(data, isIndex = false, stockCode = '', meta = null) {
     this.data = data;
     this.isIndex = isIndex;
+    this.stockCode = stockCode;  // 保存股票代码供后续使用
     
     // 优先使用 meta 数据（来自 API），其次使用 data[0]
     if (meta && meta.prevClose) {
@@ -124,17 +125,24 @@ class IntradayChart {
     }
   }
 
-  // 时间转换为分钟数（从 9:30 开始）
+  // 时间转换为分钟数（从 9:30 开始，0-240 分钟）
+  // 上午：9:30-11:30 → 0-120 分钟
+  // 下午：13:00-15:00 → 120-240 分钟
   timeToMinutes(timeStr) {
     if (!timeStr) return 0;
     const parts = timeStr.split(':');
     const hour = parseInt(parts[0]);
     const minute = parseInt(parts[1]);
     
-    if (hour >= 13) {
+    // 上午时段 (9:30-11:30)
+    if (hour < 13) {
+      // 9:30 → 0, 10:30 → 60, 11:30 → 120
+      return (hour - 9) * 60 + (minute - 30);
+    }
+    // 下午时段 (13:00-15:00)
+    else {
+      // 13:00 → 120, 14:00 → 180, 15:00 → 240
       return 120 + (hour - 13) * 60 + minute;
-    } else {
-      return (hour - 9) * 60 + minute - 30;
     }
   }
 
@@ -316,7 +324,8 @@ class IntradayChart {
   // 绘制价格标签
   drawPriceLabels(padding, priceChartHeight, displayMin, displayMax, priceRange) {
     // 计算百分比刻度（基于涨跌停幅度）
-    const stockType = this.getStockType('');
+    // 使用实例保存的股票代码判断类型
+    const stockType = this.getStockType(this.stockCode || '');
     const limitPercent = stockType.limit * 100;
     
     // 根据涨跌幅限制确定刻度间隔
@@ -417,7 +426,7 @@ class IntradayChart {
       }
     }
     
-    // 成交量柱状图（红涨绿跌 - 相对昨收价）
+    // 成交量柱状图（红涨绿跌 - 相对前一分钟价格）
     const barWidth = Math.max(2, chartWidth / 240 * 0.8);
     
     this.data.forEach((point, index) => {
@@ -425,10 +434,11 @@ class IntradayChart {
       const x = padding.left + chartWidth * minutes / 240;
       const barHeight = maxVolume > 0 ? (point.volume / maxVolume) * volumeChartHeight * 0.9 : 0;
       
-      // 量价匹配铁律：
-      // - 价格 >= 昨收价：红柱，代表主动买盘
-      // - 价格 < 昨收价：绿柱，代表主动卖盘
-      const isUp = point.price >= this.prevClose;
+      // 量价匹配：
+      // - 价格 >= 前一分钟价格：红柱（主动买盘）
+      // - 价格 < 前一分钟价格：绿柱（主动卖盘）
+      // 第一根柱子相对昨收价判断
+      const isUp = index === 0 ? point.price >= this.prevClose : point.price >= this.data[index - 1].price;
       this.ctx.fillStyle = isUp ? '#ff5252' : '#4caf50';
       this.ctx.globalAlpha = 0.7;
       this.ctx.fillRect(x - barWidth/2, volumeTop + volumeChartHeight - barHeight, barWidth, barHeight);
