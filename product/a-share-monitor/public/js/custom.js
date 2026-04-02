@@ -143,8 +143,10 @@ function isTradingTime() {
 function startAutoRefresh() {
   stopAutoRefresh();
   pageState.timer = setInterval(() => {
-    // 无论是否在交易时间，都按设置的时间间隔刷新
-    // 非交易时间服务器会返回缓存数据
+    // 只在交易时间自动刷新，非交易时间可手动刷新
+    if (!isTradingTime()) {
+      return;
+    }
     if (!pageState.isPaused && pageState.stocks.length > 0) {
       fetchAllStockData();
     }

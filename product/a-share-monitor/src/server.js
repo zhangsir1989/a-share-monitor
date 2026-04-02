@@ -301,13 +301,9 @@ app.get('/api/stock/search', async (req, res) => {
     // 腾讯返回的是 UTF-8 编码的 JSON 风格字符串（包含 Unicode 转义）
     const text = resp.data.toString('utf8');
     
-    // 调试日志
-    console.log('🔍 搜索:', query, '返回长度:', text.length);
-    
     // 解析返回结果，格式：v_hint="us~tour.oq~途牛~tn~GP^sz~002145~钛能化学~tnhx~GP-A^..."
     const match = text.match(/v_hint="([^"]+)"/);
     if (!match || !match[1]) {
-      console.log('❌ 未匹配到 v_hint, 原始内容:', text.substring(0, 200));
       return res.json({ success: true, data: [], count: 0, total: 0, source: 'tencent-empty' });
     }
     

@@ -382,12 +382,14 @@ function isTradingTime() {
   return isMorning || isAfternoon;
 }
 
-// 启动定时器（按设置的时间间隔刷新）
+// 启动定时器（只在交易时间自动刷新，非交易时间可手动刷新）
 function startTimer() {
   stopTimer();
   state.timer = setInterval(() => {
-    // 无论是否在交易时间，都按设置的时间间隔刷新
-    // 非交易时间服务器会返回缓存数据
+    // 只在交易时间段自动刷新
+    if (!isTradingTime()) {
+      return;
+    }
     fetchData();
   }, state.refreshInterval * 1000);
 }
