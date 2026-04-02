@@ -95,6 +95,24 @@ body {
   color: white;
 }
 
+.tab-link {
+  padding: 10px 20px;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tab-link:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
 /* 标签页内容 */
 .tab-content {
   position: relative;

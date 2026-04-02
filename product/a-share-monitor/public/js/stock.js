@@ -462,32 +462,12 @@ function isTradingTime() {
   return isMorning || isAfternoon;
 }
 
-// 判断是否在交易时间段（北京时间）
-function isTradingTime() {
-  const now = new Date();
-  const day = now.getDay();
-  const hour = now.getHours();
-  const minute = now.getMinutes();
-  const timeInMinutes = hour * 60 + minute;
-  
-  // 周末不交易
-  if (day === 0 || day === 6) return false;
-  
-  // 交易时间段：9:30-11:30, 13:00-15:00
-  const isMorning = timeInMinutes >= 9 * 60 + 30 && timeInMinutes < 11 * 60 + 30;
-  const isAfternoon = timeInMinutes >= 13 * 60 && timeInMinutes < 15 * 60;
-  
-  return isMorning || isAfternoon;
-}
-
-// 启动定时刷新（只在交易时间执行）
+// 启动定时刷新（按设置的时间间隔刷新）
 function startAutoRefresh() {
   stopAutoRefresh();
   pageState.timer = setInterval(() => {
-    // 非交易时间不刷新
-    if (!isTradingTime()) {
-      return;
-    }
+    // 无论是否在交易时间，都按设置的时间间隔刷新
+    // 非交易时间服务器会返回缓存数据
     if (!pageState.isPaused && pageState.currentStockCode) {
       searchStock(pageState.currentStockCode);
     }

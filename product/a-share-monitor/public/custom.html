@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自选股 - A 股实时监控</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 顶部导航 -->
+    <header class="header">
+      <div class="header-left">
+        <h1>⭐ 自选股</h1>
+        <div class="datetime-display">
+          <span id="current-date">--</span>
+          <span id="current-time">--:--:--</span>
+          <span class="timezone-label">北京时间</span>
+        </div>
+      </div>
+      <div class="header-controls">
+        <a href="/" class="btn">🏠 返回首页</a>
+        <div class="refresh-control">
+          <label>刷新：<span id="refresh-interval">3</span>秒</label>
+          <select id="refresh-select">
+            <option value="1">1 秒</option>
+            <option value="2">2 秒</option>
+            <option value="3" selected>3 秒</option>
+            <option value="5">5 秒</option>
+            <option value="10">10 秒</option>
+          </select>
+        </div>
+        <button id="pause-btn" class="btn">⏸️ 暂停</button>
+        <button id="refresh-btn" class="btn">🔄 刷新</button>
+      </div>
+    </header>
+
+    <!-- 添加股票区域 -->
+    <section class="add-stock-section">
+      <div class="add-stock-box">
+        <input type="text" id="stock-input" class="stock-input" 
+               placeholder="输入股票代码或名称（如：600519、贵州茅台）" 
+               maxlength="20" autocomplete="off">
+        <button id="add-btn" class="btn btn-primary">➕ 添加</button>
+      </div>
+      <div id="search-suggestions" class="search-suggestions" style="display: none;"></div>
+    </section>
+
+    <!-- 股票列表 -->
+    <section class="stock-list-section">
+      <div class="list-header">
+        <h2>📋 我的自选股 (<span id="stock-count">0</span>)</h2>
+        <button id="clear-all-btn" class="btn btn-danger" style="display: none;">🗑️ 清空全部</button>
+      </div>
+      
+      <!-- 空状态提示 -->
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>暂无自选股</p>
+        <p class="empty-hint">在上方输入框添加股票代码或名称</p>
+      </div>
+
+      <!-- 股票卡片列表 -->
+      <div id="stock-list" class="stock-list"></div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+      <div class="footer-info">
+        <span id="last-update">最后更新：--</span>
+        <span id="market-status">市场状态：--</span>
+      </div>
+      <div class="copyright">
+        版权所有：营长
+      </div>
+    </footer>
+  </div>
+
+  <script src="js/custom.js?v=202604020235"></script>
+</body>
+</html>

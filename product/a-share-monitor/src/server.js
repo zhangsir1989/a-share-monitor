@@ -193,6 +193,75 @@ app.get('/api/data-sources', (req, res) => {
   res.json(getDataSourceStatus());
 });
 
+// 批量获取股票行情 API（自选股页面使用）
+app.get('/api/stocks/batch', async (req, res) => {
+  const codes = (req.query.codes || '').trim();
+  
+  if (!codes) {
+    return res.json({ success: false, message: '请提供股票代码' });
+  }
+  
+  const codeList = codes.split(',').filter(c => c.trim());
+  
+  if (codeList.length === 0) {
+    return res.json({ success: true, data: {} });
+  }
+  
+  try {
+    // 构建查询字符串（添加市场前缀）
+    const stockCodes = codeList.map(code => {
+      if (code.startsWith('sh') || code.startsWith('sz')) return code;
+      if (code.startsWith('6') || code.startsWith('9') || code.startsWith('5')) return 'sh' + code;
+      if (code.startsWith('0') || code.startsWith('3')) return 'sz' + code;
+      return 'sh' + code;
+    }).join(',');
+    
+    const response = await txSearchApi.get(`http://qt.gtimg.cn/q=${stockCodes}`);
+    const text = iconv.decode(response.data, 'gbk');
+    const lines = text.split('\n');
+    
+    const result = {};
+    
+    for (const line of lines) {
+      const match = line.match(/v_(\w+)="([^"]+)"/);
+      if (match) {
+        const fullCode = match[1];  // 如 sh600519
+        const parts = match[2].split('~');
+        
+        // 提取原始代码（去掉市场前缀）
+        const code = fullCode.replace(/^(sh|sz)/, '');
+        
+        const price = parseFloat(parts[3]) || 0;
+        const prevClose = parseFloat(parts[4]) || 0;
+        const open = parseFloat(parts[5]) || 0;
+        const volume = parseFloat(parts[6]) || 0;
+        const high = parseFloat(parts[33]) || 0;
+        const low = parseFloat(parts[34]) || 0;
+        const amount = parseFloat(parts[37]) || 0;  // 万元
+        
+        result[code] = {
+          code: code,
+          name: parts[1] || '',
+          price: price,
+          prevClose: prevClose,
+          open: open,
+          high: high,
+          low: low,
+          volume: volume,
+          amount: amount * 10000,  // 转换为元
+          change: price - prevClose,
+          changePercent: prevClose > 0 ? ((price - prevClose) / prevClose * 100).toFixed(2) : 0
+        };
+      }
+    }
+    
+    res.json({ success: true, data: result, count: Object.keys(result).length });
+  } catch (error) {
+    console.error('批量获取股票数据失败:', error.message);
+    res.json({ success: false, message: '获取数据失败', data: {} });
+  }
+});
+
 // 股票搜索 API - 从全市场实时检索
 const axios = require('axios');
 const iconv = require('iconv-lite');
@@ -326,6 +395,12 @@ app.get('/api/stock/:query', async (req, res) => {
   } else {
     res.json({ success: false, message: '未找到该股票，请输入 6 位股票代码' });
   }
+});
+
+// 证券行情页面
+// 自选股页面
+app.get('/custom', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/custom.html'));
 });
 
 // 证券行情页面

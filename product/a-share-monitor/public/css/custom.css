@@ -1,0 +1,317 @@
+/* 自选股页面样式 */
+
+/* 添加股票区域 */
+.add-stock-section {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.add-stock-box {
+  display: flex;
+  gap: 12px;
+}
+
+.stock-input {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: border-color 0.2s;
+}
+
+.stock-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.btn-primary {
+  background: var(--accent-color);
+  color: #fff;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-danger {
+  background: #e53935;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #c62828;
+}
+
+/* 搜索建议 */
+.search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.suggestion-item:hover {
+  background: var(--bg-secondary);
+}
+
+.suggestion-code {
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 70px;
+}
+
+.suggestion-name {
+  flex: 1;
+  color: var(--text-secondary);
+  margin-left: 12px;
+}
+
+.suggestion-market {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* 股票列表区域 */
+.stock-list-section {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 400px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.list-header h2 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-state p {
+  margin: 8px 0;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* 股票卡片列表 */
+.stock-list {
+  display: grid;
+  gap: 12px;
+}
+
+/* 股票卡片 */
+.stock-card {
+  background: var(--bg-primary);
+  border-radius: 10px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 16px;
+  align-items: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.stock-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: var(--border-color);
+}
+
+.stock-card.up {
+  border-left: 3px solid #ff5252;
+}
+
+.stock-card.down {
+  border-left: 3px solid #4caf50;
+}
+
+.stock-card.flat {
+  border-left: 3px solid #90a4ae;
+}
+
+/* 删除按钮 */
+.delete-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-size: 18px;
+}
+
+.delete-btn:hover {
+  background: rgba(229, 57, 53, 0.2);
+  color: #e53935;
+}
+
+/* 股票基本信息 */
+.stock-info {
+  min-width: 0;
+}
+
+.stock-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stock-code-type {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.stock-type-tag {
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* 价格区域 */
+.stock-price {
+  text-align: right;
+  min-width: 100px;
+}
+
+.current-price {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.current-price.up { color: #ff5252; }
+.current-price.down { color: #4caf50; }
+.current-price.flat { color: #90a4ae; }
+
+.price-change {
+  font-size: 13px;
+}
+
+.price-change.up { color: #ff5252; }
+.price-change.down { color: #4caf50; }
+.price-change.flat { color: #90a4ae; }
+
+/* 详细数据 */
+.stock-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 16px;
+  font-size: 12px;
+  min-width: 180px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+}
+
+.detail-label {
+  color: var(--text-muted);
+}
+
+.detail-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.detail-value.up { color: #ff5252; }
+.detail-value.down { color: #4caf50; }
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .stock-card {
+    grid-template-columns: auto 1fr auto;
+  }
+  
+  .stock-details {
+    display: none;
+  }
+  
+  .list-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+}
+
+/* 涨跌动画 */
+@keyframes flash-up {
+  0%, 100% { background: transparent; }
+  50% { background: rgba(255, 82, 82, 0.2); }
+}
+
+@keyframes flash-down {
+  0%, 100% { background: transparent; }
+  50% { background: rgba(76, 175, 80, 0.2); }
+}
+
+.flash-up {
+  animation: flash-up 0.5s ease;
+}
+
+.flash-down {
+  animation: flash-down 0.5s ease;
+}
