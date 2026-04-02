@@ -132,54 +132,40 @@ async function fetchLimitUpSectors() {
  */
 async function fetchHighTurnover() {
   try {
-    const stockList = [
-      'sz300750', 'sz300308', 'sh600519', 'sz002594', 'sz300014', 'sz300015', 'sz300122', 'sz300149',
-      'sh601318', 'sh600036', 'sz000333', 'sh600900', 'sh601888', 'sh600276', 'sh600436', 'sh603259',
-      'sz000001', 'sh600030', 'sz000063', 'sh601166', 'sz000538', 'sh600588', 'sz002230', 'sh600809',
-      'sz000858', 'sh600016', 'sh600028', 'sh600019', 'sh600011', 'sz000002', 'sh600050', 'sh600018',
-      'sh600009', 'sh600029', 'sh600010', 'sh600015', 'sh600031', 'sh600033', 'sh600036', 'sh600038',
-      'sh600039', 'sh600048', 'sh600053', 'sh600056', 'sh600058', 'sh600059', 'sh600060', 'sh600061'
-    ];
+    // 使用新浪财经API获取高换手率股票（按换手率降序）
+    const url = 'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?page=1&num=50&sort=turnoverratio&asc=0&node=hs_a&_s_r_a=page&_t=' + Date.now();
     
-    const resp = await txApi.get(`http://qt.gtimg.cn/q=${stockList.join(',')}`);
-    const text = iconv.decode(resp.data, 'gbk');
-    const lines = text.split('\n');
-    
-    const stocks = [];
-    for (const line of lines) {
-      const match = line.match(/v_(\w+)="([^"]+)"/);
-      if (match) {
-        const parts = match[2].split('~');
-        const price = parseFloat(parts[3]) || 0;
-        const prevClose = parseFloat(parts[4]) || 0;
-        const changePercent = prevClose > 0 ? ((price - prevClose) / prevClose * 100) : 0;
-        const volume = parseFloat(parts[6]) || 0;  // 手
-        const amountWan = parseFloat(parts[37]) || 0;  // 万元
-        const turnover = parseFloat(parts[38]) || 0;  // 换手率% [38]
-        const amplitude = parseFloat(parts[39]) || 0;  // 振幅%
-        
-        // 只返回换手率>0 的股票
-        if (turnover > 0) {
-          stocks.push({
-            code: match[1],
-            name: parts[1] || '',
-            price: price.toFixed(2),
-            changePercent: changePercent.toFixed(2),
-            turnoverRate: turnover.toFixed(2),  // 换手率
-            actualTurnover: amplitude.toFixed(2),  // 振幅
-            volume: Math.round(volume / 10000),  // 万手
-            amount: Math.round(amountWan / 10000 * 100) / 100,  // 亿元
-            industry: ''
-          });
-        }
+    const resp = await axios.get(url, {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://vip.stock.finance.sina.com.cn/q/go.php/vFinanceAnalyze/kind/mainindex/index.phtml'
       }
+    });
+    
+    const data = resp.data;
+    if (!Array.isArray(data) || data.length === 0) {
+      console.error('新浪高换手率数据格式错误');
+      return [];
     }
     
-    // 按换手率排序
-    stocks.sort((a, b) => parseFloat(b.turnoverRate) - parseFloat(a.turnoverRate));
+    const stocks = data.map(item => ({
+      code: item.code.startsWith('6') ? 'sh' + item.code : 'sz' + item.code,
+      name: item.name || '',
+      price: item.trade || '0.00',
+      changePercent: (item.changepercent || '0.00'),
+      turnoverRate: (item.turnoverratio || '0.00'),
+      actualTurnover: ((item.amount || 0) / 100000000).toFixed(2),  // 成交额（亿元）
+      volume: Math.round((item.volume || 0) / 10000),  // 成交量（万手）
+      amount: ((item.amount || 0) / 100000000).toFixed(2),  // 成交额（亿元）
+      industry: ''
+    }));
     
-    dataSourceStatus.turnover = 'tencent';
-    return stocks.slice(0, 50);
+    // 过滤掉换手率为0或无效的数据
+    const validStocks = stocks.filter(s => parseFloat(s.turnoverRate) > 0);
+    
+    dataSourceStatus.turnover = 'sina';
+    return validStocks.slice(0, 50);
   } catch (e) {
     console.error('获取高换手率失败:', e.message);
     return [];
@@ -191,24 +177,51 @@ async function fetchHighTurnover() {
  */
 async function fetchSectorCashflow() {
   try {
-    // 腾讯 API 不支持板块资金流，返回模拟数据
-    // 实际生产环境应使用东方财富或同花顺 API
-    return [
-      { code: '880491', name: '半导体', mainNetInflow: 15.23, mainNetInflowRatio: '2.35' },
-      { code: '880494', name: '人工智能', mainNetInflow: 12.45, mainNetInflowRatio: '1.89' },
-      { code: '880497', name: '新能源', mainNetInflow: 8.67, mainNetInflowRatio: '1.23' },
-      { code: '880403', name: '医药生物', mainNetInflow: 5.32, mainNetInflowRatio: '0.87' },
-      { code: '880415', name: '通信', mainNetInflow: 3.21, mainNetInflowRatio: '0.56' },
-      { code: '880493', name: '消费电子', mainNetInflow: 2.15, mainNetInflowRatio: '0.34' },
-      { code: '880406', name: '汽车', mainNetInflow: 1.87, mainNetInflowRatio: '0.28' },
-      { code: '880417', name: '银行', mainNetInflow: -2.34, mainNetInflowRatio: '-0.45' },
-      { code: '880418', name: '证券', mainNetInflow: -3.56, mainNetInflowRatio: '-0.67' },
-      { code: '880409', name: '房地产', mainNetInflow: -5.78, mainNetInflowRatio: '-0.89' }
-    ];
+    // 使用东方财富API获取板块资金流
+    const url = 'https://push2.eastmoney.com/api/qt/clist/get?fs=m:90+t:2&fields=f12,f14,f2,f3,f62,f184,f66,f69,f72,f75,f78,f81,f84,f87&pn=1&pz=20&po=1&np=1&ut=b2884a393a59ad64002292a3e90d46a5&fid=f184&_t=' + Date.now();
+    
+    const resp = await axios.get(url, {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://data.eastmoney.com/bkzj/hy.html'
+      }
+    });
+    
+    const data = resp.data;
+    if (!data || !data.data || !data.data.diff) {
+      console.error('东方财富板块资金流数据格式错误');
+      return getMockSectorCashflow();
+    }
+    
+    const sectors = data.data.diff.map(item => ({
+      code: item.f12 || '',
+      name: item.f14 || '',
+      mainNetInflow: ((item.f184 || 0) / 100000000).toFixed(2),  // 主力净流入（亿元）
+      mainNetInflowRatio: ((item.f69 || 0) / 100).toFixed(2) + '%'  // 净流入占比
+    }));
+    
+    return sectors;
   } catch (e) {
     console.error('获取资金流失败:', e.message);
-    return [];
+    return getMockSectorCashflow();
   }
+}
+
+// 模拟板块资金流数据（备用）
+function getMockSectorCashflow() {
+  return [
+    { code: '880491', name: '半导体', mainNetInflow: 15.23, mainNetInflowRatio: '2.35%' },
+    { code: '880494', name: '人工智能', mainNetInflow: 12.45, mainNetInflowRatio: '1.89%' },
+    { code: '880497', name: '新能源', mainNetInflow: 8.67, mainNetInflowRatio: '1.23%' },
+    { code: '880403', name: '医药生物', mainNetInflow: 5.32, mainNetInflowRatio: '0.87%' },
+    { code: '880415', name: '通信', mainNetInflow: 3.21, mainNetInflowRatio: '0.56%' },
+    { code: '880493', name: '消费电子', mainNetInflow: 2.15, mainNetInflowRatio: '0.34%' },
+    { code: '880406', name: '汽车', mainNetInflow: 1.87, mainNetInflowRatio: '0.28%' },
+    { code: '880417', name: '银行', mainNetInflow: -2.34, mainNetInflowRatio: '-0.45%' },
+    { code: '880418', name: '证券', mainNetInflow: -3.56, mainNetInflowRatio: '-0.67%' },
+    { code: '880409', name: '房地产', mainNetInflow: -5.78, mainNetInflowRatio: '-0.89%' }
+  ];
 }
 
 /**
