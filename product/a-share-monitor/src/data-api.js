@@ -220,7 +220,18 @@ async function fetchStockDetail(query) {
     let market = '';
     
     if (/^\d{6}$/.test(code)) {
-      market = (code.startsWith('6') || code.startsWith('9') || code.startsWith('5')) ? 'sh' : 'sz';
+      // 指数代码判断
+      // 上证指数：000001, 000016, 000300, 000688 等（以 000 开头的指数）
+      // 深证指数：399001, 399006 等（以 399 开头）
+      if (code === '000001' || code === '000016' || code === '000300' || code.startsWith('0000')) {
+        market = 'sh';  // 上证指数
+      } else if (code.startsWith('399')) {
+        market = 'sz';  // 深证指数
+      } else if (code.startsWith('6') || code.startsWith('9') || code.startsWith('5')) {
+        market = 'sh';  // 上海股票/ETF
+      } else {
+        market = 'sz';  // 深圳股票
+      }
       code = market + code;
     }
     
