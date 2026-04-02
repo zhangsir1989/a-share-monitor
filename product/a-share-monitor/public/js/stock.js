@@ -100,10 +100,10 @@ function formatNumber(num, decimals = 2) {
 // 格式化金额
 function formatAmount(num) {
   if (num === null || num === undefined || isNaN(num)) return '--';
-  if (Math.abs(num) >= 100000000) {
-    return (num / 100000000).toFixed(2) + '万亿';
-  } else if (Math.abs(num) >= 100000000) {
-    return (num / 100000000).toFixed(2) + '亿';
+  if (Math.abs(num) >= 10000) {
+    return (num / 10000).toFixed(2) + '万亿';
+  } else if (Math.abs(num) >= 1) {
+    return num.toFixed(2) + '亿';
   }
   return num.toFixed(2);
 }
