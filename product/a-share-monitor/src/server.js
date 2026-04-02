@@ -214,10 +214,13 @@ app.get('/api/stocks/batch', async (req, res) => {
       if (code.startsWith('sh') || code.startsWith('sz') || code.startsWith('bj')) return code;
       // 北交所股票（以8或4开头）
       if (code.startsWith('8') || code.startsWith('4')) return 'bj' + code;
-      // 上海股票/ETF/指数
-      if (code.startsWith('6') || code.startsWith('9') || code.startsWith('5')) return 'sh' + code;
-      // 深圳股票（包括创业板）
+      // 上海股票/ETF/指数（6、9、5开头，以及51开头的上海ETF）
+      if (code.startsWith('6') || code.startsWith('9') || code.startsWith('50') || code.startsWith('51') || code.startsWith('56')) return 'sh' + code;
+      // 深圳ETF（15、16、159开头）
+      if (code.startsWith('15') || code.startsWith('16') || code.startsWith('159')) return 'sz' + code;
+      // 深圳股票（包括创业板0、3开头）
       if (code.startsWith('0') || code.startsWith('3')) return 'sz' + code;
+      // 其他默认上海
       return 'sh' + code;
     }).join(',');
     
