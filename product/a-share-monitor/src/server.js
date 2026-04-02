@@ -210,8 +210,13 @@ app.get('/api/stocks/batch', async (req, res) => {
   try {
     // 构建查询字符串（添加市场前缀）
     const stockCodes = codeList.map(code => {
-      if (code.startsWith('sh') || code.startsWith('sz')) return code;
+      // 已经有前缀的直接返回
+      if (code.startsWith('sh') || code.startsWith('sz') || code.startsWith('bj')) return code;
+      // 北交所股票（以8或4开头）
+      if (code.startsWith('8') || code.startsWith('4')) return 'bj' + code;
+      // 上海股票/ETF/指数
       if (code.startsWith('6') || code.startsWith('9') || code.startsWith('5')) return 'sh' + code;
+      // 深圳股票（包括创业板）
       if (code.startsWith('0') || code.startsWith('3')) return 'sz' + code;
       return 'sh' + code;
     }).join(',');
@@ -225,11 +230,11 @@ app.get('/api/stocks/batch', async (req, res) => {
     for (const line of lines) {
       const match = line.match(/v_(\w+)="([^"]+)"/);
       if (match) {
-        const fullCode = match[1];  // 如 sh600519
+        const fullCode = match[1];  // 如 sh600519, bj832566
         const parts = match[2].split('~');
         
-        // 提取原始代码（去掉市场前缀）
-        const code = fullCode.replace(/^(sh|sz)/, '');
+        // 提取原始代码（去掉市场前缀 sh/sz/bj）
+        const code = fullCode.replace(/^(sh|sz|bj)/, '');
         
         const price = parseFloat(parts[3]) || 0;
         const prevClose = parseFloat(parts[4]) || 0;
