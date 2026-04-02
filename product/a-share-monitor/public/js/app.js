@@ -637,3 +637,30 @@ window.addEventListener('click', (e) => {
     closeSectorModal();
   }
 });
+
+// 跳转到股票详情页
+function searchStock(code) {
+  // 处理指数代码
+  let fullCode = code;
+  if (/^\d{6}$/.test(code)) {
+    // 上证指数
+    if (code === '000001' || code === '000016' || code === '000300' || code.startsWith('0000')) {
+      fullCode = 'sh' + code;
+    }
+    // 深证指数
+    else if (code.startsWith('399')) {
+      fullCode = 'sz' + code;
+    }
+    // 上海股票
+    else if (code.startsWith('6') || code.startsWith('9') || code.startsWith('5')) {
+      fullCode = 'sh' + code;
+    }
+    // 深圳股票
+    else {
+      fullCode = 'sz' + code;
+    }
+  }
+  
+  // 跳转到证券行情页面
+  window.location.href = `/stock?code=${fullCode}`;
+}
