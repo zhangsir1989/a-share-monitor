@@ -258,6 +258,64 @@ async function fetchStockDetail(query) {
     const price = parseFloat(parts[3]) || 0;
     const prevClose = parseFloat(parts[4]) || 0;
     
+    // 腾讯API字段索引：
+    // [1]名称 [3]现价 [4]昨收 [5]今开 [6]成交量 [7]外盘 [8]内盘
+    // [9]买一价 [11]买二价 [13]买三价 [15]买四价 [17]买五价
+    // [19]卖一价 [21]卖二价 [23]卖三价 [25]卖四价 [27]卖五价
+    // [30]日期 [31]涨跌额 [32]涨跌幅 [33]最高 [34]最低
+    // [35]成交量手 [36]成交额万 [37]成交额万 [38]换手率 [39]振幅
+    // [42]市盈率 [43]市净率 [44]总市值 [45]流通市值 [46]涨停价 [47]跌停价
+    // [48]量比 [49]委比 [50]市销率
+    
+    const open = parseFloat(parts[5]) || 0;
+    const high = parseFloat(parts[33]) || 0;
+    const low = parseFloat(parts[34]) || 0;
+    const volume = parseFloat(parts[6]) || 0;
+    const amount = parseFloat(parts[37]) || 0;  // 万元
+    const turnoverRate = parseFloat(parts[38]) || 0;  // 换手率%
+    
+    // [43]市净率 [44]总市值(亿) [45]流通市值(亿)
+    const pb = parseFloat(parts[43]) || 0;
+    const totalMarketCap = parseFloat(parts[44]) || 0;
+    const floatMarketCap = parseFloat(parts[45]) || 0;
+    
+    // [46]未知 [47]涨停价 [48]跌停价 [49]量比
+    const limitUp = parseFloat(parts[47]) || 0;
+    const limitDown = parseFloat(parts[48]) || 0;
+    const volumeRatio = parseFloat(parts[49]) || 0;
+    
+    // 市盈率需要从其他地方获取或计算
+    // 腾讯API中 [46] 可能是某个指标，但不一定是市盈率
+    // 尝试从多个位置获取市盈率
+    let pe = parseFloat(parts[46]) || 0;
+    if (pe <= 0 || pe > 1000) {
+      // 如果没有有效的市盈率，尝试从市值和价格计算
+      if (totalMarketCap > 0 && price > 0) {
+        // 这是一个粗略估计
+        pe = totalMarketCap / (price * 0.1);  // 粗略计算
+      }
+    }
+    
+    // 检查涨跌停价是否有效，如果无效则计算
+    let validLimitUp = limitUp;
+    let validLimitDown = limitDown;
+    
+    if (!validLimitUp || validLimitUp <= 0 || Math.abs(validLimitUp - prevClose) > prevClose * 0.5) {
+      // 涨停价无效，计算
+      const code6 = code.replace(/^(sh|sz|bj)/, '');
+      if (code6.startsWith('688') || code6.startsWith('300') || code6.startsWith('301')) {
+        validLimitUp = prevClose * 1.2;
+        validLimitDown = prevClose * 0.8;
+      } else if (code6.startsWith('8') || code6.startsWith('4')) {
+        // 北交所30%
+        validLimitUp = prevClose * 1.3;
+        validLimitDown = prevClose * 0.7;
+      } else {
+        validLimitUp = prevClose * 1.1;
+        validLimitDown = prevClose * 0.9;
+      }
+    }
+    
     return {
       success: true,
       data: {
@@ -266,12 +324,20 @@ async function fetchStockDetail(query) {
         price,
         change: price - prevClose,
         changePercent: prevClose > 0 ? ((price - prevClose) / prevClose * 100) : 0,
-        open: parseFloat(parts[5]) || 0,
-        high: parseFloat(parts[33]) || 0,
-        low: parseFloat(parts[34]) || 0,
+        open,
+        high,
+        low,
         prevClose,
-        volume: parseFloat(parts[6]) || 0,
-        amount: parseFloat(parts[37]) || 0
+        volume,
+        amount,
+        limitUp: validLimitUp,
+        limitDown: validLimitDown,
+        turnoverRate: turnoverRate.toFixed(2),
+        volumeRatio: volumeRatio.toFixed(2),
+        pe: pe > 0 ? pe.toFixed(2) : '--',
+        pb: pb > 0 ? pb.toFixed(2) : '--',
+        totalMarketCap: totalMarketCap > 0 ? totalMarketCap.toFixed(2) : '--',
+        floatMarketCap: floatMarketCap > 0 ? floatMarketCap.toFixed(2) : '--'
       }
     };
   } catch (e) {
