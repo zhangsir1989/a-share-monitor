@@ -249,12 +249,16 @@ function renderStockCards(prevData = {}) {
     return;
   }
   
-  elements.stockList.innerHTML = pageState.stocks.map(stock => {
+  elements.stockList.innerHTML = pageState.stocks.map((stock, index) => {
     const data = pageState.stockData[stock.code];
     if (!data) {
       return `
-        <div class="stock-card" data-code="${stock.code}">
-          <button class="delete-btn" onclick="removeStock('${stock.code}')">×</button>
+        <div class="stock-card" data-code="${stock.code}" data-index="${index}">
+          <button class="sort-btn" title="拖拽排序" onclick="event.stopPropagation();">
+            <span class="arrow" onclick="event.stopPropagation(); moveStock(${index}, -1)">▲</span>
+            <span class="arrow" onclick="event.stopPropagation(); moveStock(${index}, 1)">▼</span>
+          </button>
+          <button class="delete-btn" onclick="event.stopPropagation(); removeStock('${stock.code}')">×</button>
           <div class="stock-info">
             <div class="stock-name">${stock.name}</div>
             <div class="stock-code-type">
@@ -291,7 +295,11 @@ function renderStockCards(prevData = {}) {
     }
     
     return `
-      <div class="stock-card ${priceClass} ${flashClass}" data-code="${stock.code}" onclick="goToStockDetail('${stock.code}')">
+      <div class="stock-card ${priceClass} ${flashClass}" data-code="${stock.code}" data-index="${index}" onclick="goToStockDetail('${stock.code}')" draggable="true">
+        <button class="sort-btn" title="拖拽排序或点击箭头移动" onclick="event.stopPropagation();">
+          <span class="arrow" onclick="event.stopPropagation(); moveStock(${index}, -1)">▲</span>
+          <span class="arrow" onclick="event.stopPropagation(); moveStock(${index}, 1)">▼</span>
+        </button>
         <button class="delete-btn" onclick="event.stopPropagation(); removeStock('${stock.code}')">×</button>
         <div class="stock-info">
           <div class="stock-name">${data.name || stock.name}</div>
@@ -327,6 +335,77 @@ function renderStockCards(prevData = {}) {
       </div>
     `;
   }).join('');
+  
+  // 初始化拖拽排序
+  initDragSort();
+}
+
+// ==================== 排序功能 ====================
+
+// 移动股票位置
+function moveStock(index, direction) {
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= pageState.stocks.length) return;
+  
+  // 交换位置
+  const temp = pageState.stocks[index];
+  pageState.stocks[index] = pageState.stocks[newIndex];
+  pageState.stocks[newIndex] = temp;
+  
+  // 保存并重新渲染
+  saveStocks();
+  renderStockCards(pageState.stockData);
+  showToast('已调整顺序', 'info');
+}
+
+// 初始化拖拽排序
+function initDragSort() {
+  const cards = document.querySelectorAll('.stock-card[draggable="true"]');
+  let draggedItem = null;
+  
+  cards.forEach(card => {
+    card.addEventListener('dragstart', function(e) {
+      draggedItem = this;
+      this.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    
+    card.addEventListener('dragend', function() {
+      this.classList.remove('dragging');
+      document.querySelectorAll('.stock-card').forEach(c => c.classList.remove('drag-over'));
+    });
+    
+    card.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (this !== draggedItem) {
+        this.classList.add('drag-over');
+      }
+    });
+    
+    card.addEventListener('dragleave', function() {
+      this.classList.remove('drag-over');
+    });
+    
+    card.addEventListener('drop', function(e) {
+      e.preventDefault();
+      this.classList.remove('drag-over');
+      
+      if (draggedItem && this !== draggedItem) {
+        const fromIndex = parseInt(draggedItem.dataset.index);
+        const toIndex = parseInt(this.dataset.index);
+        
+        // 重新排序
+        const item = pageState.stocks.splice(fromIndex, 1)[0];
+        pageState.stocks.splice(toIndex, 0, item);
+        
+        // 保存并重新渲染
+        saveStocks();
+        renderStockCards(pageState.stockData);
+        showToast('已调整顺序', 'info');
+      }
+    });
+  });
 }
 
 // ==================== 搜索建议 ====================
