@@ -469,6 +469,8 @@ function initDragSort() {
 // ==================== 搜索建议 ====================
 
 let searchTimeout = null;
+let selectedIndex = -1;
+let currentSuggestions = [];
 
 async function fetchSuggestions(query) {
   if (!query || query.trim().length < 1) {
@@ -492,8 +494,11 @@ async function fetchSuggestions(query) {
 }
 
 function showSuggestions(stocks) {
-  const html = stocks.map(stock => `
-    <div class="suggestion-item" data-code="${stock.code}" data-name="${stock.name}">
+  currentSuggestions = stocks;
+  selectedIndex = -1;
+  
+  const html = stocks.map((stock, index) => `
+    <div class="suggestion-item" data-index="${index}" data-code="${stock.code}">
       <span class="suggestion-code">${stock.code}</span>
       <span class="suggestion-name">${stock.name}</span>
       <span class="suggestion-market">${stock.market === 'sh' ? '沪市' : '深市'}</span>
@@ -503,11 +508,11 @@ function showSuggestions(stocks) {
   elements.searchSuggestions.innerHTML = html;
   elements.searchSuggestions.style.display = 'block';
   
-  // 绑定点击事件
+  // 点击建议项
   elements.searchSuggestions.querySelectorAll('.suggestion-item').forEach(item => {
     item.addEventListener('click', () => {
       const code = item.dataset.code;
-      const name = item.dataset.name;
+      const name = item.querySelector('.suggestion-name').textContent;
       elements.stockInput.value = `${code} ${name}`;
       hideSuggestions();
       addStock(code, name);
@@ -518,9 +523,43 @@ function showSuggestions(stocks) {
 
 function hideSuggestions() {
   elements.searchSuggestions.style.display = 'none';
+  currentSuggestions = [];
+  selectedIndex = -1;
+}
+
+function selectSuggestion(direction) {
+  if (currentSuggestions.length === 0) return;
+  
+  const items = elements.searchSuggestions.querySelectorAll('.suggestion-item');
+  items.forEach(item => item.style.backgroundColor = '');
+  
+  selectedIndex += direction;
+  if (selectedIndex < 0) selectedIndex = currentSuggestions.length - 1;
+  if (selectedIndex >= currentSuggestions.length) selectedIndex = 0;
+  
+  const selectedItem = items[selectedIndex];
+  if (selectedItem) {
+    selectedItem.style.backgroundColor = 'var(--bg-secondary)';
+    const code = currentSuggestions[selectedIndex].code;
+    const name = currentSuggestions[selectedIndex].name;
+    elements.stockInput.value = `${code} ${name}`;
+  }
 }
 
 // ==================== 辅助函数 ====================
+
+// 从输入中提取股票代码（与证券行情页保持一致）
+function extractCode(input) {
+  if (!input) return '';
+  // 匹配 6 位数字代码（可能带 sh/sz/bj 前缀）
+  const match = input.match(/(sh|sz|bj)?(\d{6})/i);
+  if (match) {
+    return match[1] ? match[0] : match[2];
+  }
+  return input.trim();
+}
+
+// ==================== 排序功能 ====================
 
 function getStockType(code) {
   if (!code) return '';
@@ -621,20 +660,39 @@ function bindEvents() {
     const input = elements.stockInput.value.trim();
     if (!input) return;
     
-    // 提取代码
-    const match = input.match(/(\d{6})/);
-    if (match) {
-      const code = match[1];
-      const name = input.replace(code, '').trim() || code;
-      addStock(code, name);
+    // 使用与证券行情页一致的代码提取逻辑
+    const code = extractCode(input);
+    if (code) {
+      // 如果是从搜索建议选择的，可能包含名称
+      const nameMatch = input.match(/\d{6}\s+(.+)$/);
+      const name = nameMatch ? nameMatch[1].trim() : code;
+      addStock(code.replace(/^(sh|sz|bj)/i, ''), name);
       elements.stockInput.value = '';
+    } else {
+      showToast('请输入有效的股票代码', 'warning');
     }
   });
   
-  // 输入框回车
+  // 输入框键盘事件（与证券行情页保持一致）
   elements.stockInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      elements.addBtn.click();
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectSuggestion(1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectSuggestion(-1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      hideSuggestions();
+      if (selectedIndex >= 0 && currentSuggestions[selectedIndex]) {
+        const stock = currentSuggestions[selectedIndex];
+        addStock(stock.code, stock.name);
+        elements.stockInput.value = '';
+      } else {
+        elements.addBtn.click();
+      }
+    } else if (e.key === 'Escape') {
+      hideSuggestions();
     }
   });
   
