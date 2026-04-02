@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A 股实时监控</title>
+  <link rel="stylesheet" href="css/style.css?v=202604012155"
+</head>
+<body>
+  <div class="container">
+    <!-- 顶部导航 -->
+    <header class="header">
+      <div class="header-top">
+        <div class="header-left">
+          <h1>📊 A 股实时监控</h1>
+          <div class="datetime-display">
+            <span id="current-date">--</span>
+            <span id="current-time">--:--:--</span>
+            <span class="timezone-label">北京时间</span>
+          </div>
+        </div>
+        <div class="header-controls">
+          <!-- 标签页导航 -->
+          <div class="tab-nav">
+            <button class="tab-btn active" data-tab="home">🏠 首页</button>
+            <button class="tab-btn" data-tab="stock">📈 证券行情</button>
+          </div>
+          
+          <div class="refresh-control">
+            <label>刷新：<span id="refresh-interval">3</span>秒</label>
+            <select id="refresh-select">
+              <option value="1">1 秒</option>
+              <option value="2">2 秒</option>
+              <option value="3" selected>3 秒</option>
+              <option value="5">5 秒</option>
+              <option value="10">10 秒</option>
+            </select>
+          </div>
+          <button id="pause-btn" class="btn">⏸️ 暂停</button>
+          <button id="refresh-btn" class="btn">🔄 刷新</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 标签页内容容器 -->
+    <div id="tab-content" class="tab-content">
+      <!-- 首页内容 -->
+      <div id="home-tab" class="tab-pane active">
+
+    <!-- 主要内容区 -->
+    <main class="main-content">
+      <!-- 第一行：三个卡片 -->
+      <div class="cards-row">
+        <!-- 成交量卡片 -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">📈</span>
+            <h2>成交量</h2>
+          </div>
+          <div class="card-content">
+            <div class="metric">
+              <div class="metric-label">总成交额</div>
+              <div class="metric-value" id="total-amount">--</div>
+              <div class="metric-unit" id="total-amount-unit">--</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">总成交量</div>
+              <div class="metric-value" id="total-volume">--</div>
+              <div class="metric-unit">万手</div>
+            </div>
+            <div class="split-info">
+              <div class="split-item">
+                <span class="split-label">沪市</span>
+                <span class="split-value" id="sh-amount">--</span>
+                <span class="split-ratio" id="sh-ratio">--%</span>
+              </div>
+              <div class="split-item">
+                <span class="split-label">深市</span>
+                <span class="split-value" id="sz-amount">--</span>
+                <span class="split-ratio" id="sz-ratio">--%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 涨停板块卡片 -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">🔥</span>
+            <h2>涨停板块</h2>
+          </div>
+          <div class="card-content">
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-sort="code" class="sortable">代码</th>
+                    <th data-sort="name" class="sortable">板块</th>
+                    <th data-sort="totalStocks" class="sortable">成分股</th>
+                    <th data-sort="limitUpCount" class="sortable">涨停</th>
+                    <th data-sort="changePercent" class="sortable">涨幅</th>
+                  </tr>
+                </thead>
+                <tbody id="limit-up-table">
+                  <tr><td colspan="5" class="loading">加载中...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 板块资金流卡片 -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">💰</span>
+            <h2>板块资金流</h2>
+          </div>
+          <div class="card-content">
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-sort="name" class="sortable">板块</th>
+                    <th data-sort="mainNetInflow" class="sortable">主力净流入</th>
+                    <th data-sort="mainNetInflowRatio" class="sortable">净流入率</th>
+                  </tr>
+                </thead>
+                <tbody id="cashflow-table">
+                  <tr><td colspan="3" class="loading">加载中...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第二行：高换手率 TOP50 -->
+      <div class="card full-width">
+        <div class="card-header">
+          <span class="card-icon">⚡</span>
+          <h2>高换手率 TOP50</h2>
+        </div>
+        <div class="card-content">
+          <div class="table-container scrollable">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>排名</th>
+                  <th data-sort="code" class="sortable">代码</th>
+                  <th data-sort="name" class="sortable">名称</th>
+                  <th data-sort="price" class="sortable">现价</th>
+                  <th data-sort="changePercent" class="sortable">涨幅</th>
+                  <th data-sort="turnoverRate" class="sortable">换手率</th>
+                  <th data-sort="actualTurnoverRate" class="sortable">实际换手</th>
+                  <th data-sort="amount" class="sortable">成交额</th>
+                  <th data-sort="industry" class="sortable">行业</th>
+                </tr>
+              </thead>
+              <tbody id="turnover-table">
+                <tr><td colspan="9" class="loading">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+      <div class="footer-info">
+        <span id="last-update">最后更新：--</span>
+        <span id="market-status">市场状态：--</span>
+      </div>
+      <div class="copyright">
+        版权所有：营长
+      </div>
+    </footer>
+      </div>
+      
+      <!-- 证券行情内容 -->
+      <div id="stock-tab" class="tab-pane">
+        <iframe src="/stock" frameborder="0" class="stock-frame"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- 板块成分股模态框 -->
+  <div id="sector-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">🔥 板块成分股</h3>
+        <button class="modal-close" onclick="closeSectorModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="code">代码</th>
+                <th class="sortable" data-sort="name">名称</th>
+                <th class="sortable" data-sort="price">现价</th>
+                <th class="sortable" data-sort="changePercent">涨跌幅</th>
+                <th class="sortable" data-sort="volume">成交量</th>
+                <th class="sortable" data-sort="amount">成交额</th>
+                <th class="sortable" data-sort="turnover">换手率</th>
+              </tr>
+            </thead>
+            <tbody id="sector-stocks-table">
+              <tr><td colspan="7" class="loading">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js?v=202604012155"></script>
+</body>
+</html>

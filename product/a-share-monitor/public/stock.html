@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>证券行情 - A 股实时监控</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/stock.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 顶部导航 -->
+    <header class="header">
+      <div class="header-left">
+        <h1> 证券行情查询</h1>
+        <div class="datetime-display">
+          <span id="current-date">--</span>
+          <span id="current-time">--:--:--</span>
+          <span class="timezone-label">北京时间</span>
+        </div>
+      </div>
+      <div class="header-controls">
+        <a href="/" class="btn">🏠 返回首页</a>
+      </div>
+    </header>
+
+    <!-- 搜索区域 -->
+    <section class="search-section">
+      <div class="search-box-wrapper">
+        <div class="search-box">
+          <input type="text" id="stock-input" class="search-input" 
+                 placeholder="输入股票代码、名称或拼音（如：600519、贵州茅台、GZMT）" 
+                 maxlength="20" autocomplete="off">
+          <button id="search-btn" class="search-btn">🔍 查询</button>
+          <button id="clear-btn" class="clear-btn">✕ 清空</button>
+        </div>
+        <!-- 搜索建议下拉框 -->
+        <div id="search-suggestions" class="search-suggestions" style="display: none;">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+      <div class="search-hints">
+        <span>💡 支持输入：股票代码（6 位）、股票名称、拼音首字母</span>
+        <span>示例：600519、贵州茅台、GZMT</span>
+      </div>
+    </section>
+
+    <!-- 行情信息区域 -->
+    <section id="stock-result" class="result-section" style="display: none;">
+      <!-- 股票基本信息 -->
+      <div class="stock-header">
+        <div class="stock-name">
+          <h2 id="stock-name">--</h2>
+          <span id="stock-code" class="stock-code">--</span>
+          <span id="stock-type" class="stock-type">--</span>
+        </div>
+        <div class="stock-price">
+          <span id="current-price" class="current-price">--</span>
+          <span id="price-change" class="price-change">--</span>
+        </div>
+      </div>
+
+      <!-- 分时图 -->
+      <div class="intraday-chart">
+        <h3>📈 分时走势</h3>
+        <div id="chart-container" class="chart-container">
+          <canvas id="intraday-canvas"></canvas>
+        </div>
+      </div>
+
+      <!-- 可转债信息 -->
+      <div id="convertible-section" class="convertible-section" style="display: none;">
+        <h3>🔗 相关可转债</h3>
+        <div id="convertible-list" class="convertible-list">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+
+      <!-- 行情数据网格 -->
+      <div class="stock-grid">
+        <!-- 第一行 -->
+        <div class="grid-item">
+          <div class="grid-label">今开</div>
+          <div class="grid-value" id="open-price">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">最高</div>
+          <div class="grid-value" id="high-price">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">涨停</div>
+          <div class="grid-value" id="limit-up">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">换手</div>
+          <div class="grid-value" id="turnover-rate">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">成交量</div>
+          <div class="grid-value" id="volume">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">市盈 (动)</div>
+          <div class="grid-value" id="pe-ratio">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">总市值</div>
+          <div class="grid-value" id="total-market-cap">--</div>
+        </div>
+
+        <!-- 第二行 -->
+        <div class="grid-item">
+          <div class="grid-label">昨收</div>
+          <div class="grid-value" id="prev-close">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">最低</div>
+          <div class="grid-value" id="low-price">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">跌停</div>
+          <div class="grid-value" id="limit-down">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">量比</div>
+          <div class="grid-value" id="volume-ratio">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">成交额</div>
+          <div class="grid-value" id="amount">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">市净</div>
+          <div class="grid-value" id="pb-ratio">--</div>
+        </div>
+        <div class="grid-item">
+          <div class="grid-label">流通市值</div>
+          <div class="grid-value" id="float-market-cap">--</div>
+        </div>
+      </div>
+
+      <!-- 更新时间 -->
+      <div class="update-time">
+        数据更新时间：<span id="data-time">--</span>
+      </div>
+    </section>
+
+    <!-- 错误提示 -->
+    <section id="error-message" class="error-section" style="display: none;">
+      <div class="error-content">
+        <span class="error-icon">❌</span>
+        <span id="error-text">未找到该股票信息</span>
+      </div>
+    </section>
+
+    <!-- 热门股票 -->
+    <section class="popular-section">
+      <h3>🔥 热门股票</h3>
+      <div class="popular-grid">
+        <div class="popular-item" data-code="sh000001">
+          <span class="popular-name">上证指数</span>
+          <span class="popular-code">000001</span>
+        </div>
+        <div class="popular-item" data-code="sz399001">
+          <span class="popular-name">深证成指</span>
+          <span class="popular-code">399001</span>
+        </div>
+        <div class="popular-item" data-code="sh000300">
+          <span class="popular-name">沪深 300</span>
+          <span class="popular-code">000300</span>
+        </div>
+        <div class="popular-item" data-code="600519">
+          <span class="popular-name">贵州茅台</span>
+          <span class="popular-code">600519</span>
+        </div>
+        <div class="popular-item" data-code="300750">
+          <span class="popular-name">宁德时代</span>
+          <span class="popular-code">300750</span>
+        </div>
+        <div class="popular-item" data-code="002594">
+          <span class="popular-name">比亚迪</span>
+          <span class="popular-code">002594</span>
+        </div>
+        <div class="popular-item" data-code="601318">
+          <span class="popular-name">中国平安</span>
+          <span class="popular-code">601318</span>
+        </div>
+        <div class="popular-item" data-code="sh000688">
+          <span class="popular-name">科创 50</span>
+          <span class="popular-code">000688</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+      <div class="footer-info">
+        <span id="last-update">最后更新：--</span>
+        <span id="market-status">市场状态：--</span>
+      </div>
+      <div class="copyright">
+        版权所有：营长
+      </div>
+    </footer>
+  </div>
+
+  <script>
+window.onerror = function(msg, url, line) { console.error("JS Error:", msg, "at line", line); };
+</script>
+<script src="js/intraday-chart.js?v=202604011800"></script>
+  <script src="js/stock.js?v=202604011830"></script>
+</body>
+</html>
