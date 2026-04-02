@@ -125,9 +125,10 @@ class IntradayChart {
     }
   }
 
-  // 时间转换为分钟数（从 9:30 开始，0-240 分钟）
-  // 上午：9:30-11:30 → 0-120 分钟
-  // 下午：13:00-15:00 → 120-240 分钟
+  // 时间转换为分钟数（从 9:30 开始，0-241 分钟）
+  // 上午：9:30-11:30 → 0-120 分钟（121个点）
+  // 下午：13:00-15:00 → 120-241 分钟（对应索引121-241）
+  // 注意：11:30 和 13:00 都在位置 120，午休间隙
   timeToMinutes(timeStr) {
     if (!timeStr) return 0;
     const parts = timeStr.split(':');
@@ -135,15 +136,17 @@ class IntradayChart {
     const minute = parseInt(parts[1]);
     
     // 上午时段 (9:30-11:30)
-    if (hour < 13) {
-      // 9:30 → 0, 10:30 → 60, 11:30 → 120
+    if (hour < 12) {
+      // 9:30 → 0, 10:00 → 30, 10:30 → 60, 11:00 → 90, 11:30 → 120
       return (hour - 9) * 60 + (minute - 30);
     }
     // 下午时段 (13:00-15:00)
-    else {
-      // 13:00 → 120, 14:00 → 180, 15:00 → 240
-      return 120 + (hour - 13) * 60 + minute;
+    // 从 120 开始，这样 13:00=120, 14:00=180, 15:00=240
+    else if (hour >= 13) {
+      // 13:00 → 121, 14:00 → 181, 15:00 → 241
+      return 121 + (hour - 13) * 60 + minute;
     }
+    return 0;
   }
 
   // 判断价格颜色（红涨绿跌 - 相对昨收价）
@@ -173,7 +176,7 @@ class IntradayChart {
     const displayMax = this.limitUp;
     const priceRange = displayMax - displayMin;
     
-    const totalMinutes = 240;
+    const totalMinutes = 241;  // 总分钟位置（0-241，共242个数据点）
     
     // ==================== 绘制价格图 ====================
     
@@ -371,20 +374,30 @@ class IntradayChart {
 
   // 绘制时间标签
   drawTimeLabels(padding, chartWidth, volumeTop, volumeChartHeight) {
+    // 时间标签位置（分钟位置）
+    // 上午：9:30=0, 10:30=60, 11:30=120
+    // 下午：13:00=121, 14:00=181, 15:00=241
+    // 但显示时 11:30 和 13:00 重叠（午休间隙）
     const timeLabels = [
       { label: '9:30', pos: 0 },
       { label: '10:30', pos: 60 },
-      { label: '11:30/13:00', pos: 120 },
-      { label: '14:00', pos: 180 },
-      { label: '15:00', pos: 240 }
+      { label: '11:30', pos: 120 },
+      { label: '13:00', pos: 121 },
+      { label: '14:00', pos: 181 },
+      { label: '15:00', pos: 241 }
     ];
     
     this.ctx.fillStyle = '#90a4ae';
     this.ctx.font = '11px Arial';
     this.ctx.textAlign = 'center';
     timeLabels.forEach(item => {
-      const x = padding.left + chartWidth * item.pos / 240;
-      this.ctx.fillText(item.label, x, volumeTop + volumeChartHeight + 16);
+      const x = padding.left + chartWidth * item.pos / 241;
+      // 11:30 和 13:00 位置很近，特殊处理显示
+      if (item.label === '11:30') {
+        this.ctx.fillText('11:30/13:00', x, volumeTop + volumeChartHeight + 16);
+      } else if (item.label !== '13:00') {
+        this.ctx.fillText(item.label, x, volumeTop + volumeChartHeight + 16);
+      }
     });
   }
 
@@ -427,11 +440,11 @@ class IntradayChart {
     }
     
     // 成交量柱状图（红涨绿跌 - 相对前一分钟价格）
-    const barWidth = Math.max(2, chartWidth / 240 * 0.8);
+    const barWidth = Math.max(2, chartWidth / 241 * 0.8);
     
     this.data.forEach((point, index) => {
       const minutes = this.timeToMinutes(point.time);
-      const x = padding.left + chartWidth * minutes / 240;
+      const x = padding.left + chartWidth * minutes / 241;
       const barHeight = maxVolume > 0 ? (point.volume / maxVolume) * volumeChartHeight * 0.9 : 0;
       
       // 量价匹配：

@@ -293,26 +293,29 @@ async function fetchIntradayData(code) {
     const dataPoints = [];
     let totalVolume = 0;
     
-    for (let i = 0; i < 240; i++) {
+    // A 股交易时间：上午 9:30-11:30（121个分钟点），下午 13:00-15:00（121个分钟点）
+    // 总共 242 个数据点，包含收盘时间
+    for (let i = 0; i < 242; i++) {
       let timeStr;
-      // 上午：0-119 → 9:30-11:29 (120 分钟)
-      if (i < 120) {
+      // 上午：i=0-120 → 9:30-11:30 (121 个点)
+      if (i <= 120) {
         const hour = 9 + Math.floor((30 + i) / 60);
         const minute = (30 + i) % 60;
         timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       }
-      // 下午：120-239 → 13:00-14:59 (120 分钟)
+      // 下午：i=121-241 → 13:00-15:00 (121 个点)
       else {
-        const hour = 13 + Math.floor((i - 120) / 60);
-        const minute = (i - 120) % 60;
+        const minuteOffset = i - 121;
+        const hour = 13 + Math.floor(minuteOffset / 60);
+        const minute = minuteOffset % 60;
         timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       }
       
       let price;
       if (i === 0) price = validOpen;
-      else if (i === 239) price = validCurrentPrice;
+      else if (i === 241) price = validCurrentPrice;
       else {
-        const progress = i / 239;
+        const progress = i / 241;
         const trendPrice = validOpen * (1 - progress) + validCurrentPrice * progress;
         const wave1 = Math.sin(progress * Math.PI * 2) * priceRange * 0.4;
         const wave2 = Math.sin(progress * Math.PI * 4) * priceRange * 0.15;
@@ -328,7 +331,7 @@ async function fetchIntradayData(code) {
       price = parseFloat(price.toFixed(2));
       
       const volumeFactor = i < 30 ? 4 + Math.random() * 3 : i >= 200 ? 3 + Math.random() * 2 : 1 + Math.random() * 1.5;
-      const minuteVolume = Math.round((100000 / 240) * volumeFactor);
+      const minuteVolume = Math.round((100000 / 242) * volumeFactor);
       totalVolume += minuteVolume;
       
       dataPoints.push({
