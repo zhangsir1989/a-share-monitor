@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>自选股 - A 股实时监控</title>
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/custom.css?v=202604020410">
+  <link rel="stylesheet" href="css/custom.css?v=202604020525">
 </head>
 <body>
   <div class="container">
@@ -54,6 +54,19 @@
         <button id="clear-all-btn" class="btn btn-danger" style="display: none;">🗑️ 清空全部</button>
       </div>
       
+      <!-- 排序按钮组 -->
+      <div class="sort-buttons" id="sort-buttons" style="display: none;">
+        <div class="sort-btn-group">
+          <label>排序：</label>
+          <button class="sort-option" data-sort="default">默认</button>
+          <button class="sort-option" data-sort="changePercent-desc">涨跌幅 ↓</button>
+          <button class="sort-option" data-sort="changePercent-asc">涨跌幅 ↑</button>
+          <button class="sort-option" data-sort="price-desc">价格 ↓</button>
+          <button class="sort-option" data-sort="price-asc">价格 ↑</button>
+          <button class="sort-option" data-sort="turnoverRate-desc">换手率 ↓</button>
+        </div>
+      </div>
+      
       <!-- 空状态提示 -->
       <div id="empty-state" class="empty-state">
         <div class="empty-icon">📭</div>
@@ -77,6 +90,6 @@
     </footer>
   </div>
 
-  <script src="js/custom.js?v=202604020410"></script>
+  <script src="js/custom.js?v=202604020525"></script>
 </body>
 </html>

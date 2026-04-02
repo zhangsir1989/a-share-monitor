@@ -9,7 +9,8 @@ const pageState = {
   isPaused: false,
   timer: null,
   stocks: [],  // 自选股列表 [{code, name, addedAt}]
-  stockData: {}  // 股票行情数据
+  stockData: {},  // 股票行情数据
+  sortBy: 'default'  // 排序方式：default, changePercent-desc, changePercent-asc, price-desc, price-asc, turnoverRate-desc
 };
 
 // DOM 元素
@@ -34,7 +35,8 @@ function init() {
     refreshSelect: document.getElementById('refresh-select'),
     refreshInterval: document.getElementById('refresh-interval'),
     pauseBtn: document.getElementById('pause-btn'),
-    refreshBtn: document.getElementById('refresh-btn')
+    refreshBtn: document.getElementById('refresh-btn'),
+    sortButtons: document.getElementById('sort-buttons')
   };
   
   // 从 localStorage 加载自选股
@@ -56,6 +58,20 @@ function init() {
     pageState.refreshInterval = parseInt(savedInterval);
     elements.refreshSelect.value = pageState.refreshInterval;
     elements.refreshInterval.textContent = pageState.refreshInterval;
+  }
+  
+  // 加载保存的排序设置
+  const savedSort = localStorage.getItem('customSortBy');
+  if (savedSort) {
+    pageState.sortBy = savedSort;
+    // 更新排序按钮状态
+    const activeBtn = document.querySelector(`.sort-option[data-sort="${savedSort}"]`);
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+    }
+  } else {
+    // 默认激活"默认"按钮
+    document.querySelector('.sort-option[data-sort="default"]').classList.add('active');
   }
   
   // 初始数据加载
@@ -210,6 +226,7 @@ function updateStockList() {
   elements.stockCount.textContent = pageState.stocks.length;
   elements.emptyState.style.display = pageState.stocks.length === 0 ? 'block' : 'none';
   elements.clearAllBtn.style.display = pageState.stocks.length > 0 ? 'block' : 'none';
+  elements.sortButtons.style.display = pageState.stocks.length > 0 ? 'flex' : 'none';
   
   renderStockCards();
 }
@@ -243,20 +260,61 @@ async function fetchAllStockData() {
 
 // ==================== 渲染 ====================
 
+// 获取排序后的股票列表
+function getSortedStocks() {
+  if (pageState.sortBy === 'default') {
+    return pageState.stocks;
+  }
+  
+  const [field, order] = pageState.sortBy.split('-');
+  
+  return [...pageState.stocks].sort((a, b) => {
+    const dataA = pageState.stockData[a.code] || {};
+    const dataB = pageState.stockData[b.code] || {};
+    
+    let valueA, valueB;
+    
+    switch (field) {
+      case 'changePercent':
+        valueA = parseFloat(dataA.changePercent) || 0;
+        valueB = parseFloat(dataB.changePercent) || 0;
+        break;
+      case 'price':
+        valueA = parseFloat(dataA.price) || 0;
+        valueB = parseFloat(dataB.price) || 0;
+        break;
+      case 'turnoverRate':
+        // 成交额作为近似
+        valueA = parseFloat(dataA.amount) || 0;
+        valueB = parseFloat(dataB.amount) || 0;
+        break;
+      default:
+        return 0;
+    }
+    
+    return order === 'asc' ? valueA - valueB : valueB - valueA;
+  });
+}
+
 function renderStockCards(prevData = {}) {
   if (pageState.stocks.length === 0) {
     elements.stockList.innerHTML = '';
     return;
   }
   
-  elements.stockList.innerHTML = pageState.stocks.map((stock, index) => {
+  // 获取排序后的股票列表
+  const sortedStocks = getSortedStocks();
+  
+  elements.stockList.innerHTML = sortedStocks.map((stock, displayIndex) => {
+    // 找到原始索引用于移动操作
+    const originalIndex = pageState.stocks.findIndex(s => s.code === stock.code);
     const data = pageState.stockData[stock.code];
     if (!data) {
       return `
-        <div class="stock-card" data-code="${stock.code}" data-index="${index}">
+        <div class="stock-card" data-code="${stock.code}" data-index="${originalIndex}">
           <button class="sort-btn" title="拖拽排序" onclick="event.stopPropagation();">
-            <span class="arrow" onclick="event.stopPropagation(); moveStock(${index}, -1)">▲</span>
-            <span class="arrow" onclick="event.stopPropagation(); moveStock(${index}, 1)">▼</span>
+            <span class="arrow" onclick="event.stopPropagation(); moveStock(${originalIndex}, -1)">▲</span>
+            <span class="arrow" onclick="event.stopPropagation(); moveStock(${originalIndex}, 1)">▼</span>
           </button>
           <button class="delete-btn" onclick="event.stopPropagation(); removeStock('${stock.code}')">×</button>
           <div class="stock-info">
@@ -295,10 +353,10 @@ function renderStockCards(prevData = {}) {
     }
     
     return `
-      <div class="stock-card ${priceClass} ${flashClass}" data-code="${stock.code}" data-index="${index}" onclick="goToStockDetail('${stock.code}')" draggable="true">
+      <div class="stock-card ${priceClass} ${flashClass}" data-code="${stock.code}" data-index="${originalIndex}" onclick="goToStockDetail('${stock.code}')" draggable="true">
         <button class="sort-btn" title="拖拽排序或点击箭头移动" onclick="event.stopPropagation();">
-          <span class="arrow" onclick="event.stopPropagation(); moveStock(${index}, -1)">▲</span>
-          <span class="arrow" onclick="event.stopPropagation(); moveStock(${index}, 1)">▼</span>
+          <span class="arrow" onclick="event.stopPropagation(); moveStock(${originalIndex}, -1)">▲</span>
+          <span class="arrow" onclick="event.stopPropagation(); moveStock(${originalIndex}, 1)">▼</span>
         </button>
         <button class="delete-btn" onclick="event.stopPropagation(); removeStock('${stock.code}')">×</button>
         <div class="stock-info">
@@ -618,6 +676,33 @@ function bindEvents() {
   // 手动刷新
   elements.refreshBtn.addEventListener('click', () => {
     fetchAllStockData();
+  });
+  
+  // 排序按钮
+  document.querySelectorAll('.sort-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sort = btn.dataset.sort;
+      
+      // 如果点击已激活的按钮，切换升降序
+      if (pageState.sortBy === sort) {
+        // 已经是当前排序，不做变化
+        return;
+      }
+      
+      pageState.sortBy = sort;
+      
+      // 更新按钮状态
+      document.querySelectorAll('.sort-option').forEach(b => {
+        b.classList.remove('active', 'asc', 'desc');
+      });
+      btn.classList.add('active');
+      
+      // 保存排序设置
+      localStorage.setItem('customSortBy', pageState.sortBy);
+      
+      // 重新渲染
+      renderStockCards(pageState.stockData);
+    });
   });
 }
 
