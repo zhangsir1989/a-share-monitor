@@ -410,12 +410,22 @@ function getStockType(code) {
   // 处理带市场前缀的代码
   const cleanCode = code.replace(/^(sh|sz)/i, '');
   
-  if (cleanCode === '000001') return '上证指数'; // 特殊处理
-  if (cleanCode.startsWith('1')) return 'ETF';
-  if (cleanCode.startsWith('11') || cleanCode.startsWith('12')) return '可转债';
-  if (cleanCode.startsWith('000') || cleanCode.startsWith('399')) return '指数';
+  // 上证指数（特定代码）
+  if (cleanCode === '000001' || cleanCode === '000016' || cleanCode === '000300' || 
+      cleanCode === '000688' || cleanCode === '000852') return '上证指数';
+  // 深证指数（以 399 开头）
+  if (cleanCode.startsWith('399')) return '深证指数';
+  // ETF
+  if (cleanCode.startsWith('51') || cleanCode.startsWith('15') || cleanCode.startsWith('16')) return 'ETF';
+  // 可转债
+  if (cleanCode.startsWith('11') || cleanCode.startsWith('12') || cleanCode.startsWith('13')) return '可转债';
+  // 科创板
   if (cleanCode.startsWith('688')) return '科创板';
-  if (cleanCode.startsWith('300')) return '创业板';
+  // 创业板
+  if (cleanCode.startsWith('300') || cleanCode.startsWith('301')) return '创业板';
+  // 北交所
+  if (cleanCode.startsWith('8') || cleanCode.startsWith('4')) return '北交所';
+  // 其他都是A股
   return 'A 股';
 }
 
