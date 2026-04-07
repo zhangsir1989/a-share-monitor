@@ -133,6 +133,8 @@ const UI = {
     setNum('basic-low', data.low);
     setNum('basic-open', data.open);
     setNum('basic-prev-close', data.prevClose);
+    setNum('basic-limit-up', data.limitUp);
+    setNum('basic-limit-down', data.limitDown);
     setNum('basic-volume-ratio', data.volumeRatio);
     setNum('basic-turnover', data.turnoverRate, true);
     
@@ -149,12 +151,22 @@ const UI = {
     const floatCapEl = document.getElementById('basic-float-cap');
     if (floatCapEl) floatCapEl.textContent = Utils.formatAmount(Utils.safeNum(data.floatMarketCap, 0) * 100000000);
     
+    // 总股本和流通股本
+    const totalSharesEl = document.getElementById('basic-total-shares');
+    if (totalSharesEl) {
+      const totalShares = Utils.safeNum(data.totalShares, 0);
+      totalSharesEl.textContent = (totalShares / 100000000).toFixed(2) + ' 亿股';
+    }
+    
+    const floatSharesEl = document.getElementById('basic-float-shares');
+    if (floatSharesEl) {
+      const floatShares = Utils.safeNum(data.floatShares, 0);
+      floatSharesEl.textContent = (floatShares / 100000000).toFixed(2) + ' 亿股';
+    }
+    
     // 市盈率
     const peStaticEl = document.getElementById('basic-pe-static');
     if (peStaticEl) peStaticEl.textContent = Utils.safeNum(data.pe, 0).toFixed(2);
-    
-    const peTtmEl = document.getElementById('basic-pe-ttm');
-    if (peTtmEl) peTtmEl.textContent = Utils.safeNum(data.pe, 0).toFixed(2);
   },
   
   /**

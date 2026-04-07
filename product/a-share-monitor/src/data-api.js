@@ -350,7 +350,10 @@ async function fetchStockDetail(query) {
         pe: pe > 0 ? pe.toFixed(2) : '--',
         pb: pb > 0 ? pb.toFixed(2) : '--',
         totalMarketCap: totalMarketCap > 0 ? totalMarketCap.toFixed(2) : '--',
-        floatMarketCap: floatMarketCap > 0 ? floatMarketCap.toFixed(2) : '--'
+        floatMarketCap: floatMarketCap > 0 ? floatMarketCap.toFixed(2) : '--',
+        // 计算股本（市值/股价，单位：股）
+        totalShares: (totalMarketCap > 0 && price > 0) ? Math.round(totalMarketCap * 100000000 / price) : 0,
+        floatShares: (floatMarketCap > 0 && price > 0) ? Math.round(floatMarketCap * 100000000 / price) : 0
       }
     };
   } catch (e) {
