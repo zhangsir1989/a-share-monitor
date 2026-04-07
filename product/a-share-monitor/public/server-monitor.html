@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>服务器监控 - A 股实时监控</title>
+  <link rel="stylesheet" href="css/sidebar.css?v=20260405">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/server-monitor.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 侧边栏导航 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📊 系统导航</h2>
+        <button class="btn-close-sidebar" id="close-sidebar">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="sidebar-link" data-page="home">
+          <span class="link-icon">🏠</span>
+          <span class="link-text">首页</span>
+        </a>
+        <a href="/stock" class="sidebar-link" data-page="stock">
+          <span class="link-icon">📈</span>
+          <span class="link-text">证券行情</span>
+        </a>
+        <a href="/custom" class="sidebar-link" data-page="custom">
+          <span class="link-icon">⭐</span>
+          <span class="link-text">自定义</span>
+        </a>
+        <a href="/data-manager" class="sidebar-link" data-page="data-manager" data-requires-admin="true">
+          <span class="link-icon">🗄️</span>
+          <span class="link-text">数据管理</span>
+        </a>
+        <a href="/system" class="sidebar-link active" data-page="system" data-requires-admin="true">
+          <span class="link-icon">⚙️</span>
+          <span class="link-text">系统管理</span>
+        </a>
+        <a href="/users" class="sidebar-link" data-page="users" data-requires-admin="true">
+          <span class="link-icon">👥</span>
+          <span class="link-text">用户管理</span>
+        </a>
+        <a href="/change-password" class="sidebar-link" data-page="change-password" data-requires-user="true">
+          <span class="link-icon">🔑</span>
+          <span class="link-text">修改密码</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <span class="user-avatar">👤</span>
+          <span class="user-display-name" id="sidebar-username">--</span>
+        </div>
+        <button class="btn-logout-sidebar" id="sidebar-logout-btn" title="退出登录">
+          🚪 退出登录
+        </button>
+      </div>
+    </aside>
+
+    <!-- 二级侧边栏 -->
+    <aside class="sub-sidebar" id="sub-sidebar">
+      <div class="sub-sidebar-header">
+        <h3>⚙️ 系统管理</h3>
+      </div>
+      <nav class="sub-sidebar-nav">
+        <a href="/server-monitor" class="sub-sidebar-link active">
+          <span class="link-icon">📊</span>
+          <span class="link-text">服务器监控</span>
+        </a>
+        <a href="/scheduled-tasks" class="sub-sidebar-link">
+          <span class="link-icon">⏰</span>
+          <span class="link-text">定时任务</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- 顶部导航 -->
+    <header class="header has-sub-sidebar">
+      <div class="header-left">
+        <button class="btn-menu-toggle" id="menu-toggle">☰</button>
+        
+        <h1>📊 服务器监控</h1>
+      </div>
+      <div class="header-controls">
+        <a href="/" class="btn">🏠 返回首页</a>
+        <button class="btn" id="btn-refresh">🔄 刷新</button>
+      </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="main-content has-sub-sidebar">
+      <!-- 系统信息卡片 -->
+      <div class="system-info-bar">
+        <div class="info-item">
+          <span class="info-label">🖥️ 主机名</span>
+          <span class="info-value" id="sys-hostname">--</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">🐧 系统</span>
+          <span class="info-value" id="sys-platform">--</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">⏱️ 运行时间</span>
+          <span class="info-value" id="sys-uptime">--</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">🔧 进程数</span>
+          <span class="info-value" id="sys-processes">--</span>
+        </div>
+      </div>
+
+      <!-- 监控卡片 -->
+      <div class="monitor-grid">
+        <!-- CPU 卡片 -->
+        <div class="monitor-card">
+          <div class="card-header">
+            <span class="card-icon">🔷</span>
+            <h3>CPU</h3>
+          </div>
+          <div class="card-body">
+            <div class="gauge-container">
+              <canvas id="cpu-gauge" width="180" height="180"></canvas>
+              <div class="gauge-value" id="cpu-usage">--%</div>
+            </div>
+            <div class="info-list">
+              <div class="info-row">
+                <span class="info-row-label">型号</span>
+                <span class="info-row-value" id="cpu-model">--</span>
+              </div>
+              <div class="info-row">
+                <span class="info-row-label">核心数</span>
+                <span class="info-row-value" id="cpu-cores">--</span>
+              </div>
+              <div class="info-row">
+                <span class="info-row-label">负载</span>
+                <span class="info-row-value" id="cpu-load">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 内存卡片 -->
+        <div class="monitor-card">
+          <div class="card-header">
+            <span class="card-icon">🔶</span>
+            <h3>内存</h3>
+          </div>
+          <div class="card-body">
+            <div class="gauge-container">
+              <canvas id="mem-gauge" width="180" height="180"></canvas>
+              <div class="gauge-value" id="mem-usage">--%</div>
+            </div>
+            <div class="info-list">
+              <div class="info-row">
+                <span class="info-row-label">总计</span>
+                <span class="info-row-value" id="mem-total">--</span>
+              </div>
+              <div class="info-row">
+                <span class="info-row-label">已用</span>
+                <span class="info-row-value" id="mem-used">--</span>
+              </div>
+              <div class="info-row">
+                <span class="info-row-label">空闲</span>
+                <span class="info-row-value" id="mem-free">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 磁盘卡片 -->
+        <div class="monitor-card">
+          <div class="card-header">
+            <span class="card-icon">🔷</span>
+            <h3>磁盘</h3>
+          </div>
+          <div class="card-body">
+            <div class="gauge-container">
+              <canvas id="disk-gauge" width="180" height="180"></canvas>
+              <div class="gauge-value" id="disk-usage">--%</div>
+            </div>
+            <div class="info-list">
+              <div class="info-row">
+                <span class="info-row-label">总计</span>
+                <span class="info-row-value" id="disk-total">--</span>
+              </div>
+              <div class="info-row">
+                <span class="info-row-label">已用</span>
+                <span class="info-row-value" id="disk-used">--</span>
+              </div>
+              <div class="info-row">
+                <span class="info-row-label">空闲</span>
+                <span class="info-row-value" id="disk-free">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 网络卡片 -->
+        <div class="monitor-card">
+          <div class="card-header">
+            <span class="card-icon">🔶</span>
+            <h3>网络</h3>
+          </div>
+          <div class="card-body">
+            <div class="network-list" id="network-list">
+              <div class="loading">加载中...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 更新时间 -->
+      <div class="update-time">
+        最后更新：<span id="last-update">--</span>
+      </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer footer-with-sub-sidebar">
+      <div class="footer-info">
+        <span>服务器监控</span>
+      </div>
+      <div class="copyright">
+        版权所有：营长
+      </div>
+    </footer>
+  </div>
+
+  <script src="js/sidebar.js?v=20260405"></script>
+  <script src="js/server-monitor.js?v=20260404"></script>
+</body>
+</html>

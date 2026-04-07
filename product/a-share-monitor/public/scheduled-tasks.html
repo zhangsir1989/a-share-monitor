@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>定时任务管理 - A 股实时监控</title>
+  <link rel="stylesheet" href="css/sidebar.css?v=20260405">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/scheduled-tasks.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 侧边栏导航 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📊 系统导航</h2>
+        <button class="btn-close-sidebar" id="close-sidebar">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="sidebar-link" data-page="home"><span class="link-icon">🏠</span><span class="link-text">首页</span></a>
+        <a href="/stock" class="sidebar-link" data-page="stock"><span class="link-icon">📈</span><span class="link-text">证券行情</span></a>
+        <a href="/custom" class="sidebar-link" data-page="custom"><span class="link-icon">⭐</span><span class="link-text">自定义</span></a>
+        <a href="/data-manager" class="sidebar-link" data-page="data-manager" style="display:none;"><span class="link-icon">🗄️</span><span class="link-text">数据管理</span></a>
+        <a href="/system" class="sidebar-link active" data-page="system" style="display:none;"><span class="link-icon">⚙️</span><span class="link-text">系统管理</span></a>
+        <a href="/users" class="sidebar-link" data-page="users" style="display:none;"><span class="link-icon">👥</span><span class="link-text">用户管理</span></a>
+        <a href="/change-password" class="sidebar-link" data-page="change-password" style="display:none;"><span class="link-icon">🔑</span><span class="link-text">修改密码</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <span class="user-avatar">👤</span>
+          <span class="user-display-name" id="sidebar-username">--</span>
+        </div>
+        <button class="btn-logout-sidebar" id="sidebar-logout-btn">🚪 退出登录</button>
+      </div>
+    </aside>
+
+    <!-- 二级侧边栏 -->
+    <aside class="sub-sidebar" id="sub-sidebar">
+      <div class="sub-sidebar-header">
+        <h3>⚙️ 系统管理</h3>
+      </div>
+      <nav class="sub-sidebar-nav">
+        <a href="/server-monitor" class="sub-sidebar-link"><span class="link-icon">📊</span><span class="link-text">服务器监控</span></a>
+        <a href="/scheduled-tasks" class="sub-sidebar-link active"><span class="link-icon">⏰</span><span class="link-text">定时任务</span></a>
+      </nav>
+    </aside>
+
+    <!-- 顶部导航 -->
+    <header class="header has-sub-sidebar">
+      <div class="header-left">
+        <button class="btn-menu-toggle" id="menu-toggle">☰</button>
+        
+        <h1>⏰ 定时任务管理</h1>
+      </div>
+      <div class="header-controls">
+        <button class="btn btn-primary" id="btn-add-task">➕ 新增任务</button>
+        <a href="/" class="btn">🏠 首页</a>
+      </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main-content has-sub-sidebar">
+      <!-- 任务列表 -->
+      <div class="card">
+        <div class="card-header">
+          <h3>📋 任务列表</h3>
+        </div>
+        <div class="card-body">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th width="180">任务名称</th>
+                <th width="120">任务类型</th>
+                <th width="150">执行时间</th>
+                <th width="150">Cron 表达式</th>
+                <th width="200">最后执行</th>
+                <th width="80">状态</th>
+                <th width="150">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tasks-table-body">
+              <tr><td colspan="6" class="loading">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 执行日志 -->
+      <div class="card">
+        <div class="card-header">
+          <h3>📜 执行日志</h3>
+        </div>
+        <div class="card-body">
+          <div class="logs-container" id="logs-container">
+            <div class="log-item"><span class="log-time">--</span><span class="log-message">等待任务执行...</span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer footer-with-sub-sidebar">
+      <span>定时任务管理</span>
+      <span>版权所有：营长</span>
+    </footer>
+  </div>
+
+  <!-- 新增/编辑任务弹窗 -->
+  <div class="modal" id="task-modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">新增任务</h3>
+        <button class="btn-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="task-form">
+          <input type="hidden" id="task-id">
+          <div class="form-group">
+            <label>任务名称 <span class="required">*</span></label>
+            <input type="text" id="task-name" class="form-input" placeholder="如：同步证券信息" required>
+          </div>
+          <div class="form-group">
+            <label>任务类型 <span class="required">*</span></label>
+            <select id="task-type" class="form-input" required>
+              <option value="sync-securities">同步证券信息</option>
+              <option value="sync-tick-trade">同步逐笔明细</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Cron 表达式 <span class="required">*</span></label>
+            <input type="text" id="task-cron" class="form-input" placeholder="如：0 6 * * *" required>
+            <small class="form-hint">格式：秒 分 时 日 月 周（如：0 6 * * * 表示每天 6:00）</small>
+          </div>
+          <div class="form-group">
+            <label>执行时间预览</label>
+            <div id="cron-preview" class="cron-preview">--</div>
+          </div>
+          <div class="form-group">
+            <label>状态</label>
+            <select id="task-status" class="form-input">
+              <option value="1">启用</option>
+              <option value="0">停用</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="btn-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-save">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/sidebar.js?v=20260405"></script>
+  <script src="js/scheduled-tasks.js"></script>
+</body>
+</html>

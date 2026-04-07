@@ -1,6 +1,6 @@
 /**
- * 自选股页面逻辑
- * 功能：添加/删除自选股，实时行情展示，自动刷新
+ * 持仓页面逻辑
+ * 功能：添加/删除持仓，实时行情展示，自动刷新
  */
 
 // 页面状态
@@ -8,7 +8,7 @@ const pageState = {
   refreshInterval: 3,
   isPaused: false,
   timer: null,
-  stocks: [],  // 自选股列表 [{code, name, addedAt}]
+  stocks: [],  // 持仓列表 [{code, name, addedAt}]
   stockData: {},  // 股票行情数据
   sortBy: 'default'  // 排序方式：default, changePercent-desc, changePercent-asc, price-desc, price-asc, turnoverRate-desc
 };
@@ -39,7 +39,9 @@ async function init() {
     sortButtons: document.getElementById('sort-buttons')
   };
   
-  // 从 localStorage 加载自选股
+  // 从 localStorage 加载持仓
+  // 清除旧的 localStorage 数据
+  localStorage.removeItem('customStocks');
   loadStocks();
   
   // 初始化时间显示
@@ -151,13 +153,16 @@ function isTradingTime() {
 
 function startAutoRefresh() {
   stopAutoRefresh();
+  console.log('⏰ 启动自动刷新，间隔:', pageState.refreshInterval, '秒');
   pageState.timer = setInterval(() => {
     // 只在交易时间自动刷新，非交易时间可手动刷新
     if (!isTradingTime()) {
+      console.log('⏰ 非交易时间，跳过自动刷新');
       return;
     }
     if (!pageState.isPaused) {
-      if (pageState.stocks.length > 0) {
+      console.log('🔄 自动刷新持仓数据...');
+      if (pageState.positions.length > 0) {
         fetchAllStockData();
       }
       // 同时刷新指数数据
@@ -173,42 +178,40 @@ function stopAutoRefresh() {
   }
 }
 
-// ==================== 自选股管理 ====================
+// ==================== 持仓管理 ====================
 
-// 从数据库加载用户的自选股
+// 从数据库加载用户的持仓
 async function loadStocks() {
   try {
-    console.log('📦 开始从数据库加载自选股...');
-    const response = await fetch('/api/custom-stocks/list');
+    console.log('📦 开始从数据库加载持仓...');
+    const response = await fetch('/api/custom-stocks/list?type=2');
     const result = await response.json();
     console.log('📦 数据库返回:', result);
     
-    if (result.success && result.data) {
+    if (result.success) {
       // 将数据库格式转换为页面格式
-      pageState.stocks = result.data.map(item => ({
+      pageState.positions = (result.data || []).map(item => ({
         code: item.code,
         market: item.market,
         name: '',  // 名称需要从行情数据获取
         addedAt: new Date(item.addedAt).getTime()
       }));
-      console.log('📦 从数据库加载自选股:', pageState.stocks.length, '只');
-      console.log('📦 加载的股票列表:', pageState.stocks);
+      console.log('📦 从数据库加载持仓:', pageState.positions.length, '只');
+      console.log('📦 加载的股票列表:', pageState.positions);
       updateStockList();
       // 加载完列表后立即获取行情数据
       console.log('📡 开始获取行情数据...');
       await fetchAllStockData();
       return true;
     } else if (!result.success) {
-      console.error('加载自选股失败:', result.message);
+      console.error('加载持仓失败:', result.message);
       // 如果未登录，尝试从 localStorage 加载旧数据
-      loadStocksFromLocalStorage();
       updateStockList();
       return false;
     }
   } catch (e) {
-    console.error('加载自选股失败:', e);
+    console.error('加载持仓失败:', e);
     // 出错时从 localStorage 加载
-    loadStocksFromLocalStorage();
     updateStockList();
     return false;
   }
@@ -217,21 +220,21 @@ async function loadStocks() {
 // 从 localStorage 加载（降级方案）
 function loadStocksFromLocalStorage() {
   try {
-    const saved = localStorage.getItem('customStocks');
+    const saved = localStorage.getItem('positionsStocks');
     if (saved) {
-      pageState.stocks = JSON.parse(saved);
-      console.log('📦 从 localStorage 加载自选股:', pageState.stocks.length, '只');
+      pageState.positions = JSON.parse(saved);
+      console.log('📦 从 localStorage 加载持仓:', pageState.positions.length, '只');
     }
   } catch (e) {
     console.error('从 localStorage 加载失败:', e);
-    pageState.stocks = [];
+    pageState.positions = [];
   }
 }
 
 // 保存到 localStorage（降级方案）
 function saveStocksToLocalStorage() {
   try {
-    localStorage.setItem('customStocks', JSON.stringify(pageState.stocks));
+    localStorage.setItem('positionsStocks', JSON.stringify(pageState.positions));
     console.log('💾 已保存到 localStorage');
   } catch (e) {
     console.error('保存到 localStorage 失败:', e);
@@ -244,16 +247,16 @@ async function saveStockToDb(code, market) {
     const response = await fetch('/api/custom-stocks/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stock_code: code, stock_market: market })
+      body: JSON.stringify({ stock_code: code, stock_market: market, type: 2 })
     });
     const result = await response.json();
     if (!result.success) {
-      console.error('添加自选股失败:', result.message);
+      console.error('添加持仓失败:', result.message);
       showToast(result.message || '添加失败', 'error');
     }
     return result.success;
   } catch (e) {
-    console.error('保存自选股失败:', e);
+    console.error('保存持仓失败:', e);
     showToast('网络错误', 'error');
     return false;
   }
@@ -265,19 +268,19 @@ async function deleteStockFromDb(code, market) {
     const response = await fetch('/api/custom-stocks/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stock_code: code, stock_market: market })
+      body: JSON.stringify({ stock_code: code, stock_market: market, type: 2 })
     });
     const result = await response.json();
     return result.success;
   } catch (e) {
-    console.error('删除自选股失败:', e);
+    console.error('删除持仓失败:', e);
     return false;
   }
 }
 
 async function addStock(code, name, market) {
   // 检查是否已存在
-  if (pageState.stocks.some(s => s.code === code)) {
+  if (pageState.positions.some(s => s.code === code)) {
     showToast('该股票已在自选列表中', 'warning');
     return false;
   }
@@ -295,14 +298,14 @@ async function addStock(code, name, market) {
     }
   }
   
-  console.log('📝 尝试添加自选股:', code, name, market);
+  console.log('📝 尝试添加持仓:', code, name, market);
   
   // 添加到数据库
   const success = await saveStockToDb(code, market);
   if (!success) {
     // 如果数据库添加失败，降级到 localStorage
     console.log('⚠️ 数据库添加失败，使用 localStorage 降级方案');
-    pageState.stocks.push({
+    pageState.positions.push({
       code: code,
       market: market,
       name: name,
@@ -316,7 +319,7 @@ async function addStock(code, name, market) {
   }
   
   // 添加到本地列表
-  pageState.stocks.push({
+  pageState.positions.push({
     code: code,
     market: market,
     name: name,
@@ -330,7 +333,7 @@ async function addStock(code, name, market) {
 }
 
 async function removeStock(code) {
-  const stock = pageState.stocks.find(s => s.code === code);
+  const stock = pageState.positions.find(s => s.code === code);
   if (!stock) return;
   
   if (confirm(`确定要移除 ${stock.name}（${stock.code}）吗？`)) {
@@ -339,9 +342,9 @@ async function removeStock(code) {
     const success = await deleteStockFromDb(code, market);
     
     if (success) {
-      const index = pageState.stocks.findIndex(s => s.code === code);
+      const index = pageState.positions.findIndex(s => s.code === code);
       if (index > -1) {
-        pageState.stocks.splice(index, 1);
+        pageState.positions.splice(index, 1);
         updateStockList();
         showToast(`已移除 ${stock.name}`, 'info');
       }
@@ -352,20 +355,20 @@ async function removeStock(code) {
 }
 
 function clearAllStocks() {
-  if (confirm('确定要清空所有自选股吗？')) {
-    pageState.stocks = [];
+  if (confirm('确定要清空所有持仓吗？')) {
+    pageState.positions = [];
     pageState.stockData = {};
     saveStocks();
     updateStockList();
-    showToast('已清空自选股', 'info');
+    showToast('已清空持仓', 'info');
   }
 }
 
 function updateStockList() {
-  elements.stockCount.textContent = pageState.stocks.length;
-  elements.emptyState.style.display = pageState.stocks.length === 0 ? 'block' : 'none';
-  elements.clearAllBtn.style.display = pageState.stocks.length > 0 ? 'block' : 'none';
-  elements.sortButtons.style.display = pageState.stocks.length > 0 ? 'flex' : 'none';
+  elements.stockCount.textContent = pageState.positions.length;
+  elements.emptyState.style.display = pageState.positions.length === 0 ? 'block' : 'none';
+  elements.clearAllBtn.style.display = pageState.positions.length > 0 ? 'block' : 'none';
+  elements.sortButtons.style.display = pageState.positions.length > 0 ? 'flex' : 'none';
   
   renderStockCards();
 }
@@ -373,10 +376,10 @@ function updateStockList() {
 // ==================== 数据获取 ====================
 
 async function fetchAllStockData() {
-  if (pageState.stocks.length === 0) return;
+  if (pageState.positions.length === 0) return;
   
   // 构建股票代码（后端会自动识别市场，但带上前缀更准确）
-  const codes = pageState.stocks.map(s => s.code).join(',');
+  const codes = pageState.positions.map(s => s.code).join(',');
   console.log('📡 请求股票数据:', codes);
   
   try {
@@ -384,7 +387,7 @@ async function fetchAllStockData() {
     const result = await response.json();
     console.log('📦 股票数据返回:', result);
     
-    if (result.success && result.data) {
+    if (result.success) {
       console.log('📦 行情数据:', result.data);
       // 检测价格变化并记录
       const prevData = { ...pageState.stockData };
@@ -410,13 +413,13 @@ async function fetchAllStockData() {
 // 获取排序后的股票列表
 function getSortedStocks() {
   if (pageState.sortBy === 'default') {
-    return pageState.stocks;
+    return pageState.positions;
   }
   
   const field = pageState.sortBy;
   const order = pageState.sortOrder || 'desc';  // 默认降序
   
-  return [...pageState.stocks].sort((a, b) => {
+  return [...pageState.positions].sort((a, b) => {
     const dataA = pageState.stockData[a.code] || {};
     const dataB = pageState.stockData[b.code] || {};
     
@@ -445,9 +448,9 @@ function getSortedStocks() {
 }
 
 function renderStockCards(prevData = {}) {
-  console.log('🎨 renderStockCards - stocks:', pageState.stocks.length, 'stockData keys:', Object.keys(pageState.stockData));
+  console.log('🎨 renderStockCards - stocks:', pageState.positions.length, 'stockData keys:', Object.keys(pageState.stockData));
   
-  if (pageState.stocks.length === 0) {
+  if (pageState.positions.length === 0) {
     elements.stockList.innerHTML = '';
     return;
   }
@@ -457,7 +460,7 @@ function renderStockCards(prevData = {}) {
   
   elements.stockList.innerHTML = sortedStocks.map((stock, displayIndex) => {
     // 找到原始索引用于移动操作
-    const originalIndex = pageState.stocks.findIndex(s => s.code === stock.code);
+    const originalIndex = pageState.positions.findIndex(s => s.code === stock.code);
     
     // 后端返回的数据键名是纯代码（如 000938），直接用 stock.code 匹配
     const data = pageState.stockData[stock.code];
@@ -601,8 +604,8 @@ function initDragSort() {
         const toIndex = parseInt(this.dataset.index);
         
         // 重新排序
-        const item = pageState.stocks.splice(fromIndex, 1)[0];
-        pageState.stocks.splice(toIndex, 0, item);
+        const item = pageState.positions.splice(fromIndex, 1)[0];
+        pageState.positions.splice(toIndex, 0, item);
         
         // 保存并重新渲染
         saveStocks();
@@ -945,7 +948,7 @@ async function fetchIndices() {
     const response = await fetch('/api/indices');
     const result = await response.json();
     
-    if (result.success && result.data) {
+    if (result.success) {
       updateIndicesDisplay(result.data);
     }
   } catch (error) {

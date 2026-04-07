@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>系统管理 - A 股实时监控</title>
+  <link rel="stylesheet" href="css/sidebar.css?v=20260405">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/system.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 侧边栏导航 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📊 系统导航</h2>
+        <button class="btn-close-sidebar" id="close-sidebar">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="sidebar-link" data-page="home">
+          <span class="link-icon">🏠</span>
+          <span class="link-text">首页</span>
+        </a>
+        <a href="/stock" class="sidebar-link" data-page="stock">
+          <span class="link-icon">📈</span>
+          <span class="link-text">证券行情</span>
+        </a>
+        <a href="/custom" class="sidebar-link" data-page="custom">
+          <span class="link-icon">⭐</span>
+          <span class="link-text">自定义</span>
+        </a>
+        <a href="/data-manager" class="sidebar-link" data-page="data-manager">
+          <span class="link-icon">🗄️</span>
+          <span class="link-text">数据管理</span>
+        </a>
+        <a href="/system" class="sidebar-link active" data-page="system">
+          <span class="link-icon">⚙️</span>
+          <span class="link-text">系统管理</span>
+        </a>
+        <a href="/users" class="sidebar-link" data-page="users">
+          <span class="link-icon">👥</span>
+          <span class="link-text">用户管理</span>
+        </a>
+        <a href="/change-password" class="sidebar-link" data-page="change-password" data-requires-user="true">
+          <span class="link-icon">🔑</span>
+          <span class="link-text">修改密码</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <span class="user-avatar">👤</span>
+          <span class="user-display-name" id="sidebar-username">--</span>
+        </div>
+        <button class="btn-logout-sidebar" id="sidebar-logout-btn" title="退出登录">
+          🚪 退出登录
+        </button>
+      </div>
+    </aside>
+
+    <!-- 二级侧边栏 -->
+    <aside class="sub-sidebar" id="sub-sidebar">
+      <div class="sub-sidebar-header">
+        <h3>⚙️ 系统管理</h3>
+      </div>
+      <nav class="sub-sidebar-nav">
+        <a href="/server-monitor" class="sub-sidebar-link">
+          <span class="link-icon">📊</span>
+          <span class="link-text">服务器监控</span>
+        </a>
+        <a href="/scheduled-tasks" class="sub-sidebar-link">
+          <span class="link-icon">⏰</span>
+          <span class="link-text">定时任务</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- 顶部导航 -->
+    <header class="header has-sub-sidebar">
+      <div class="header-left">
+        <button class="btn-menu-toggle" id="menu-toggle">☰</button>
+        
+        <h1>⚙️ 系统管理</h1>
+      </div>
+      <div class="header-controls">
+        <a href="/" class="btn">🏠 返回首页</a>
+      </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="main-content has-sub-sidebar">
+      <div class="welcome-card">
+        <div class="welcome-icon">⚙️</div>
+        <h2>系统管理</h2>
+        <p>请选择左侧菜单查看具体功能</p>
+        
+        <div class="feature-list">
+          <div class="feature-item" onclick="window.location.href='/server-monitor'">
+            <div class="feature-icon">📊</div>
+            <div class="feature-info">
+              <h3>服务器监控</h3>
+              <p>实时监控 CPU、内存、磁盘、网络等资源使用情况</p>
+            </div>
+            <div class="feature-arrow">→</div>
+          </div>
+          <div class="feature-item" onclick="window.location.href='/scheduled-tasks'">
+            <div class="feature-icon">⏰</div>
+            <div class="feature-info">
+              <h3>定时任务</h3>
+              <p>管理系统定时任务，同步证券信息等</p>
+            </div>
+            <div class="feature-arrow">→</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer footer-with-sub-sidebar">
+      <div class="footer-info">
+        <span>系统管理</span>
+      </div>
+      <div class="copyright">
+        版权所有：营长
+      </div>
+    </footer>
+  </div>
+
+  <script src="js/sidebar.js?v=20260405"></script>
+  <script src="js/system.js?v=20260404"></script>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个股详细 - A 股实时监控</title>
+  <link rel="stylesheet" href="../css/sidebar.css?v=20260406">
+  <link rel="stylesheet" href="../css/style.css?v=20260404">
+  <link rel="stylesheet" href="css/main.css?v=20260406">
+</head>
+<body>
+  <div class="container">
+    <!-- 侧边栏导航 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📊 系统导航</h2>
+        <button class="btn-close-sidebar" id="close-sidebar">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="sidebar-link"><span class="link-icon">🏠</span><span class="link-text">首页</span></a>
+        <a href="/stock" class="sidebar-link"><span class="link-icon">📈</span><span class="link-text">证券行情</span></a>
+        <a href="/custom" class="sidebar-link"><span class="link-icon">⭐</span><span class="link-text">自选股</span></a>
+        <a href="/data-manager" class="sidebar-link" data-requires-admin="true"><span class="link-icon">🗄️</span><span class="link-text">数据管理</span></a>
+        <a href="/system" class="sidebar-link" data-requires-admin="true"><span class="link-icon">⚙️</span><span class="link-text">系统管理</span></a>
+        <a href="/users" class="sidebar-link" data-requires-admin="true"><span class="link-icon">👥</span><span class="link-text">用户管理</span></a>
+        <a href="/change-password" class="sidebar-link" data-requires-user="true"><span class="link-icon">🔑</span><span class="link-text">修改密码</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <span class="user-avatar">👤</span>
+          <span class="user-display-name" id="sidebar-username">--</span>
+        </div>
+        <button class="btn-logout-sidebar" id="sidebar-logout-btn">🚪 退出登录</button>
+      </div>
+    </aside>
+
+    <!-- 顶部导航 -->
+    <header class="header">
+      <div class="header-left">
+        <button class="btn-menu-toggle" id="menu-toggle">☰</button>
+        <button class="btn-back" id="btn-back">◀ 返回</button>
+        <h1 id="stock-title">📈 个股详细</h1>
+        <div class="datetime-display">
+          <span id="current-date">--</span>
+          <span id="current-time">--:--:--</span>
+          <span class="timezone-label">北京时间</span>
+        </div>
+      </div>
+      <div class="header-controls">
+        <button class="btn btn-primary" id="btn-add-custom">⭐ 加自选</button>
+        <a href="/" class="btn">🏠 首页</a>
+      </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+      <!-- 股票基本信息 -->
+      <div class="stock-header" id="stock-header">
+        <div class="stock-info">
+          <h2 id="stock-name">--</h2>
+          <span class="stock-code" id="stock-code">--</span>
+          <span class="stock-market" id="stock-market">--</span>
+        </div>
+        <div class="price-info">
+          <div class="current-price" id="current-price">--</div>
+          <div class="price-change" id="price-change">
+            <span class="change-value">+0.00</span>
+            <span class="change-percent">+0.00%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 主要数据区域 -->
+      <div class="main-grid">
+        <!-- 左侧：分时图 + 盘口 -->
+        <div class="left-panel">
+          <!-- 分时走势图 -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <h3>📈 分时走势</h3>
+              <div class="chart-tabs">
+                <button class="tab-btn active" data-type="intraday">分时</button>
+                <button class="tab-btn" data-type="5day">5 日</button>
+                <button class="tab-btn" data-type="1month">1 月</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="intraday-chart" class="chart-container">
+                <div class="chart-placeholder">图表加载中...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 买卖五档 -->
+          <div class="card order-book-card">
+            <div class="card-header">
+              <h3>📊 买卖五档</h3>
+              <span class="order-ratio" id="order-ratio">委比：--</span>
+            </div>
+            <div class="card-body" id="order-book-body">
+              <div class="order-book">
+                <div class="order-sell">
+                  <div class="order-row"><span class="order-level">卖 5</span><span class="order-price" id="sell-5-price">--</span><span class="order-volume" id="sell-5-vol">--</span></div>
+                  <div class="order-row"><span class="order-level">卖 4</span><span class="order-price" id="sell-4-price">--</span><span class="order-volume" id="sell-4-vol">--</span></div>
+                  <div class="order-row"><span class="order-level">卖 3</span><span class="order-price" id="sell-3-price">--</span><span class="order-volume" id="sell-3-vol">--</span></div>
+                  <div class="order-row"><span class="order-level">卖 2</span><span class="order-price" id="sell-2-price">--</span><span class="order-volume" id="sell-2-vol">--</span></div>
+                  <div class="order-row"><span class="order-level">卖 1</span><span class="order-price" id="sell-1-price">--</span><span class="order-volume" id="sell-1-vol">--</span></div>
+                </div>
+                <div class="order-buy">
+                  <div class="order-row"><span class="order-level">买 1</span><span class="order-price" id="buy-1-price">--</span><span class="order-volume" id="buy-1-vol">--</span></div>
+                  <div class="order-row"><span class="order-level">买 2</span><span class="order-price" id="buy-2-price">--</span><span class="order-volume" id="buy-2-vol">--</span></div>
+                  <div class="order-row"><span class="order-level">买 3</span><span class="order-price" id="buy-3-price">--</span><span class="order-volume" id="buy-3-vol">--</span></div>
+                  <div class="order-row"><span class="order-level">买 4</span><span class="order-price" id="buy-4-price">--</span><span class="order-volume" id="buy-4-vol">--</span></div>
+                  <div class="order-row"><span class="order-level">买 5</span><span class="order-price" id="buy-5-price">--</span><span class="order-volume" id="buy-5-vol">--</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧：资金流向 + 基本数据 -->
+        <div class="right-panel">
+          <!-- 资金流向 -->
+          <div class="card capital-card">
+            <div class="card-header">
+              <h3>💰 资金分析</h3>
+              <span class="capital-help" title="数据单位：亿元">💡 单位：亿元</span>
+            </div>
+            <div class="card-body" id="capital-flow-body">
+              <div class="capital-flow">
+                <!-- 主力资金 -->
+                <div class="capital-main">
+                  <div class="capital-left">
+                    <div class="capital-item">
+                      <span class="capital-label" data-tooltip="主力流入 = 特大单流入 + 大单流入">主力流入：</span>
+                      <span class="capital-value inflow" id="main-inflow">--</span>
+                    </div>
+                    <div class="capital-item">
+                      <span class="capital-label" data-tooltip="主力流出 = 特大单流出 + 大单流出">主力流出：</span>
+                      <span class="capital-value outflow" id="main-outflow">--</span>
+                    </div>
+                    <div class="capital-item">
+                      <span class="capital-label" data-tooltip="主力净流入 = 主力流入 - 主力流出">主力净流入：</span>
+                      <span class="capital-value net" id="main-netflow">--</span>
+                    </div>
+                    <div class="capital-item">
+                      <span class="capital-label" data-tooltip="主力持仓成本 = (主力流入额 + 主力流出额) / (主力流入量 + 主力流出量)">主力持仓成本：</span>
+                      <span class="capital-value cost" id="main-cost">点击查看</span>
+                    </div>
+                  </div>
+                  <div class="capital-right">
+                    <div class="capital-pie-chart">
+                      <div class="pie-chart" id="capital-pie"></div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 资金占比图例 -->
+                <div class="pie-legend">
+                  <div class="pie-legend-item"><span class="pie-legend-color" style="background:var(--down-color)"></span>特大单</div>
+                  <div class="pie-legend-item"><span class="pie-legend-color" style="background:#c0392b"></span>大单</div>
+                  <div class="pie-legend-item"><span class="pie-legend-color" style="background:#922b21"></span>中单</div>
+                  <div class="pie-legend-item"><span class="pie-legend-color" style="background:#145a32"></span>小单</div>
+                </div>
+                
+                <!-- 订单类型说明 -->
+                <div class="order-type-hints" style="margin-top:15px;padding-top:15px;border-top:1px solid var(--border-color);font-size:11px;color:var(--text-secondary);">
+                  <div style="margin-bottom:6px;"><span style="color:var(--down-color)">●</span> 特大单：＞0.02% 流通市值</div>
+                  <div style="margin-bottom:6px;"><span style="color:#c0392b">●</span> 大单：0.005% ~ 0.02% 流通市值</div>
+                  <div style="margin-bottom:6px;"><span style="color:#922b21">●</span> 中单：0.001% ~ 0.005% 流通市值</div>
+                  <div><span style="color:#145a32">●</span> 小单：＜0.001% 流通市值</div>
+                  <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border-color);color:var(--text-secondary);">💡 注：集合竞价（9:15-9:25, 14:57-15:00）已排除</div>
+                </div>
+                
+                <!-- 净订单分布 -->
+                <div class="capital-bars">
+                  <div class="capital-bar-row">
+                    <span class="bar-label" data-tooltip="净特大单 = 特大单流入 - 特大单流出">净特大单</span>
+                    <div class="bar-container">
+                      <div class="bar-inflow" id="bar-super-in" style="width: 0%"></div>
+                      <div class="bar-outflow" id="bar-super-out" style="width: 0%"></div>
+                    </div>
+                    <span class="bar-value positive" id="val-super">--</span>
+                  </div>
+                  <div class="capital-bar-row">
+                    <span class="bar-label" data-tooltip="净大单 = 大单流入 - 大单流出">净大单</span>
+                    <div class="bar-container">
+                      <div class="bar-inflow" id="bar-big-in" style="width: 0%"></div>
+                      <div class="bar-outflow" id="bar-big-out" style="width: 0%"></div>
+                    </div>
+                    <span class="bar-value positive" id="val-big">--</span>
+                  </div>
+                  <div class="capital-bar-row">
+                    <span class="bar-label" data-tooltip="净中单 = 中单流入 - 中单流出">净中单</span>
+                    <div class="bar-container">
+                      <div class="bar-inflow" id="bar-medium-in" style="width: 0%"></div>
+                      <div class="bar-outflow" id="bar-medium-out" style="width: 0%"></div>
+                    </div>
+                    <span class="bar-value negative" id="val-medium">--</span>
+                  </div>
+                  <div class="capital-bar-row">
+                    <span class="bar-label" data-tooltip="净小单 = 小单流入 - 小单流出">净小单</span>
+                    <div class="bar-container">
+                      <div class="bar-inflow" id="bar-small-in" style="width: 0%"></div>
+                      <div class="bar-outflow" id="bar-small-out" style="width: 0%"></div>
+                    </div>
+                    <span class="bar-value negative" id="val-small">--</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 基本数据 -->
+          <div class="card basic-card">
+            <div class="card-header">
+              <h3>📋 基本数据</h3>
+            </div>
+            <div class="card-body" id="basic-data-body">
+              <div class="basic-grid">
+                <div class="basic-item"><span class="basic-label">最新</span><span class="basic-value" id="basic-latest">--</span></div>
+                <div class="basic-item"><span class="basic-label">涨跌</span><span class="basic-value" id="basic-change">--</span></div>
+                <div class="basic-item"><span class="basic-label">涨幅</span><span class="basic-value" id="basic-change-pct">--</span></div>
+                <div class="basic-item"><span class="basic-label">最高</span><span class="basic-value" id="basic-high">--</span></div>
+                <div class="basic-item"><span class="basic-label">最低</span><span class="basic-value" id="basic-low">--</span></div>
+                <div class="basic-item"><span class="basic-label">开盘</span><span class="basic-value" id="basic-open">--</span></div>
+                <div class="basic-item"><span class="basic-label">昨收</span><span class="basic-value" id="basic-prev-close">--</span></div>
+                <div class="basic-item"><span class="basic-label">量比</span><span class="basic-value" id="basic-volume-ratio">--</span></div>
+                <div class="basic-item"><span class="basic-label">换手</span><span class="basic-value" id="basic-turnover">--</span></div>
+                <div class="basic-item"><span class="basic-label">成交量</span><span class="basic-value" id="basic-volume">--</span></div>
+                <div class="basic-item"><span class="basic-label">成交额</span><span class="basic-value" id="basic-amount">--</span></div>
+                <div class="basic-item"><span class="basic-label">总市值</span><span class="basic-value" id="basic-market-cap">--</span></div>
+                <div class="basic-item"><span class="basic-label">流通市值</span><span class="basic-value" id="basic-float-cap">--</span></div>
+                <div class="basic-item"><span class="basic-label">市盈率 (静)</span><span class="basic-value" id="basic-pe-static">--</span></div>
+                <div class="basic-item"><span class="basic-label">市盈率 (TTM)</span><span class="basic-value" id="basic-pe-ttm">--</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 成交明细 -->
+      <div class="card trade-detail-card">
+        <div class="card-header">
+          <h3>📝 成交明细</h3>
+          <div class="detail-tabs">
+            <button class="tab-btn active" data-refresh="3">3 秒</button>
+            <button class="tab-btn" data-refresh="5">5 秒</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <table class="trade-table">
+            <thead>
+              <tr>
+                <th width="100">时间</th>
+                <th width="100">价格</th>
+                <th width="120">成交量</th>
+                <th width="120">成交额</th>
+                <th width="80">性质</th>
+              </tr>
+            </thead>
+            <tbody id="trade-detail-body">
+              <tr><td colspan="5" class="loading">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+      <span>个股详细</span>
+      <span>版权所有：营长</span>
+    </footer>
+  </div>
+
+  <!-- 模块化加载 -->
+  <script src="../js/sidebar.js?v=20260406"></script>
+  <script src="js/config.js?v=20260406"></script>
+  <script src="js/utils.js?v=20260406"></script>
+  <script src="js/api.js?v=20260409"></script>
+  <script src="js/ui.js?v=20260409"></script>
+  <script src="js/main.js?v=20260406"></script>
+</body>
+</html>

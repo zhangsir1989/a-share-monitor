@@ -2,14 +2,11 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>自选股 - A 股实时监控</title>
+  <title>持仓 - A 股实时监控</title>
   <link rel="stylesheet" href="css/sidebar.css?v=20260406">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/custom.css?v=20260406">
+  <link rel="stylesheet" href="css/positions.css?v=20260406">
 </head>
 <body>
   <div class="container">
@@ -67,11 +64,11 @@
         <h3>⭐ 自定义</h3>
       </div>
       <nav class="sub-sidebar-nav">
-        <a href="/custom" class="sub-sidebar-link active">
+        <a href="/custom" class="sub-sidebar-link">
           <span class="link-icon">⭐</span>
           <span class="link-text">自选股</span>
         </a>
-        <a href="/positions" class="sub-sidebar-link">
+        <a href="/positions" class="sub-sidebar-link active">
           <span class="link-icon">📊</span>
           <span class="link-text">持仓</span>
         </a>
@@ -82,7 +79,7 @@
     <header class="header">
       <div class="header-left">
         <button class="btn-menu-toggle" id="menu-toggle">☰</button>
-        <h1>⭐ 自选股</h1>
+        <h1>⭐ 持仓</h1>
         <div class="datetime-display">
           <span id="current-date">--</span>
           <span id="current-time">--:--:--</span>
@@ -149,7 +146,7 @@
     <!-- 股票列表 -->
     <section class="stock-list-section">
       <div class="list-header">
-        <h2>📋 我的自选股 (<span id="stock-count">0</span>)</h2>
+        <h2>📋 我的持仓 (<span id="stock-count">0</span>)</h2>
         <button id="clear-all-btn" class="btn btn-danger" style="display: none;">🗑️ 清空全部</button>
       </div>
       
@@ -167,7 +164,7 @@
       <!-- 空状态提示 -->
       <div id="empty-state" class="empty-state">
         <div class="empty-icon">📭</div>
-        <p>暂无自选股</p>
+        <p>暂无持仓</p>
         <p class="empty-hint">在上方输入框添加股票代码或名称</p>
       </div>
 
@@ -188,6 +185,6 @@
   </div>
 
   <script src="js/sidebar.js?v=20260406"></script>
-  <script src="js/custom.js?v=20260406"></script>
+  <script src="js/positions.js?v=20260406"></script>
 </body>
 </html>

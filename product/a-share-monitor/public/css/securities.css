@@ -1,0 +1,152 @@
+/* 证券信息管理页面样式 */
+
+/* 注：侧边栏样式已移至 css/sidebar.css */
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--accent-color);
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* 搜索栏 */
+.search-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+}
+
+.search-bar .form-input {
+  padding: 10px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.search-bar .form-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+#search-input {
+  flex: 1;
+}
+
+#market-filter {
+  width: 120px;
+}
+
+/* 分页 */
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+}
+
+.pagination-btns {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#page-num {
+  padding: 8px 16px;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .search-bar {
+    flex-wrap: wrap;
+  }
+  
+  .search-bar .form-input {
+    width: 100%;
+  }
+}
+/* 搜索建议下拉框 */
+.search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.active {
+  background: var(--bg-card);
+}
+
+.suggestion-code {
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 80px;
+}
+
+.suggestion-name {
+  flex: 1;
+  color: var(--text-secondary);
+  margin-left: 10px;
+}
+
+.suggestion-market {
+  font-size: 12px;
+  color: var(--text-hint);
+  background: var(--bg-card);
+  padding: 2px 8px;
+  border-radius: 4px;
+}

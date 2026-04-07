@@ -99,13 +99,16 @@ function formatNumber(num, decimals = 2) {
 
 // 格式化金额
 function formatAmount(num) {
-  if (num === null || num === undefined || isNaN(num)) return '--';
-  if (Math.abs(num) >= 10000) {
-    return (num / 10000).toFixed(2) + '万亿';
-  } else if (Math.abs(num) >= 1) {
-    return num.toFixed(2) + '亿';
+  if (num === null || num === undefined) return '--';
+  // 转换为数字类型（处理字符串情况）
+  const n = Number(num);
+  if (isNaN(n)) return '--';
+  if (Math.abs(n) >= 10000) {
+    return (n / 10000).toFixed(2) + '万亿';
+  } else if (Math.abs(n) >= 1) {
+    return n.toFixed(2) + '亿';
   }
-  return num.toFixed(2);
+  return n.toFixed(2);
 }
 
 // 获取价格颜色类
@@ -403,6 +406,8 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// 侧边栏功能由 sidebar.js 统一处理，此处不再重复定义
 
 // 获取股票类型
 function getStockType(code) {

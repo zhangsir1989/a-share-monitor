@@ -326,14 +326,6 @@ function clearMarketData() {
 async function fetchData() {
   if (state.isPaused) return;
   
-  // 9:15 前不获取实时数据，显示空状态
-  if (!shouldShowMarketData()) {
-    clearMarketData();
-    updateDateTime();
-    updateMarketStatus();
-    return;
-  }
-  
   try {
     const [dataResponse, sourceResponse] = await Promise.all([
       fetch("/api/all", {cache: "no-cache"}),
@@ -343,10 +335,17 @@ async function fetchData() {
     const data = await dataResponse.json();
     const sources = await sourceResponse.json();
     
-    console.log("数据源状态:", sources);
+    console.log("数据源状态:", sources, "缓存标记:", data.isCached);
     
     state.dataSources.volume = sources.volume || "unknown";
     state.dataSources.turnover = sources.turnover || "unknown";
+    
+    // 9:15 前显示缓存数据时，添加提示
+    if (!shouldShowMarketData() && data.isCached) {
+      if (elements.lastUpdate) {
+        elements.lastUpdate.textContent = `缓存数据（${data.cachedDate}）- 9:15 后更新实时数据`;
+      }
+    }
     
     updateDataSources();
     updateVolumeData(data.volume);
@@ -356,7 +355,7 @@ async function fetchData() {
     updateDateTime();
     updateMarketStatus();
     
-    if (data.lastUpdate) {
+    if (data.lastUpdate && !data.isCached) {
       elements.lastUpdate.textContent = `最后更新：${new Date(data.lastUpdate).toLocaleString('zh-CN')}`;
     }
   } catch (error) {
@@ -454,25 +453,16 @@ function initEventListeners() {
   });
 }
 
-// 标签页切换
+// 标签页切换（已移除，只保留首页）
 function switchTab(tabName) {
-  // 更新按钮状态
+  // 只保留首页
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tabName);
+    btn.classList.toggle('active', btn.dataset.tab === 'home');
   });
   
-  // 更新内容显示
   document.querySelectorAll('.tab-pane').forEach(pane => {
-    pane.classList.toggle('active', pane.id === `${tabName}-tab`);
+    pane.classList.toggle('active', pane.id === 'home-tab');
   });
-  
-  // 如果是证券行情标签页，加载 iframe
-  if (tabName === 'stock') {
-    const iframe = document.querySelector('.stock-frame');
-    if (iframe && !iframe.src) {
-      iframe.src = '/stock';
-    }
-  }
 }
 
 // 初始化
@@ -520,24 +510,23 @@ function init() {
   fetchData();
   startTimer();
   
-  // 标签页事件
+  // 标签页事件（只保留首页）
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      switchTab(btn.dataset.tab);
+      switchTab('home');
     });
   });
   
-  // 检查 URL 参数
-  const urlParams = new URLSearchParams(window.location.search);
-  const tab = urlParams.get('tab');
-  if (tab === 'stock') {
-    switchTab('stock');
-  }
+  // 检查登录状态并显示用户信息
+  checkLoginStatus();
+  
 }
 
 
 console.log("📄 DOMContentLoaded 触发");
 document.addEventListener('DOMContentLoaded', init);
+
+// 侧边栏功能由 sidebar.js 统一处理
 
 // 打开板块成分股模态框
 // 成分股排序状态
@@ -665,4 +654,55 @@ function searchStock(code) {
   
   // 跳转到证券行情页面
   window.location.href = `/stock?code=${fullCode}`;
+}
+
+// ==================== 登录状态管理 ====================
+
+// 检查登录状态
+function checkLoginStatus() {
+  const userInfo = document.getElementById('user-info');
+  const userName = document.getElementById('user-name');
+  const logoutBtn = document.getElementById('logout-btn');
+  
+  if (userInfo && userName && logoutBtn) {
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const username = localStorage.getItem('username');
+    
+    if (isLoggedIn && username) {
+      userInfo.style.display = 'flex';
+      userName.textContent = `👤 ${username}`;
+      
+      // 绑定登出事件
+      logoutBtn.addEventListener('click', handleLogout);
+    } else {
+      userInfo.style.display = 'none';
+    }
+  }
+}
+
+// 处理登出
+async function handleLogout() {
+  if (!confirm('确定要退出登录吗？')) return;
+  
+  try {
+    const response = await fetch('/api/logout');
+    const result = await response.json();
+    
+    if (result.success) {
+      // 清除本地存储
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('username');
+      localStorage.removeItem('loginTime');
+      
+      // 跳转到登录页
+      window.location.href = '/login.html';
+    }
+  } catch (error) {
+    console.error('登出失败:', error);
+    // 即使 API 失败也清除本地状态
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('username');
+    localStorage.removeItem('loginTime');
+    window.location.href = '/login.html';
+  }
 }

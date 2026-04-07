@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据管理 - A 股实时监控</title>
+  <link rel="stylesheet" href="css/sidebar.css?v=20260405">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/data-manager.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 侧边栏导航 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📊 系统导航</h2>
+        <button class="btn-close-sidebar" id="close-sidebar">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="sidebar-link" data-page="home">
+          <span class="link-icon">🏠</span>
+          <span class="link-text">首页</span>
+        </a>
+        <a href="/stock" class="sidebar-link" data-page="stock">
+          <span class="link-icon">📈</span>
+          <span class="link-text">证券行情</span>
+        </a>
+        <a href="/custom" class="sidebar-link" data-page="custom">
+          <span class="link-icon">⭐</span>
+          <span class="link-text">自定义</span>
+        </a>
+        <a href="/data-manager" class="sidebar-link active" data-page="data-manager">
+          <span class="link-icon">🗄️</span>
+          <span class="link-text">数据管理</span>
+        </a>
+        <a href="/system" class="sidebar-link" data-page="system">
+          <span class="link-icon">⚙️</span>
+          <span class="link-text">系统管理</span>
+        </a>
+        <a href="/users" class="sidebar-link" data-page="users">
+          <span class="link-icon">👥</span>
+          <span class="link-text">用户管理</span>
+        </a>
+        <a href="/change-password" class="sidebar-link" data-page="change-password" data-requires-user="true">
+          <span class="link-icon">🔑</span>
+          <span class="link-text">修改密码</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <span class="user-avatar">👤</span>
+          <span class="user-display-name" id="sidebar-username">--</span>
+        </div>
+        <button class="btn-logout-sidebar" id="sidebar-logout-btn" title="退出登录">
+          🚪 退出登录
+        </button>
+      </div>
+    </aside>
+
+    <!-- 二级侧边栏 -->
+    <aside class="sub-sidebar" id="sub-sidebar">
+      <div class="sub-sidebar-header">
+        <h3>🗄️ 数据管理</h3>
+      </div>
+      <nav class="sub-sidebar-nav">
+        <a href="#" class="sub-sidebar-link active" data-subtab="users">
+          <span class="link-icon">👥</span>
+          <span class="link-text">用户数据管理</span>
+        </a>
+        <a href="#" class="sub-sidebar-link" data-subtab="custom-stocks">
+          <span class="link-icon">⭐</span>
+          <span class="link-text">自选股数据</span>
+        </a>
+        <a href="/securities" class="sub-sidebar-link">
+          <span class="link-icon">📊</span>
+          <span class="link-text">证券信息</span>
+        </a>
+        <a href="/tick-trade" class="sub-sidebar-link">
+          <span class="link-icon">📝</span>
+          <span class="link-text">逐笔成交明细</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- 顶部导航 -->
+    <header class="header has-sub-sidebar">
+      <div class="header-left">
+        <button class="btn-menu-toggle" id="menu-toggle">☰</button>
+        
+        <h1 id="data-manager-title">🗄️ 数据管理</h1>
+      </div>
+      <div class="header-controls">
+        <a href="/" class="btn">🏠 返回首页</a>
+      </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="main-content has-sub-sidebar">
+      <!-- 用户数据管理 -->
+      <div class="tab-content-wrapper" id="users-tab">
+        <div class="search-bar">
+          <div class="search-group">
+            <label>搜索：</label>
+            <input type="text" id="user-keyword" class="search-input" placeholder="用户编号或用户名">
+            <button class="btn btn-search" id="btn-user-search">🔍 查询</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th width="100">用户编号</th>
+                <th width="120">用户名</th>
+                <th width="100">密码</th>
+                <th width="80">角色</th>
+                <th width="80">状态</th>
+                <th width="180">创建时间</th>
+                <th width="180">最后登录</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body">
+              <tr>
+                <td colspan="7" class="loading">加载中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 分页栏 -->
+        <div class="pagination-bar" id="users-pagination">
+          <div class="pagination-info">
+            共 <span id="user-total">0</span> 条记录，
+            第 <span id="user-current-page">1</span> 页，
+            共 <span id="user-total-pages">0</span> 页
+          </div>
+          <div class="pagination-controls">
+            <button class="btn-page" id="user-btn-first" disabled>⏮️ 首页</button>
+            <button class="btn-page" id="user-btn-prev" disabled>◀️ 上页</button>
+            <select class="page-size-select" id="user-page-size">
+              <option value="10">10 条/页</option>
+              <option value="20" selected>20 条/页</option>
+              <option value="50">50 条/页</option>
+              <option value="100">100 条/页</option>
+            </select>
+            <button class="btn-page" id="user-btn-next">下页 ▶️</button>
+            <button class="btn-page" id="user-btn-last">末页 ⏭️</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 自选股数据 -->
+      <div class="tab-content-wrapper" id="custom-stocks-tab" style="display: none;">
+        <div class="search-bar">
+          <div class="search-group">
+            <label>用户编号：</label>
+            <input type="text" id="stock-user-id" class="search-input" placeholder="用户编号">
+          </div>
+          <div class="search-group">
+            <label>股票代码：</label>
+            <input type="text" id="stock-code" class="search-input" placeholder="股票代码">
+          </div>
+          <button class="btn btn-search" id="btn-stock-search">🔍 查询</button>
+          <button class="btn" id="btn-stock-reset">🔄 重置</button>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th width="120">用户编号</th>
+                <th width="100">股票代码</th>
+                <th width="80">市场</th>
+                <th width="180">添加时间</th>
+              </tr>
+            </thead>
+            <tbody id="stocks-table-body">
+              <tr>
+                <td colspan="4" class="loading">加载中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 分页栏 -->
+        <div class="pagination-bar" id="stocks-pagination">
+          <div class="pagination-info">
+            共 <span id="stock-total">0</span> 条记录，
+            第 <span id="stock-current-page">1</span> 页，
+            共 <span id="stock-total-pages">0</span> 页
+          </div>
+          <div class="pagination-controls">
+            <button class="btn-page" id="stock-btn-first" disabled>⏮️ 首页</button>
+            <button class="btn-page" id="stock-btn-prev" disabled>◀️ 上页</button>
+            <select class="page-size-select" id="stock-page-size">
+              <option value="10">10 条/页</option>
+              <option value="20" selected>20 条/页</option>
+              <option value="50">50 条/页</option>
+              <option value="100">100 条/页</option>
+            </select>
+            <button class="btn-page" id="stock-btn-next">下页 ▶️</button>
+            <button class="btn-page" id="stock-btn-last">末页 ⏭️</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer footer-with-sub-sidebar">
+      <div class="footer-info">
+        <span id="last-update">最后更新：--</span>
+      </div>
+      <div class="copyright">
+        版权所有：营长
+      </div>
+    </footer>
+  </div>
+
+  <script src="js/sidebar.js?v=20260405"></script>
+  <script src="js/data-manager.js?v=202604041320"></script>
+</body>
+</html>

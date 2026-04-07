@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Data files
+data/
+cache/
+
+# Logs
+*.log
+server_output.log
+server.log
+
+# Environment
+.env
+
+# Temp files
+*.bak
+WT/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

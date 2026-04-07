@@ -2,6 +2,8 @@ const express = require('express');
 const cron = require('node-cron');
 const fs = require('fs');
 const path = require('path');
+const session = require('express-session');
+const initSqlJs = require('sql.js');
 const {
   fetchMarketVolume,
   fetchLimitUpSectors,
@@ -11,12 +13,79 @@ const {
   fetchIntradayData,
   fetchConvertiblesForStock,
   fetchSectorStocks,
+  fetchMainIndices,
   getDataSourceStatus
 } = require('./data-api');
 const stockList = require('./stocks');
 
 const app = express();
 const PORT = 3000;
+
+// 数据库连接
+let db = null;
+let syncSecurities = null;
+let syncTickTrade = null;
+const DB_PATH = path.join(__dirname, '../data/users.db');
+
+// 初始化数据库连接
+async function initDatabase() {
+  const SQL = await initSqlJs();
+  const fileBuffer = fs.readFileSync(DB_PATH);
+  db = new SQL.Database(fileBuffer);
+  console.log('✓ 数据库连接成功:', DB_PATH);
+  
+  // 初始化证券同步函数
+  // 使用 MyData API 同步模块
+  const syncSecuritiesModule = require('./sync-securities-mydata');
+  syncSecurities = syncSecuritiesModule.syncAllSecurities;
+  console.log('✅ 证券同步功能已初始化（MyData API）');
+  
+  // 初始化逐笔成交同步函数
+  const syncTickTradeModule = require('./sync-ticktrade-mydata');
+  syncTickTrade = syncTickTradeModule.syncAllTickTrade;
+  console.log('✅ 逐笔成交同步功能已初始化（MyData API）');
+  
+  // 加载并调度数据库中的定时任务
+  loadScheduledTasks();
+}
+
+// 保存数据库到文件
+function saveDatabase() {
+  if (db) {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(DB_PATH, buffer);
+  }
+}
+
+// JSON 解析中间件
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 会话中间件配置
+app.use(session({
+  secret: 'a-share-monitor-secret-key-2026-fixed',  // 固定密钥，防止重启后 session 失效
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false,  // 生产环境设为 true
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000  // 24 小时
+  }
+}));
+
+// 认证中间件
+function requireAuth(req, res, next) {
+  if (req.session && req.session.isAuthenticated) {
+    return next();
+  }
+  // 如果是 API 请求，返回 JSON 错误
+  if (req.path.startsWith('/api/')) {
+    return res.status(401).json({ success: false, message: '未登录' });
+  }
+  // 重定向到登录页
+  res.redirect(`/login.html?redirect=${encodeURIComponent(req.originalUrl)}`);
+}
 
 // 数据缓存
 let marketData = {
@@ -36,16 +105,21 @@ if (!fs.existsSync(CACHE_DIR)) {
   fs.mkdirSync(CACHE_DIR, { recursive: true });
 }
 
-// 加载缓存
+// 加载缓存（支持加载昨天缓存，用于早盘或非交易日）
 function loadCache() {
   try {
     if (fs.existsSync(CACHE_FILE)) {
       const data = fs.readFileSync(CACHE_FILE, 'utf8');
       const cached = JSON.parse(data);
       const today = new Date().toDateString();
-      if (cached.date === today) {
+      const yesterday = new Date(Date.now() - 86400000).toDateString();
+      
+      // 加载今天或昨天的缓存
+      if (cached.date === today || cached.date === yesterday) {
         marketData = cached.data;
-        console.log('✓ 已加载缓存数据');
+        marketData.isCached = true; // 标记为缓存数据
+        marketData.cachedDate = cached.date;
+        console.log('✓ 已加载缓存数据:', cached.date);
       }
     }
   } catch (e) {
@@ -130,6 +204,96 @@ async function fetchAllData() {
   return marketData;
 }
 
+// ==================== 定时任务调度器 ====================
+const taskSchedulers = {};
+
+// 将简化的时间格式转换为 cron 表达式（如 "0800" → "0 8 * * *"）
+function convertToCron(timeStr) {
+  if (!timeStr) return '* * * * *';
+  
+  // 如果已经是标准 cron 格式（包含空格）
+  if (timeStr.includes(' ')) {
+    return timeStr;
+  }
+  
+  // 处理 HHMM 格式（如 0800 → 0 8 * * *）
+  const match = timeStr.match(/^(\d{2})(\d{2})$/);
+  if (match) {
+    const hour = parseInt(match[1]);
+    const minute = parseInt(match[2]);
+    return `${minute} ${hour} * * *`;
+  }
+  
+  // 默认每分钟
+  return '* * * * *';
+}
+
+// 加载并调度数据库中的定时任务
+function loadScheduledTasks() {
+  try {
+    const result = db.exec('SELECT * FROM scheduled_tasks WHERE status = 1');
+    if (result.length === 0) {
+      console.log('📅 没有启用的定时任务');
+      return;
+    }
+    
+    const tasks = result[0].values.map(row => ({
+      id: row[0],
+      name: row[1],
+      type: row[2],
+      cron: row[3],
+      status: row[4]
+    }));
+    
+    tasks.forEach(task => {
+      // 清理旧的调度器
+      if (taskSchedulers[task.id]) {
+        taskSchedulers[task.id].stop();
+        console.log(`🛑 停止任务：${task.name}`);
+      }
+      
+      // 转换 cron 表达式
+      const cronExpr = convertToCron(task.cron);
+      
+      // 创建新的调度器
+      taskSchedulers[task.id] = cron.schedule(cronExpr, async () => {
+        console.log(`⏰ 执行定时任务：${task.name} (${task.type})`);
+        
+        if (task.type === 'sync-securities') {
+          try {
+            const result = await syncSecurities(db);
+            console.log('✅ 证券同步完成:', result);
+            db.run(`UPDATE scheduled_tasks SET last_run=datetime('now') WHERE id='${task.id}'`);
+            saveDatabase();
+          } catch (err) {
+            console.error('❌ 证券同步失败:', err.message);
+          }
+        }
+        
+        if (task.type === 'sync-tick-trade') {
+          try {
+            const result = await syncTickTrade(db);
+            console.log('✅ 逐笔成交同步完成:', result);
+            db.run(`UPDATE scheduled_tasks SET last_run=datetime('now') WHERE id='${task.id}'`);
+            saveDatabase();
+          } catch (err) {
+            console.error('❌ 逐笔成交同步失败:', err.message);
+          }
+        }
+      }, {
+        scheduled: true,
+        timezone: 'Asia/Shanghai'
+      });
+      
+      console.log(`✅ 定时任务已调度：${task.name} (${task.cron} → ${cronExpr})`);
+    });
+    
+    console.log(`📅 共调度 ${tasks.length} 个定时任务`);
+  } catch (error) {
+    console.error('加载定时任务失败:', error.message);
+  }
+}
+
 // 定时任务：每分钟检查，收盘时保存缓存
 cron.schedule('* * * * *', async () => {
   if (isCloseToClose()) {
@@ -191,6 +355,12 @@ app.get('/api/all', async (req, res) => {
 // 数据源状态 API
 app.get('/api/data-sources', (req, res) => {
   res.json(getDataSourceStatus());
+});
+
+// 获取主要指数数据 API
+app.get('/api/indices', async (req, res) => {
+  const result = await fetchMainIndices();
+  res.json(result);
 });
 
 // 批量获取股票行情 API（自选股页面使用）
@@ -277,6 +447,7 @@ const iconv = require('iconv-lite');
 // 腾讯 API 客户端（用于搜索）
 const txSearchApi = axios.create({
   timeout: 15000,
+  maxRedirects: 5,
   headers: {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': '*/*',
@@ -297,9 +468,14 @@ app.get('/api/stock/search', async (req, res) => {
   try {
     // 使用腾讯财经搜索 API 获取全市场匹配结果（跟随重定向）
     const searchUrl = `http://smartbox.gtimg.cn/s3/?v=2&q=${encodeURIComponent(query)}&t=all&c=1`;
-    const resp = await txSearchApi.get(searchUrl, { maxRedirects: 5 });
+    const resp = await txSearchApi.get(searchUrl, { 
+      maxRedirects: 5,
+      timeout: 5000
+    });
     // 腾讯返回的是 UTF-8 编码的 JSON 风格字符串（包含 Unicode 转义）
     const text = resp.data.toString('utf8');
+    
+    console.log('🔍 搜索响应:', text.substring(0, 100));
     
     // 解析返回结果，格式：v_hint="us~tour.oq~途牛~tn~GP^sz~002145~钛能化学~tnhx~GP-A^..."
     const match = text.match(/v_hint="([^"]+)"/);
@@ -348,25 +524,27 @@ app.get('/api/stock/search', async (req, res) => {
       total: results.length,
       source: 'tencent-full-market'
     });
+    return;
     
   } catch (e) {
     console.error('全市场搜索失败:', e.message);
-    // 降级到本地列表搜索
-    const localResults = stockList.filter(stock => {
-      if (stock.code.toUpperCase().startsWith(queryUpper)) return true;
-      if (stock.name.includes(query)) return true;
-      if (stock.pinyin && stock.pinyin.startsWith(queryUpper) && queryUpper.length >= 2) return true;
-      return false;
-    }).slice(0, 20);
-    
-    res.json({
-      success: true,
-      data: localResults,
-      count: localResults.length,
-      total: localResults.length,
-      source: 'local-fallback'
-    });
   }
+  
+  // 降级到本地列表搜索
+  const localResults = stockList.filter(stock => {
+    if (stock.code.toUpperCase().startsWith(queryUpper)) return true;
+    if (stock.name.includes(query)) return true;
+    if (stock.pinyin && stock.pinyin.startsWith(queryUpper) && queryUpper.length >= 2) return true;
+    return false;
+  }).slice(0, 20);
+  
+  res.json({
+    success: true,
+    data: localResults,
+    count: localResults.length,
+    total: localResults.length,
+    source: 'local-fallback'
+  });
 });
 
 // 个股行情 API（支持代码和名称搜索）
@@ -430,12 +608,1307 @@ app.get('/api/convertibles/:stockCode', async (req, res) => {
   res.json(result);
 });
 
-// 静态文件
-app.use(express.static(path.join(__dirname, '../public')));
+// 登录页面（公开访问）
+app.get('/login.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/login.html'));
+});
 
-// 主页
-app.get('/', (req, res) => {
+// 静态文件（登录页面相关资源公开）
+app.use('/css', express.static(path.join(__dirname, '../public/css')));
+app.use('/js', express.static(path.join(__dirname, '../public/js')));
+
+// 其他静态资源需要认证
+app.use((req, res, next) => {
+  if (req.session && req.session.isAuthenticated) {
+    express.static(path.join(__dirname, '../public'))(req, res, next);
+  } else {
+    // 未登录重定向到登录页
+    if (req.path !== '/login.html' && !req.path.startsWith('/api/')) {
+      res.redirect(`/login.html?redirect=${encodeURIComponent(req.originalUrl)}`);
+    } else {
+      next();
+    }
+  }
+});
+
+// 登录 API
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  
+  try {
+    // 从数据库查询用户
+    const results = db.exec(`SELECT user_id, password, username, role FROM users WHERE user_id = '${username}' AND is_active = 1`);
+    
+    if (results.length > 0 && results[0].values.length > 0) {
+      const [userId, dbPassword, dbUsername, userRole] = results[0].values[0];
+      const roleValue = userRole || '0';
+      
+      if (password === dbPassword) {
+        // 登录成功
+        req.session.isAuthenticated = true;
+        req.session.username = dbUsername;
+        req.session.userId = userId;
+        req.session.userRole = roleValue;
+        req.session.loginTime = new Date().toISOString();
+        
+        // 更新最后登录时间
+        try {
+          db.run(`UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = '${userId}'`);
+          saveDatabase();
+        } catch (e) {
+          console.error('更新登录时间失败:', e.message);
+        }
+        
+        const roleText = roleValue === '1' ? '管理员' : '普通用户';
+        console.log(`✅ 用户 ${userId} (${dbUsername}, ${roleText}) 登录成功`);
+        res.json({ success: true, message: '登录成功', role: roleValue });
+      } else {
+        console.log(`❌ 登录失败：${username} - 密码错误`);
+        res.status(401).json({ success: false, message: '用户名或密码错误' });
+      }
+    } else {
+      console.log(`❌ 登录失败：${username} - 用户不存在`);
+      res.status(401).json({ success: false, message: '用户名或密码错误' });
+    }
+  } catch (error) {
+    console.error('登录验证失败:', error.message);
+    res.status(500).json({ success: false, message: '系统错误' });
+  }
+});
+
+// 登出 API
+app.get('/api/logout', (req, res) => {
+  const username = req.session?.username;
+  req.session.destroy();
+  console.log(`👋 用户 ${username} 已登出`);
+  res.json({ success: true, message: '已退出登录' });
+});
+
+// 检查登录状态 API
+app.get('/api/auth/status', (req, res) => {
+  res.json({ 
+    isAuthenticated: req.session?.isAuthenticated || false,
+    username: req.session?.username || null,
+    userId: req.session?.userId || null,
+    userRole: req.session?.userRole || 'user'
+  });
+});
+
+// ==================== 用户管理 API ====================
+
+// 获取用户列表
+app.get('/api/users/list', (req, res) => {
+  try {
+    const results = db.exec('SELECT user_id, username, password, role, is_active, created_at, last_login FROM users ORDER BY created_at DESC');
+    
+    if (results.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+    
+    const users = results[0].values.map(row => ({
+      user_id: row[0],
+      username: row[1],
+      password: row[2],
+      role: row[3] || '0',
+      is_active: row[4],
+      created_at: row[5],
+      last_login: row[6]
+    }));
+    
+    res.json({ success: true, data: users });
+  } catch (error) {
+    console.error('获取用户列表失败:', error.message);
+    res.status(500).json({ success: false, message: '获取用户列表失败' });
+  }
+});
+
+// 添加用户
+app.post('/api/users/add', (req, res) => {
+  const { user_id, username, password, role, is_active } = req.body;
+  
+  try {
+    // 检查用户是否已存在
+    const check = db.exec(`SELECT COUNT(*) FROM users WHERE user_id = '${user_id}'`);
+    if (check[0].values[0][0] > 0) {
+      return res.status(400).json({ success: false, message: '用户编号已存在' });
+    }
+    
+    // 添加用户
+    db.run(`INSERT INTO users (user_id, password, username, role, is_active) VALUES ('${user_id}', '${password}', '${username}', '${role || '0'}', ${is_active})`);
+    saveDatabase();
+    
+    const roleText = role === '1' ? '管理员' : '普通用户';
+    console.log(`✅ 用户 ${user_id} 已添加 (${roleText})`);
+    res.json({ success: true, message: '用户已添加' });
+  } catch (error) {
+    console.error('添加用户失败:', error.message);
+    res.status(500).json({ success: false, message: '添加用户失败' });
+  }
+});
+
+// 更新用户
+app.post('/api/users/update', (req, res) => {
+  const { user_id, username, password, role, is_active } = req.body;
+  
+  try {
+    // 检查用户是否存在
+    const check = db.exec(`SELECT COUNT(*) FROM users WHERE user_id = '${user_id}'`);
+    if (check[0].values[0][0] === 0) {
+      return res.status(404).json({ success: false, message: '用户不存在' });
+    }
+    
+    // 更新用户
+    db.run(`UPDATE users SET username = '${username}', password = '${password}', role = '${role || '0'}', is_active = ${is_active} WHERE user_id = '${user_id}'`);
+    saveDatabase();
+    
+    const roleText = role === '1' ? '管理员' : '普通用户';
+    console.log(`✅ 用户 ${user_id} 已更新 (${roleText})`);
+    res.json({ success: true, message: '用户已更新' });
+  } catch (error) {
+    console.error('更新用户失败:', error.message);
+    res.status(500).json({ success: false, message: '更新用户失败' });
+  }
+});
+
+// 删除用户
+app.post('/api/users/delete', (req, res) => {
+  const { user_id } = req.body;
+  
+  try {
+    // 检查用户是否存在
+    const check = db.exec(`SELECT COUNT(*) FROM users WHERE user_id = '${user_id}'`);
+    if (check[0].values[0][0] === 0) {
+      return res.status(404).json({ success: false, message: '用户不存在' });
+    }
+    
+    // 不允许删除自己
+    if (req.session?.userId === user_id) {
+      return res.status(400).json({ success: false, message: '不能删除当前登录的用户' });
+    }
+    
+    // 删除用户
+    db.run(`DELETE FROM users WHERE user_id = '${user_id}'`);
+    saveDatabase();
+    
+    console.log(`✅ 用户 ${user_id} 已删除`);
+    res.json({ success: true, message: '用户已删除' });
+  } catch (error) {
+    console.error('删除用户失败:', error.message);
+    res.status(500).json({ success: false, message: '删除用户失败' });
+  }
+});
+
+// 修改密码
+app.post('/api/users/change-password', (req, res) => {
+  const { user_id, current_password, new_password } = req.body;
+  
+  try {
+    // 验证当前用户
+    if (req.session?.userId !== user_id) {
+      return res.status(403).json({ success: false, message: '无权修改其他用户的密码' });
+    }
+    
+    // 检查用户是否存在并验证当前密码
+    const check = db.exec(`SELECT password FROM users WHERE user_id = '${user_id}'`);
+    if (check.length === 0 || check[0].values.length === 0) {
+      return res.status(404).json({ success: false, message: '用户不存在' });
+    }
+    
+    const dbPassword = check[0].values[0][0];
+    if (current_password !== dbPassword) {
+      return res.status(401).json({ success: false, message: '当前密码错误' });
+    }
+    
+    // 验证新密码
+    if (!new_password || new_password.length > 12) {
+      return res.status(400).json({ success: false, message: '密码长度不能超过 12 位' });
+    }
+    
+    // 更新密码
+    db.run(`UPDATE users SET password = '${new_password}' WHERE user_id = '${user_id}'`);
+    saveDatabase();
+    
+    console.log(`✅ 用户 ${user_id} 密码已修改`);
+    res.json({ success: true, message: '密码修改成功' });
+  } catch (error) {
+    console.error('修改密码失败:', error.message);
+    res.status(500).json({ success: false, message: '修改密码失败' });
+  }
+});
+
+// 用户管理页面
+app.get('/users', requireAuth, (req, res) => {
+  // 检查是否是管理员（role='1'）
+  if (req.session?.userRole !== '1') {
+    return res.redirect('/change-password');
+  }
+  res.sendFile(path.join(__dirname, '../public/users.html'));
+});
+
+// 修改密码页面
+app.get('/change-password', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/change-password.html'));
+});
+
+// ==================== 管理员数据管理 API ====================
+
+// 获取服务器监控数据
+app.get('/api/admin/server-monitor', (req, res) => {
+  try {
+    // 检查是否是管理员
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    const os = require('os');
+    const fs = require('fs');
+    
+    // 内存信息 - 使用 MemAvailable 计算真实可用内存
+    const totalMem = os.totalmem();
+    let availableMem = os.freemem();  // 默认使用 freemem
+    let usedMem = totalMem - availableMem;
+    let memUsage = (usedMem / totalMem * 100).toFixed(2);
+    
+    // 尝试读取 MemAvailable（更准确的可用内存）
+    try {
+      const meminfo = fs.readFileSync('/proc/meminfo', 'utf8');
+      const memAvailableMatch = meminfo.match(/MemAvailable:\s*(\d+)/);
+      if (memAvailableMatch) {
+        availableMem = parseInt(memAvailableMatch[1]) * 1024;  // kB -> Bytes
+        usedMem = totalMem - availableMem;
+        memUsage = (usedMem / totalMem * 100).toFixed(2);
+      }
+    } catch (e) {
+      // 降级使用 os.freemem()
+    }
+    
+    // 计算真正的空闲内存（包括可回收的缓存）
+    const realFreeMem = availableMem;
+    
+    // 磁盘信息（读取根目录）
+    let diskTotal = 0, diskFree = 0, diskUsed = 0;
+    try {
+      const df = require('child_process').execSync('df -B1 / | tail -1').toString();
+      const parts = df.split(/\s+/);
+      diskTotal = parseInt(parts[1]) || 0;
+      diskUsed = parseInt(parts[2]) || 0;
+      diskFree = parseInt(parts[3]) || 0;
+    } catch (e) {
+      // 降级方案
+      diskTotal = totalMem * 10;  // 估算
+      diskFree = diskTotal * 0.5;
+      diskUsed = diskTotal - diskFree;
+    }
+    const diskUsage = (diskUsed / diskTotal * 100).toFixed(2);
+    
+    // CPU 信息
+    const cpus = os.cpus();
+    const cpuModel = cpus[0]?.model || 'Unknown';
+    const cpuCores = cpus.length;
+    
+    // 计算 CPU 使用率（通过 /proc/stat 读取）
+    let cpuUsage = 0;
+    try {
+      const statLines = fs.readFileSync('/proc/stat', 'utf8').split('\n');
+      const cpuLine = statLines[0].split(/\s+/);
+      // user, nice, system, idle, iowait, irq, softirq
+      const user = parseInt(cpuLine[1]) || 0;
+      const nice = parseInt(cpuLine[2]) || 0;
+      const system = parseInt(cpuLine[3]) || 0;
+      const idle = parseInt(cpuLine[4]) || 0;
+      const iowait = parseInt(cpuLine[5]) || 0;
+      const irq = parseInt(cpuLine[6]) || 0;
+      const softirq = parseInt(cpuLine[7]) || 0;
+      
+      const total = user + nice + system + idle + iowait + irq + softirq;
+      const used = user + nice + system + irq + softirq;
+      cpuUsage = total > 0 ? (used / total * 100).toFixed(2) : 0;
+    } catch (e) {
+      // 降级方案：使用 loadavg
+      const loadAvg = os.loadavg();
+      cpuUsage = Math.min(100, (loadAvg[0] / cpuCores * 100)).toFixed(2);
+    }
+    
+    // 系统信息
+    const platform = os.platform();
+    const arch = os.arch();
+    const uptime = os.uptime();
+    const hostname = os.hostname();
+    
+    // 网络信息
+    const networkInterfaces = os.networkInterfaces();
+    const networkInfo = [];
+    for (const [name, interfaces] of Object.entries(networkInterfaces)) {
+      for (const iface of interfaces) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          networkInfo.push({ name, address: iface.address });
+        }
+      }
+    }
+    
+    // 进程数
+    const processCount = require('child_process').execSync('ps aux | wc -l').toString().trim();
+    
+    res.json({
+      success: true,
+      data: {
+        memory: {
+          total: totalMem,
+          used: usedMem,
+          free: realFreeMem,
+          usage: parseFloat(memUsage)
+        },
+        disk: {
+          total: diskTotal,
+          used: diskUsed,
+          free: diskFree,
+          usage: parseFloat(diskUsage)
+        },
+        cpu: {
+          model: cpuModel,
+          cores: cpuCores,
+          usage: parseFloat(cpuUsage),
+          loadAvg: os.loadavg()
+        },
+        system: {
+          platform,
+          arch,
+          hostname,
+          uptime,
+          uptimeStr: formatUptime(uptime)
+        },
+        network: networkInfo,
+        processCount: parseInt(processCount) || 0
+      }
+    });
+  } catch (error) {
+    console.error('获取服务器监控数据失败:', error.message);
+    res.status(500).json({ success: false, message: '获取监控数据失败' });
+  }
+});
+
+// 格式化运行时间
+function formatUptime(seconds) {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  if (days > 0) {
+    return `${days}天 ${hours}小时 ${minutes}分钟`;
+  } else if (hours > 0) {
+    return `${hours}小时 ${minutes}分钟 ${secs}秒`;
+  } else if (minutes > 0) {
+    return `${minutes}分钟 ${secs}秒`;
+  }
+  return `${secs}秒`;
+}
+
+// 获取用户数据（管理员专用）
+app.get('/api/admin/users', (req, res) => {
+  try {
+    // 检查是否是管理员
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    const { page = 1, pageSize = 20, keyword = '' } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(pageSize);
+    const limit = parseInt(pageSize);
+    
+    let whereClause = '';
+    if (keyword) {
+      whereClause = `WHERE user_id LIKE '%${keyword}%' OR username LIKE '%${keyword}%'`;
+    }
+    
+    // 查询总数
+    const countResult = db.exec(`SELECT COUNT(*) FROM users ${whereClause}`);
+    const total = countResult[0]?.values[0]?.[0] || 0;
+    
+    // 查询数据
+    const results = db.exec(`SELECT user_id, username, password, role, is_active, created_at, last_login FROM users ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`);
+    
+    if (results.length === 0) {
+      return res.json({ success: true, data: [], total: 0, page: parseInt(page), pageSize: parseInt(pageSize) });
+    }
+    
+    const users = results[0].values.map(row => ({
+      user_id: row[0],
+      username: row[1],
+      password: row[2],
+      role: row[3] || '0',
+      is_active: row[4],
+      created_at: row[5],
+      last_login: row[6]
+    }));
+    
+    res.json({ success: true, data: users, total, page: parseInt(page), pageSize: parseInt(pageSize) });
+  } catch (error) {
+    console.error('获取用户数据失败:', error.message);
+    res.status(500).json({ success: false, message: '获取用户数据失败' });
+  }
+});
+
+// 获取自选股数据（管理员专用）
+app.get('/api/admin/custom-stocks', (req, res) => {
+  try {
+    // 检查是否是管理员
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    const { page = 1, pageSize = 20, userId = '', stockCode = '' } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(pageSize);
+    const limit = parseInt(pageSize);
+    
+    let whereClause = 'WHERE 1=1';
+    if (userId) {
+      whereClause += ` AND user_id LIKE '%${userId}%'`;
+    }
+    if (stockCode) {
+      whereClause += ` AND stock_code LIKE '%${stockCode}%'`;
+    }
+    
+    // 查询总数
+    const countResult = db.exec(`SELECT COUNT(*) FROM custom_stocks ${whereClause}`);
+    const total = countResult[0]?.values[0]?.[0] || 0;
+    
+    // 查询数据
+    const results = db.exec(`SELECT user_id, stock_code, stock_market, added_at FROM custom_stocks ${whereClause} ORDER BY added_at DESC LIMIT ${limit} OFFSET ${offset}`);
+    
+    if (results.length === 0) {
+      return res.json({ success: true, data: [], total: 0, page: parseInt(page), pageSize: parseInt(pageSize) });
+    }
+    
+    const stocks = results[0].values.map(row => ({
+      user_id: row[0],
+      stock_code: row[1],
+      stock_market: row[2],
+      added_at: row[3]
+    }));
+    
+    res.json({ success: true, data: stocks, total, page: parseInt(page), pageSize: parseInt(pageSize) });
+  } catch (error) {
+    console.error('获取自选股数据失败:', error.message);
+    res.status(500).json({ success: false, message: '获取自选股数据失败' });
+  }
+});
+
+// ==================== 自选股 API ====================
+
+// 获取用户的自选股列表
+app.get('/api/custom-stocks/list', (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: '未登录' });
+    }
+    
+    const results = db.exec(`SELECT stock_code, stock_market, added_at FROM custom_stocks WHERE user_id = '${userId}' ORDER BY added_at DESC`);
+    
+    if (results.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+    
+    const stocks = results[0].values.map(row => ({
+      code: row[0],
+      market: row[1],
+      addedAt: row[2]
+    }));
+    
+    res.json({ success: true, data: stocks });
+  } catch (error) {
+    console.error('获取自选股列表失败:', error.message);
+    res.status(500).json({ success: false, message: '获取自选股列表失败' });
+  }
+});
+
+// 添加自选股
+app.post('/api/custom-stocks/add', (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    console.log('📝 添加自选股 - session userId:', userId, 'body:', req.body);
+    
+    if (!userId) {
+      console.log('⚠️ 用户未登录');
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    
+    const { stock_code, stock_market } = req.body;
+    
+    if (!stock_code || !stock_market) {
+      console.log('⚠️ 缺少参数:', stock_code, stock_market);
+      return res.status(400).json({ success: false, message: '缺少股票代码或市场' });
+    }
+    
+    // 检查是否已存在
+    const check = db.exec(`SELECT COUNT(*) FROM custom_stocks WHERE user_id = '${userId}' AND stock_code = '${stock_code}' AND stock_market = '${stock_market}'`);
+    if (check[0].values[0][0] > 0) {
+      console.log('⚠️ 股票已存在');
+      return res.status(400).json({ success: false, message: '该股票已在自选列表中' });
+    }
+    
+    // 添加自选股
+    db.run(`INSERT INTO custom_stocks (user_id, stock_code, stock_market) VALUES ('${userId}', '${stock_code}', '${stock_market}')`);
+    saveDatabase();
+    
+    console.log(`✅ 用户 ${userId} 添加自选股：${stock_market}${stock_code}`);
+    res.json({ success: true, message: '已添加' });
+  } catch (error) {
+    console.error('添加自选股失败:', error.message);
+    res.status(500).json({ success: false, message: '添加自选股失败' });
+  }
+});
+
+// 删除自选股
+app.post('/api/custom-stocks/delete', (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: '未登录' });
+    }
+    
+    const { stock_code, stock_market } = req.body;
+    
+    if (!stock_code || !stock_market) {
+      return res.status(400).json({ success: false, message: '缺少股票代码或市场' });
+    }
+    
+    // 删除自选股
+    db.run(`DELETE FROM custom_stocks WHERE user_id = '${userId}' AND stock_code = '${stock_code}' AND stock_market = '${stock_market}'`);
+    saveDatabase();
+    
+    console.log(`✅ 用户 ${userId} 删除自选股：${stock_market}${stock_code}`);
+    res.json({ success: true, message: '已删除' });
+  } catch (error) {
+    console.error('删除自选股失败:', error.message);
+    res.status(500).json({ success: false, message: '删除自选股失败' });
+  }
+});
+
+// ==================== 定时任务 API ====================
+
+// 获取定时任务列表
+app.get('/api/scheduled-tasks', (req, res) => {
+  try {
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    // 从数据库读取任务
+    const result = db.exec('SELECT * FROM scheduled_tasks ORDER BY created_at DESC');
+    
+    const tasks = result.length > 0 ? result[0].values.map(row => ({
+      id: row[0],
+      name: row[1],
+      type: row[2],
+      cron: row[3],
+      status: row[4],
+      lastRun: row[5],
+      createdAt: row[6]
+    })) : [];
+    
+    res.json({ success: true, data: tasks });
+  } catch (error) {
+    console.error('获取定时任务失败:', error.message);
+    res.status(500).json({ success: false, message: '获取定时任务失败' });
+  }
+});
+
+// 新增定时任务
+app.post('/api/scheduled-tasks', (req, res) => {
+  try {
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    const { name, type, cron, status } = req.body;
+    const id = `task_${Date.now()}`;
+    
+    db.run(`INSERT INTO scheduled_tasks (id, name, type, cron, status) VALUES ('${id}', '${name}', '${type}', '${cron}', ${status})`);
+    saveDatabase();
+    
+    // 如果任务启用，立即加载调度
+    if (status === 1) {
+      loadScheduledTasks();
+    }
+    
+    res.json({ success: true, message: '任务已创建', data: { id } });
+  } catch (error) {
+    console.error('创建定时任务失败:', error.message);
+    res.status(500).json({ success: false, message: '创建任务失败' });
+  }
+});
+
+// 更新定时任务
+app.put('/api/scheduled-tasks/:id', (req, res) => {
+  try {
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    const { id } = req.params;
+    const { name, type, cron, status } = req.body;
+    
+    db.run(`UPDATE scheduled_tasks SET name='${name}', type='${type}', cron='${cron}', status=${status} WHERE id='${id}'`);
+    saveDatabase();
+    
+    // 重新加载调度器
+    loadScheduledTasks();
+    
+    res.json({ success: true, message: '任务已更新' });
+  } catch (error) {
+    console.error('更新定时任务失败:', error.message);
+    res.status(500).json({ success: false, message: '更新任务失败' });
+  }
+});
+
+// 删除定时任务
+app.delete('/api/scheduled-tasks/:id', (req, res) => {
+  try {
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    const { id } = req.params;
+    db.run(`DELETE FROM scheduled_tasks WHERE id='${id}'`);
+    saveDatabase();
+    
+    res.json({ success: true, message: '任务已删除' });
+  } catch (error) {
+    console.error('删除定时任务失败:', error.message);
+    res.status(500).json({ success: false, message: '删除任务失败' });
+  }
+});
+
+// 执行定时任务
+app.post('/api/scheduled-tasks/:id/run', async (req, res) => {
+  try {
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    const { id } = req.params;
+    
+    // 根据任务类型执行
+    const result = db.exec(`SELECT type FROM scheduled_tasks WHERE id='${id}'`);
+    if (result.length === 0) {
+      return res.status(404).json({ success: false, message: '任务不存在' });
+    }
+    
+    const taskType = result[0].values[0][0];
+    
+    // 异步执行任务
+    if (taskType === 'sync-securities') {
+      syncSecurities(db).then(result => {
+        console.log('✅ 证券同步完成:', result);
+        db.run(`UPDATE scheduled_tasks SET last_run=datetime('now') WHERE id='${id}'`);
+        saveDatabase();
+      }).catch(err => {
+        console.error('❌ 证券同步失败:', err.message);
+      });
+    }
+    
+    if (taskType === 'sync-tick-trade') {
+      syncTickTrade(db).then(result => {
+        console.log('✅ 逐笔成交同步完成:', result);
+        db.run(`UPDATE scheduled_tasks SET last_run=datetime('now') WHERE id='${id}'`);
+        saveDatabase();
+      }).catch(err => {
+        console.error('❌ 逐笔成交同步失败:', err.message);
+      });
+    }
+    
+    res.json({ success: true, message: '任务已开始执行' });
+  } catch (error) {
+    console.error('执行定时任务失败:', error.message);
+    res.status(500).json({ success: false, message: '执行任务失败' });
+  }
+});
+
+// 获取证券同步状态
+app.get('/api/securities/status', (req, res) => {
+  try {
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    // 查询证券表统计
+    const countResult = db.exec('SELECT COUNT(*) FROM securities');
+    const total = countResult[0]?.values[0]?.[0] || 0;
+    
+    const marketCount = db.exec('SELECT market, COUNT(*) as cnt FROM securities GROUP BY market');
+    const byMarket = {};
+    if (marketCount.length > 0) {
+      marketCount[0].values.forEach(row => {
+        byMarket[row[0]] = row[1];
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        total,
+        byMarket,
+        lastUpdate: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('获取证券状态失败:', error.message);
+    res.status(500).json({ success: false, message: '获取状态失败' });
+  }
+});
+
+// 获取下一个 cron 执行时间
+function getNextCronTime(cronExpr) {
+  try {
+    const next = new Date();
+    next.setHours(6, 0, 0, 0);
+    if (next <= new Date()) {
+      next.setDate(next.getDate() + 1);
+    }
+    return next.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+// 主页（需要登录）
+app.get('/', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// ==================== 证券信息 API ====================
+
+// 获取证券列表（分页）
+app.get('/api/securities', (req, res) => {
+  try {
+    const { page = 1, pageSize = 20, search = '', market = '', fuzzy = 'false' } = req.query;
+    
+    // 限制每页最大数量不超过 200
+    const safePageSize = Math.min(parseInt(pageSize) || 20, 200);
+    const offset = (parseInt(page) - 1) * safePageSize;
+    
+    let where = 'WHERE 1=1';
+    if (search) {
+      if (fuzzy === 'true') {
+        // 模糊查询：支持证券代码或名称中包含搜索词
+        where += ` AND (stock_code LIKE '%${search}%' OR stock_name LIKE '%${search}%')`;
+      } else {
+        // 精确查询
+        where += ` AND (stock_code = '${search}' OR stock_name LIKE '%${search}%')`;
+      }
+    }
+    if (market) {
+      where += ` AND market = '${market}'`;
+    }
+    
+    // 总数
+    const countResult = db.exec(`SELECT COUNT(*) FROM securities ${where}`);
+    const total = countResult[0]?.values[0]?.[0] || 0;
+    
+    // 数据
+    const result = db.exec(`SELECT stock_code, stock_name, market, status, updated_at FROM securities ${where} ORDER BY stock_code LIMIT ${safePageSize} OFFSET ${offset}`);
+    
+    const data = result.length > 0 ? result[0].values.map(row => ({
+      stock_code: row[0],
+      stock_name: row[1],
+      market: row[2],
+      status: row[3],
+      updated_at: row[4]
+    })) : [];
+    
+    res.json({ success: true, data, total, page: parseInt(page), pageSize: safePageSize });
+  } catch (error) {
+    console.error('获取证券列表失败:', error.message);
+    res.status(500).json({ success: false, message: '获取证券列表失败' });
+  }
+});
+
+// 获取证券统计
+app.get('/api/securities/stats', (req, res) => {
+  try {
+    const countResult = db.exec('SELECT COUNT(*) FROM securities');
+    const total = countResult[0]?.values[0]?.[0] || 0;
+    
+    const marketResult = db.exec('SELECT market, COUNT(*) as cnt FROM securities GROUP BY market');
+    const byMarket = {};
+    if (marketResult.length > 0) {
+      marketResult[0].values.forEach(row => {
+        byMarket[row[0]] = row[1];
+      });
+    }
+    
+    res.json({ success: true, data: { total, byMarket } });
+  } catch (error) {
+    console.error('获取证券统计失败:', error.message);
+    res.status(500).json({ success: false, message: '获取统计失败' });
+  }
+});
+
+// 获取证券搜索建议
+app.get('/api/securities/suggestions', (req, res) => {
+  try {
+    const { search = '', limit = 10 } = req.query;
+    
+    if (!search || search.trim().length < 1) {
+      return res.json({ success: true, data: [] });
+    }
+    
+    // 模糊查询：支持证券代码或名称
+    const where = `WHERE stock_code LIKE '${search}%' OR stock_name LIKE '%${search}%'`;
+    const result = db.exec(`SELECT stock_code, stock_name, market FROM securities ${where} ORDER BY stock_code LIMIT ${parseInt(limit)}`);
+    
+    const data = result.length > 0 ? result[0].values.map(row => ({
+      stock_code: row[0],
+      stock_name: row[1],
+      market: row[2]
+    })) : [];
+    
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('获取搜索建议失败:', error.message);
+    res.status(500).json({ success: false, message: '获取搜索建议失败' });
+  }
+});
+
+// 清空所有证券信息
+app.post('/api/securities/clear-all', (req, res) => {
+  try {
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    db.run('DELETE FROM securities');
+    saveDatabase();
+    
+    res.json({ success: true, message: '已清空所有证券信息' });
+  } catch (error) {
+    console.error('清空证券信息失败:', error.message);
+    res.status(500).json({ success: false, message: '清空失败：' + error.message });
+  }
+});
+
+// ==================== 逐笔成交明细 API ====================
+
+// 查询逐笔成交明细（分页）
+app.get('/api/tick-trade', (req, res) => {
+  try {
+    const {
+      page = 1,
+      pageSize = 20,
+      trade_date = '',
+      symbol = '',
+      market = '',
+      direction = '',
+      time_start = '',
+      time_end = '',
+      price_min = '',
+      price_max = '',
+      volume_min = '',
+      volume_max = '',
+      amount_min = '',
+      amount_max = ''
+    } = req.query;
+    
+    const offset = (parseInt(page) - 1) * parseInt(pageSize);
+    const safePageSize = Math.min(parseInt(pageSize) || 20, 200);
+    
+    // 动态拼接 WHERE 条件
+    let where = 'WHERE 1=1';
+    const params = [];
+    
+    if (trade_date) {
+      where += ' AND trade_date = ?';
+      params.push(trade_date);
+    }
+    if (symbol) {
+      where += ' AND symbol LIKE ?';
+      params.push(`%${symbol}%`);
+    }
+    if (market) {
+      where += ' AND market = ?';
+      params.push(market);
+    }
+    if (direction) {
+      where += ' AND direction = ?';
+      params.push(direction);
+    }
+    if (time_start) {
+      where += ' AND trade_time >= ?';
+      params.push(time_start);
+    }
+    if (time_end) {
+      where += ' AND trade_time <= ?';
+      params.push(time_end);
+    }
+    if (price_min) {
+      where += ' AND price >= ?';
+      params.push(parseFloat(price_min));
+    }
+    if (price_max) {
+      where += ' AND price <= ?';
+      params.push(parseFloat(price_max));
+    }
+    if (volume_min) {
+      where += ' AND volume >= ?';
+      params.push(parseInt(volume_min));
+    }
+    if (volume_max) {
+      where += ' AND volume <= ?';
+      params.push(parseInt(volume_max));
+    }
+    if (amount_min) {
+      where += ' AND amount >= ?';
+      params.push(parseFloat(amount_min));
+    }
+    if (amount_max) {
+      where += ' AND amount <= ?';
+      params.push(parseFloat(amount_max));
+    }
+    
+    // 总数
+    const countResult = db.exec(`SELECT COUNT(*) FROM tick_trade ${where}`);
+    const total = countResult[0]?.values[0]?.[0] || 0;
+    
+    // 数据
+    const result = db.exec(`
+      SELECT id, trade_date, symbol, market, trade_time, price, volume, amount, direction
+      FROM tick_trade ${where}
+      ORDER BY trade_date DESC, symbol ASC, trade_time ASC
+      LIMIT ${safePageSize} OFFSET ${offset}
+    `, params);
+    
+    const data = result.length > 0 ? result[0].values.map(row => ({
+      id: row[0],
+      trade_date: row[1],
+      symbol: row[2],
+      market: row[3],
+      trade_time: row[4],
+      price: row[5],
+      volume: row[6],
+      amount: row[7],
+      direction: row[8]
+    })) : [];
+    
+    res.json({ success: true, data, total, page: parseInt(page), pageSize: safePageSize });
+  } catch (error) {
+    console.error('查询逐笔成交失败:', error.message);
+    res.status(500).json({ success: false, message: '查询失败：' + error.message });
+  }
+});
+
+// 同步进度状态
+let syncProgressState = {
+  running: false,
+  current: 0,
+  total: 0,
+  records: 0,
+  startTime: 0
+};
+
+// 同步逐笔成交明细
+app.post('/api/tick-trade/sync', async (req, res) => {
+  try {
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    // 如果已有同步任务在运行，拒绝新请求
+    if (syncProgressState.running) {
+      return res.status(400).json({ success: false, message: '已有同步任务正在运行，请稍后再试' });
+    }
+    
+    console.log('🔄 开始同步逐笔成交明细（MyData API）...');
+    
+    // 初始化进度状态
+    syncProgressState = {
+      running: true,
+      current: 0,
+      total: 0,
+      records: 0,
+      startTime: Date.now()
+    };
+    
+    // 异步执行同步任务，实时更新进度
+    (async () => {
+      try {
+        // 先获取证券列表更新总数
+        const result = db.exec(`
+          SELECT COUNT(*) FROM securities 
+          WHERE status = 1 
+          AND (
+            (market = 'sh' AND stock_code LIKE '60____%')
+            OR (market = 'sh' AND stock_code LIKE '68____%')
+            OR (market = 'sz' AND stock_code LIKE '00____%')
+            OR (market = 'sz' AND stock_code LIKE '30____%')
+            OR (market = 'sh' AND stock_code LIKE '51____%')
+            OR (market = 'sh' AND stock_code LIKE '58____%')
+            OR (market = 'sz' AND stock_code LIKE '15____%')
+            OR (market = 'sz' AND stock_code LIKE '16____%')
+            OR (market = 'sz' AND stock_code LIKE '18____%')
+          )
+        `);
+        const total = result[0]?.values[0]?.[0] || 0;
+        syncProgressState.total = total;
+        
+        console.log(`📊 总共需要同步 ${total} 只证券`);
+        
+        // 执行同步，传递进度回调
+        const syncResult = await syncTickTrade(db, (current, total, records) => {
+          // 实时更新进度状态
+          syncProgressState.current = current;
+          syncProgressState.records = records;
+          console.log(`🔄 进度更新：${current}/${total}, 记录：${records}`);
+        });
+        
+        console.log('✅ 逐笔成交同步完成:', syncResult);
+        if (syncResult.success) {
+          syncProgressState.current = syncResult.totalSecurities;
+          syncProgressState.records = syncResult.totalRecords;
+        }
+        syncProgressState.running = false;
+      } catch (err) {
+        console.error('❌ 逐笔成交同步失败:', err.message);
+        syncProgressState.running = false;
+      }
+    })();
+    
+    res.json({ 
+      success: true, 
+      message: '同步任务已启动' 
+    });
+  } catch (error) {
+    console.error('同步逐笔成交失败:', error.message);
+    res.status(500).json({ success: false, message: '同步失败：' + error.message });
+  }
+});
+
+// 查询同步进度
+app.get('/api/tick-trade/sync-progress', (req, res) => {
+  try {
+    const duration = syncProgressState.running 
+      ? ((Date.now() - syncProgressState.startTime) / 1000)
+      : ((syncProgressState.startTime > 0) ? ((Date.now() - syncProgressState.startTime) / 1000) : 0);
+    
+    res.json({
+      success: true,
+      data: {
+        running: syncProgressState.running,
+        current: syncProgressState.current,
+        total: syncProgressState.total,
+        records: syncProgressState.records,
+        duration: duration
+      }
+    });
+  } catch (error) {
+    console.error('查询同步进度失败:', error.message);
+    res.status(500).json({ success: false, message: '查询进度失败' });
+  }
+});
+
+// 获取最新有数据的日期
+app.get('/api/tick-trade/latest-date', (req, res) => {
+  try {
+    const result = db.exec(`
+      SELECT MAX(trade_date) as latest_date FROM tick_trade
+    `);
+    const latestDate = result[0]?.values[0]?.[0] || null;
+    
+    res.json({
+      success: true,
+      data: { latestDate }
+    });
+  } catch (error) {
+    console.error('获取最新日期失败:', error.message);
+    res.status(500).json({ success: false, message: '获取最新日期失败' });
+  }
+});
+
+// 获取逐笔成交统计
+app.get('/api/tick-trade/stats', (req, res) => {
+  try {
+    const { trade_date = '' } = req.query;
+    
+    let where = 'WHERE 1=1';
+    const params = [];
+    
+    if (trade_date) {
+      where += ' AND trade_date = ?';
+      params.push(trade_date);
+    }
+    
+    // 总记录数
+    const countResult = db.exec(`SELECT COUNT(*) FROM tick_trade ${where}`, params);
+    const total = countResult[0]?.values[0]?.[0] || 0;
+    
+    // 按市场统计
+    const marketResult = db.exec(`SELECT market, COUNT(*) as cnt FROM tick_trade ${where} GROUP BY market`, params);
+    const byMarket = {};
+    if (marketResult.length > 0) {
+      marketResult[0].values.forEach(row => {
+        byMarket[row[0]] = row[1];
+      });
+    }
+    
+    // 按方向统计
+    const directionResult = db.exec(`SELECT direction, COUNT(*) as cnt FROM tick_trade ${where} GROUP BY direction`, params);
+    const byDirection = {};
+    if (directionResult.length > 0) {
+      directionResult[0].values.forEach(row => {
+        byDirection[row[0]] = row[1];
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      data: { 
+        total, 
+        byMarket, 
+        byDirection,
+        trade_date: trade_date || new Date().toISOString().split('T')[0]
+      } 
+    });
+  } catch (error) {
+    console.error('获取逐笔成交统计失败:', error.message);
+    res.status(500).json({ success: false, message: '获取统计失败：' + error.message });
+  }
+});
+
+// 清空指定日期的逐笔成交数据
+app.post('/api/tick-trade/clear', (req, res) => {
+  try {
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    const { trade_date } = req.body;
+    
+    if (!trade_date) {
+      return res.status(400).json({ success: false, message: '请指定日期' });
+    }
+    
+    db.run('DELETE FROM tick_trade WHERE trade_date = ?', [trade_date]);
+    saveDatabase();
+    
+    res.json({ success: true, message: `已清空 ${trade_date} 的逐笔成交数据` });
+  } catch (error) {
+    console.error('清空逐笔成交失败:', error.message);
+    res.status(500).json({ success: false, message: '清空失败：' + error.message });
+  }
+});
+
+// 同步证券信息 API
+app.post('/api/securities/sync', async (req, res) => {
+  try {
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    console.log('🚀 收到证券同步请求（MyData API）');
+    
+    // 异步执行同步任务
+    syncSecurities(db).then(result => {
+      console.log('✅ 证券同步后台完成:', result);
+    }).catch(err => {
+      console.error('❌ 证券同步后台失败:', err.message);
+    });
+    
+    res.json({ 
+      success: true, 
+      message: '同步任务已启动，请在后台查看进度' 
+    });
+  } catch (error) {
+    console.error('同步证券失败:', error.message);
+    res.status(500).json({ success: false, message: '同步失败：' + error.message });
+  }
+});
+
+// 自选股页面（需要登录）
+app.get('/custom', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/custom.html'));
+});
+
+// 数据管理页面（需要登录，管理员专用）
+app.get('/data-manager', requireAuth, (req, res) => {
+  // 检查是否是管理员
+  if (req.session?.userRole !== '1') {
+    return res.redirect('/');
+  }
+  res.sendFile(path.join(__dirname, '../public/data-manager.html'));
+});
+
+// 系统管理页面（需要登录，管理员专用）
+app.get('/system', requireAuth, (req, res) => {
+  // 检查是否是管理员
+  if (req.session?.userRole !== '1') {
+    return res.redirect('/');
+  }
+  res.sendFile(path.join(__dirname, '../public/system.html'));
+});
+
+// 服务器监控页面（需要登录，管理员专用）
+app.get('/server-monitor', requireAuth, (req, res) => {
+  // 检查是否是管理员
+  if (req.session?.userRole !== '1') {
+    return res.redirect('/');
+  }
+  res.sendFile(path.join(__dirname, '../public/server-monitor.html'));
+});
+
+// 定时任务页面（需要登录，管理员专用）
+app.get('/scheduled-tasks', requireAuth, (req, res) => {
+  if (req.session?.userRole !== '1') {
+    return res.redirect('/');
+  }
+  res.sendFile(path.join(__dirname, '../public/scheduled-tasks.html'));
+});
+
+// 证券信息页面（需要登录，管理员专用）
+app.get('/securities', requireAuth, (req, res) => {
+  if (req.session?.userRole !== '1') {
+    // 管理员权限不足，返回错误页面
+    return res.status(403).send(`
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>无权限访问 - 证券信息管理</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+    .error-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: 0 auto; max-width: 500px; }
+    .error-code { font-size: 72px; color: #ff6b6b; margin-bottom: 10px; }
+    .error-message { font-size: 24px; color: #333; margin-bottom: 20px; }
+    .error-desc { color: #666; margin-bottom: 30px; }
+    .btn { background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; }
+    .btn:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+  <div class="error-container">
+    <div class="error-code">403</div>
+    <div class="error-message">无权限访问</div>
+    <div class="error-desc">此页面仅限管理员访问</div>
+    <a href="/" class="btn">返回首页</a>
+  </div>
+</body>
+</html>`);
+  }
+  res.sendFile(path.join(__dirname, '../public/securities.html'));
+});
+
+// 逐笔成交明细页面（需要登录，管理员专用）
+app.get('/tick-trade', requireAuth, (req, res) => {
+  if (req.session?.userRole !== '1') {
+    return res.redirect('/');
+  }
+  res.sendFile(path.join(__dirname, '../public/tick-trade.html'));
+});
+
+// 证券行情页面（需要登录）
+app.get('/stock', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/stock.html'));
 });
 
 // 获取本机 IP
@@ -455,20 +1928,38 @@ function getLocalIP() {
 const HOST_IP = getLocalIP();
 
 // 启动服务器
-app.listen(PORT, '0.0.0.0', () => {
-  console.log('');
-  console.log('╔══════════════════════════════════════════════════════╗');
-  console.log('║     A 股实时监控系统启动成功！                        ║');
-  console.log('╠══════════════════════════════════════════════════════╣');
-  console.log(`║  本地访问：http://localhost:${PORT}                    ║`);
-  console.log(`║  局域网访问：http://${HOST_IP}:${PORT}                  ║`);
-  console.log(`║  公网访问：http://<你的公网 IP>:${PORT}                ║`);
-  console.log('╚══════════════════════════════════════════════════════╝');
-  console.log('');
-  console.log('数据源：东方财富 API、腾讯财经 API');
-  console.log('交易时间自动刷新，非交易时间显示缓存数据');
-  console.log('');
+async function startServer() {
+  // 初始化数据库
+  try {
+    await initDatabase();
+  } catch (error) {
+    console.error('❌ 数据库初始化失败:', error.message);
+    console.log('⚠️  将继续启动，但登录功能可能不可用');
+  }
   
-  loadCache();
-  fetchAllData();
-});
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log('');
+    console.log('╔══════════════════════════════════════════════════════╗');
+    console.log('║     A 股实时监控系统启动成功！                        ║');
+    console.log('╠══════════════════════════════════════════════════════╣');
+    console.log(`║  本地访问：http://localhost:${PORT}                    ║`);
+    console.log(`║  局域网访问：http://${HOST_IP}:${PORT}                  ║`);
+    console.log(`║  公网访问：http://<你的公网 IP>:${PORT}                ║`);
+    console.log('╚══════════════════════════════════════════════════════╝');
+    console.log('');
+    console.log('数据源：东方财富 API、腾讯财经 API');
+    console.log('交易时间自动刷新，非交易时间显示缓存数据');
+    console.log('用户认证：SQLite 数据库');
+    console.log('');
+    
+    loadCache();
+    // 只在交易时间获取实时数据，非交易时间使用缓存
+    if (isTradingTime()) {
+      fetchAllData();
+    } else {
+      console.log('⏰ 非交易时间，使用缓存数据');
+    }
+  });
+}
+
+startServer();

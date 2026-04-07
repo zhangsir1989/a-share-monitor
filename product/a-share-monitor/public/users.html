@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>用户管理 - A 股实时监控</title>
+  <link rel="stylesheet" href="css/sidebar.css?v=20260405">
+  <link rel="stylesheet" href="css/style.css?v=202604041135">
+  <link rel="stylesheet" href="css/users.css?v=202604041135">
+</head>
+<body>
+  <div class="container">
+    <!-- 侧边栏导航 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📊 系统导航</h2>
+        <button class="btn-close-sidebar" id="close-sidebar">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="sidebar-link" data-page="home">
+          <span class="link-icon">🏠</span>
+          <span class="link-text">首页</span>
+        </a>
+        <a href="/stock" class="sidebar-link" data-page="stock">
+          <span class="link-icon">📈</span>
+          <span class="link-text">证券行情</span>
+        </a>
+        <a href="/custom" class="sidebar-link" data-page="custom">
+          <span class="link-icon">⭐</span>
+          <span class="link-text">自定义</span>
+        </a>
+        <a href="/data-manager" class="sidebar-link" data-page="data-manager" data-requires-admin="true">
+          <span class="link-icon">🗄️</span>
+          <span class="link-text">数据管理</span>
+        </a>
+        <a href="/system" class="sidebar-link" data-page="system" data-requires-admin="true">
+          <span class="link-icon">⚙️</span>
+          <span class="link-text">系统管理</span>
+        </a>
+        <a href="/users" class="sidebar-link active" data-page="users">
+          <span class="link-icon">👥</span>
+          <span class="link-text">用户管理</span>
+        </a>
+        <a href="/change-password" class="sidebar-link" data-page="change-password" data-requires-user="true">
+          <span class="link-icon">🔑</span>
+          <span class="link-text">修改密码</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <span class="user-avatar">👤</span>
+          <span class="user-display-name" id="sidebar-username">--</span>
+        </div>
+        <button class="btn-logout-sidebar" id="sidebar-logout-btn" title="退出登录">
+          🚪 退出登录
+        </button>
+      </div>
+    </aside>
+
+    <!-- 顶部导航 -->
+    <header class="header">
+      <div class="header-top">
+        <div class="header-left">
+          <button class="btn-menu-toggle" id="menu-toggle">☰</button>
+          <h1>👥 用户管理</h1>
+        </div>
+        <div class="header-controls">
+          <div class="user-info" id="user-info">
+            <span class="user-name" id="user-name"></span>
+            <button class="btn btn-logout" id="logout-btn" title="退出登录">🚪</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="main-content">
+      <!-- 操作栏 -->
+      <div class="action-bar">
+        <div class="action-left">
+          <button class="btn btn-primary" id="btn-add-user">➕ 新增用户</button>
+          <button class="btn" id="btn-refresh">🔄 刷新</button>
+        </div>
+        <div class="action-right">
+          <div class="search-box">
+            <input type="text" id="search-input" class="search-input" placeholder="搜索用户编号或用户名...">
+            <button class="btn-search" id="btn-search">🔍</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 用户表格 -->
+      <div class="table-container">
+        <table class="data-table" id="users-table">
+          <thead>
+            <tr>
+              <th width="100">用户编号</th>
+              <th width="120">用户名</th>
+              <th width="100">角色</th>
+              <th width="120">密码</th>
+              <th width="100">状态</th>
+              <th width="180">创建时间</th>
+              <th width="180">最后登录</th>
+              <th width="80"></th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body">
+            <tr>
+              <td colspan="7" class="loading">加载中...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 分页栏 -->
+      <div class="pagination-bar" id="pagination-bar">
+        <div class="pagination-info">
+          共 <span id="total-count">0</span> 条记录，
+          第 <span id="current-page">1</span> 页，
+          共 <span id="total-pages">0</span> 页
+        </div>
+        <div class="pagination-controls">
+          <button class="btn-page" id="btn-first" disabled>⏮️ 首页</button>
+          <button class="btn-page" id="btn-prev" disabled>◀️ 上页</button>
+          <select class="page-size-select" id="page-size-select">
+            <option value="10">10 条/页</option>
+            <option value="20" selected>20 条/页</option>
+            <option value="50">50 条/页</option>
+            <option value="100">100 条/页</option>
+          </select>
+          <button class="btn-page" id="btn-next">下页 ▶️</button>
+          <button class="btn-page" id="btn-last">末页 ⏭️</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 新增/编辑用户模态框 -->
+  <div class="modal" id="user-modal" style="display:none;">
+    <div class="modal-content" style="z-index:1000001; position:relative;">
+      <div class="modal-header">
+        <h3 id="modal-title">➕ 新增用户</h3>
+        <button type="button" class="btn-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="user-form" onsubmit="return false;">
+          <input type="hidden" id="user-id-hidden">
+          <div class="form-group">
+            <label class="form-label" for="user-id">用户编号 <span class="required">*</span></label>
+            <input type="text" id="user-id" class="form-input" maxlength="12" placeholder="请输入用户编号（最多 12 位）" required style="pointer-events:auto;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="username">用户名 <span class="required">*</span></label>
+            <input type="text" id="username" class="form-input" maxlength="50" placeholder="请输入用户名" required style="pointer-events:auto;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="password">密码 <span class="required">*</span></label>
+            <input type="text" id="password" class="form-input" maxlength="12" placeholder="请输入密码（最多 12 位）" required style="pointer-events:auto;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="role">角色 <span class="required">*</span></label>
+            <select id="role" class="form-input" style="pointer-events:auto;">
+              <option value="0">👤 普通用户</option>
+              <option value="1">👑 管理员</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="is-active">状态</label>
+            <select id="is-active" class="form-input" style="pointer-events:auto;">
+              <option value="1">✓ 激活</option>
+              <option value="0">✗ 停用</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" id="modal-cancel">取消</button>
+        <button type="button" class="btn btn-primary" id="modal-save">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 删除确认模态框 -->
+  <div class="modal modal-confirm" id="confirm-modal" style="display:none;">
+    <div class="modal-content modal-sm" style="z-index:1000001; position:relative;">
+      <div class="modal-header">
+        <h3>⚠️ 确认删除</h3>
+        <button type="button" class="btn-close" id="confirm-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>确定要删除用户 <strong id="delete-user-id"></strong> 吗？</p>
+        <p class="warning-text">此操作不可恢复！</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" id="confirm-cancel">取消</button>
+        <button type="button" class="btn btn-danger" id="confirm-delete">🗑️ 删除</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/sidebar.js?v=20260405"></script>
+  <script src="js/users.js?v=202604041135"></script>
+</body>
+</html>

@@ -53,8 +53,24 @@ body {
 
 .header-left {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
+}
+.btn-menu-toggle {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 20px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-menu-toggle:hover {
+  background: var(--bg-card);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
 }
 
 .header-controls {
@@ -62,6 +78,40 @@ body {
   align-items: center;
   gap: 15px;
   flex-wrap: wrap;
+}
+
+/* 用户信息样式 */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.user-name {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.btn-logout {
+  padding: 6px 10px;
+  font-size: 16px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  background: var(--bg-secondary);
+  color: var(--up-color);
+  border-color: var(--up-color);
 }
 
 /* 标签页导航 */
@@ -563,4 +613,29 @@ body {
   padding: 20px;
   overflow-y: auto;
   flex: 1;
+}
+
+/* 收缩状态样式 */
+.main-collapsed {
+  margin-left: 0 !important;
+}
+
+.header-collapsed {
+  left: 0 !important;
+}
+
+.footer-collapsed {
+  left: 0 !important;
+}
+
+/* 模态框激活状态 */
+.modal.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal:not(.active) {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }

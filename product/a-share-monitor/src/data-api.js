@@ -513,6 +513,46 @@ function getDataSourceStatus() {
   return dataSourceStatus;
 }
 
+/**
+ * 获取主要指数数据
+ */
+async function fetchMainIndices() {
+  try {
+    // 上证指数 (sh000001), 深证成指 (sz399001), 创业板指 (sz399006), 科创 50(sh000688), 中证 500(sh000905)
+    const resp = await txApi.get('http://qt.gtimg.cn/q=sh000001,sz399001,sz399006,sh000688,sh000905');
+    const text = iconv.decode(resp.data, 'gbk');
+    const lines = text.split('\n');
+    const indices = {};
+    
+    for (const line of lines) {
+      const match = line.match(/v_(\w+)="([^"]+)"/);
+      if (match) {
+        const parts = match[2].split('~');
+        const code = match[1];
+        const name = parts[1] || '';
+        const price = parseFloat(parts[3]) || 0;
+        const prevClose = parseFloat(parts[4]) || 0;
+        const change = price - prevClose;
+        const changePercent = prevClose > 0 ? (change / prevClose * 100) : 0;
+        
+        indices[code] = {
+          code,
+          name,
+          price: price.toFixed(2),
+          prevClose: prevClose.toFixed(2),
+          change: change.toFixed(2),
+          changePercent: changePercent.toFixed(2)
+        };
+      }
+    }
+    
+    return { success: true, data: indices };
+  } catch (e) {
+    console.error('获取指数数据失败:', e.message);
+    return { success: false, message: '获取失败', data: {} };
+  }
+}
+
 module.exports = {
   fetchMarketVolume,
   fetchLimitUpSectors,
@@ -522,5 +562,6 @@ module.exports = {
   fetchIntradayData,
   fetchConvertiblesForStock,
   fetchSectorStocks,
+  fetchMainIndices,
   getDataSourceStatus
 };

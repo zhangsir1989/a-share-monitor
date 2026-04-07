@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>逐笔成交明细 - A 股实时监控</title>
+  <link rel="stylesheet" href="css/sidebar.css?v=20260406">
+  <link rel="stylesheet" href="css/style.css?v=20260404">
+  <link rel="stylesheet" href="css/tick-trade.css?v=20260409">
+</head>
+<body>
+  <div class="container">
+    <!-- 侧边栏导航 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📊 系统导航</h2>
+        <button class="btn-close-sidebar" id="close-sidebar">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="sidebar-link" data-page="home">
+          <span class="link-icon">🏠</span>
+          <span class="link-text">首页</span>
+        </a>
+        <a href="/stock" class="sidebar-link" data-page="stock">
+          <span class="link-icon">📈</span>
+          <span class="link-text">证券行情</span>
+        </a>
+        <a href="/custom" class="sidebar-link" data-page="custom">
+          <span class="link-icon">⭐</span>
+          <span class="link-text">自定义</span>
+        </a>
+        <a href="/data-manager" class="sidebar-link" data-page="data-manager" data-requires-admin="true">
+          <span class="link-icon">🗄️</span>
+          <span class="link-text">数据管理</span>
+        </a>
+        <a href="/system" class="sidebar-link" data-page="system" data-requires-admin="true">
+          <span class="link-icon">⚙️</span>
+          <span class="link-text">系统管理</span>
+        </a>
+        <a href="/users" class="sidebar-link" data-page="users" data-requires-admin="true">
+          <span class="link-icon">👥</span>
+          <span class="link-text">用户管理</span>
+        </a>
+        <a href="/change-password" class="sidebar-link" data-page="change-password" data-requires-user="true">
+          <span class="link-icon">🔑</span>
+          <span class="link-text">修改密码</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <span class="user-avatar">👤</span>
+          <span class="user-display-name" id="sidebar-username">--</span>
+        </div>
+        <button class="btn-logout-sidebar" id="sidebar-logout-btn" title="退出登录">
+          🚪 退出登录
+        </button>
+      </div>
+    </aside>
+
+    <!-- 二级侧边栏 -->
+    <aside class="sub-sidebar" id="sub-sidebar">
+      <div class="sub-sidebar-header">
+        <h3>🗄️ 数据管理</h3>
+      </div>
+      <nav class="sub-sidebar-nav">
+        <a href="/data-manager" class="sub-sidebar-link">
+          <span class="link-icon">👥</span>
+          <span class="link-text">用户数据管理</span>
+        </a>
+        <a href="/data-manager" class="sub-sidebar-link">
+          <span class="link-icon">⭐</span>
+          <span class="link-text">自选股数据</span>
+        </a>
+        <a href="/securities" class="sub-sidebar-link">
+          <span class="link-icon">📊</span>
+          <span class="link-text">证券信息</span>
+        </a>
+        <a href="/tick-trade" class="sub-sidebar-link active">
+          <span class="link-icon">📝</span>
+          <span class="link-text">逐笔成交明细</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- 顶部导航 -->
+    <header class="header">
+      <div class="header-left">
+        <button class="btn-menu-toggle" id="menu-toggle">☰</button>
+        
+        <h1>📝 逐笔成交明细</h1>
+      </div>
+      <div class="header-controls">
+        <button class="btn btn-primary" id="btn-sync" disabled>🔄 同步逐笔</button>
+        <button class="btn btn-danger" id="btn-clear">🗑️ 清空</button>
+        <a href="/" class="btn">🏠 首页</a>
+      </div>
+    </header>
+
+    <!-- 同步进度条 -->
+    <div id="sync-progress-container" class="progress-container" style="display: none;">
+      <div class="progress-header">
+        <span class="progress-title">🔄 正在同步逐笔成交数据...</span>
+        <span class="progress-percent" id="sync-percent">0%</span>
+      </div>
+      <div class="progress-bar">
+      <div class="progress-bar">
+        <div class="progress-fill" id="sync-progress-fill"></div>
+      </div>
+      <div class="progress-info">
+        <span>已同步：<span id="sync-current">0</span> / <span id="sync-total">0</span> 只证券</span>
+        <span>成交记录：<span id="sync-records">0</span> 条</span>
+        <span>耗时：<span id="sync-duration">0</span>秒</span>
+      </div>
+    </div>
+
+    <!-- 主内容区 -->
+    </header>
+
+    <!-- 进度条切换按钮（固定右下角） -->
+    <button class="btn-progress-toggle" id="btn-progress-toggle" title="隐藏/显示进度">👁️</button>
+    
+    <!-- 主内容区 -->
+    <main class="main-content">
+      <!-- 统计卡片 -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="total-count">--</div>
+          <div class="stat-label">总记录数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="sh-count">--</div>
+          <div class="stat-label">沪市</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="sz-count">--</div>
+          <div class="stat-label">深市</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="buy-count">--</div>
+          <div class="stat-label">主动买</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="sell-count">--</div>
+          <div class="stat-label">主动卖</div>
+        </div>
+      </div>
+
+      <!-- 查询条件 -->
+      <div class="search-bar">
+        <div class="search-group">
+          <label>业务日期：</label>
+          <input type="date" id="trade-date" class="form-input">
+        </div>
+        
+        <div class="search-group">
+          <label>证券代码：</label>
+          <input type="text" id="symbol" class="form-input" placeholder="输入代码或名称">
+        </div>
+        
+        <div class="search-group">
+          <label>市场：</label>
+          <select id="market" class="form-input">
+            <option value="">全部</option>
+            <option value="SH">沪市</option>
+            <option value="SZ">深市</option>
+          </select>
+        </div>
+        
+        <div class="search-group">
+          <label>时间范围：</label>
+          <input type="time" id="time-start" class="form-input">
+          <span style="margin: 0 5px;">~</span>
+          <input type="time" id="time-end" class="form-input">
+        </div>
+        
+        <div class="search-group">
+          <label>成交方向：</label>
+          <select id="direction" class="form-input">
+            <option value="">全部</option>
+            <option value="B">B 主动买</option>
+            <option value="S">S 主动卖</option>
+            <option value="N">N 中性</option>
+          </select>
+        </div>
+        
+        <div class="search-group">
+          <label>价格范围：</label>
+          <input type="number" id="price-min" class="form-input" placeholder="最低价" style="width: 80px;">
+          <span style="margin: 0 5px;">~</span>
+          <input type="number" id="price-max" class="form-input" placeholder="最高价" style="width: 80px;">
+        </div>
+        
+        <div class="search-group">
+          <label>成交量：</label>
+          <input type="number" id="volume-min" class="form-input" placeholder="最小" style="width: 80px;">
+          <span style="margin: 0 5px;">~</span>
+          <input type="number" id="volume-max" class="form-input" placeholder="最大" style="width: 80px;">
+        </div>
+        
+        <div class="search-group">
+          <label>成交额：</label>
+          <input type="number" id="amount-min" class="form-input" placeholder="最小" style="width: 80px;">
+          <span style="margin: 0 5px;">~</span>
+          <input type="number" id="amount-max" class="form-input" placeholder="最大" style="width: 80px;">
+        </div>
+        
+        <div class="search-group">
+          <button class="btn btn-primary" id="btn-search">🔍 查询</button>
+          <button class="btn" id="btn-reset">🔄 重置</button>
+        </div>
+      </div>
+
+      <!-- 数据表格 -->
+      <div class="card">
+        <div class="card-body">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th width="100">业务日期</th>
+                <th width="100">证券代码</th>
+                <th width="120">证券名称</th>
+                <th width="60">市场</th>
+                <th width="120">成交时间</th>
+                <th width="80">成交价</th>
+                <th width="100">成交量</th>
+                <th width="120">成交额</th>
+                <th width="80">方向</th>
+              </tr>
+            </thead>
+            <tbody id="tick-trade-table">
+              <tr><td colspan="9" class="loading">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 分页 -->
+      <div class="pagination">
+        <div class="pagination-left">
+          <span>每页显示：</span>
+          <select id="page-size" class="form-input" style="width: 80px;">
+            <option value="10">10 条</option>
+            <option value="20" selected>20 条</option>
+            <option value="50">50 条</option>
+            <option value="100">100 条</option>
+            <option value="200">200 条</option>
+          </select>
+        </div>
+        <span id="page-info">共 0 条</span>
+        <div class="pagination-btns">
+          <button class="btn-sm" id="btn-prev" disabled>◀ 上一页</button>
+          <span id="page-num">1</span>
+          <button class="btn-sm" id="btn-next" disabled>下一页 ▶</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+      <span>逐笔成交明细</span>
+      <span>版权所有：营长</span>
+    </footer>
+  </div>
+
+  <script src="js/sidebar.js?v=20260406"></script>
+  <script src="js/tick-trade.js?v=20260409"></script>
+</body>
+</html>

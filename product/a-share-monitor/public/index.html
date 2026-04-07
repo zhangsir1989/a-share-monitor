@@ -7,14 +7,64 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>A 股实时监控</title>
-  <link rel="stylesheet" href="css/style.css?v=202604020235"
+  <link rel="stylesheet" href="css/style.css?v=20260405">
+  <link rel="stylesheet" href="css/sidebar.css?v=20260405">
 </head>
 <body>
   <div class="container">
+    <!-- 侧边栏导航 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📊 系统导航</h2>
+        <button class="btn-close-sidebar" id="close-sidebar">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="sidebar-link active" data-page="home">
+          <span class="link-icon">🏠</span>
+          <span class="link-text">首页</span>
+        </a>
+        <a href="/stock" class="sidebar-link" data-page="stock">
+          <span class="link-icon">📈</span>
+          <span class="link-text">证券行情</span>
+        </a>
+        <a href="/custom" class="sidebar-link" data-page="custom">
+          <span class="link-icon">⭐</span>
+          <span class="link-text">自定义</span>
+        </a>
+        <a href="/data-manager" class="sidebar-link" data-page="data-manager" data-requires-admin="true">
+          <span class="link-icon">🗄️</span>
+          <span class="link-text">数据管理</span>
+        </a>
+        <a href="/system" class="sidebar-link" data-page="system" data-requires-admin="true">
+          <span class="link-icon">⚙️</span>
+          <span class="link-text">系统管理</span>
+        </a>
+        <a href="/users" class="sidebar-link" data-page="users" data-requires-admin="true">
+          <span class="link-icon">👥</span>
+          <span class="link-text">用户管理</span>
+        </a>
+        <a href="/change-password" class="sidebar-link" data-page="change-password" data-requires-user="true">
+          <span class="link-icon">🔑</span>
+          <span class="link-text">修改密码</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <span class="user-avatar">👤</span>
+          <span class="user-display-name" id="sidebar-username">--</span>
+        </div>
+        <button class="btn-logout-sidebar" id="sidebar-logout-btn" title="退出登录">
+          🚪 退出登录
+        </button>
+      </div>
+    </aside>
+
     <!-- 顶部导航 -->
     <header class="header">
       <div class="header-top">
         <div class="header-left">
+          <button class="btn-menu-toggle" id="menu-toggle">☰</button>
           <h1>📊 A 股实时监控</h1>
           <div class="datetime-display">
             <span id="current-date">--</span>
@@ -26,8 +76,12 @@
           <!-- 标签页导航 -->
           <div class="tab-nav">
             <button class="tab-btn active" data-tab="home">🏠 首页</button>
-            <button class="tab-btn" data-tab="stock">📈 证券行情</button>
-            <a href="/custom" class="tab-link">⭐ 自选股</a>
+          </div>
+          
+          <!-- 用户信息 -->
+          <div class="user-info" id="user-info" style="display: none;">
+            <span class="user-name" id="user-name"></span>
+            <button class="btn btn-logout" id="logout-btn" title="退出登录">🚪</button>
           </div>
           
           <div class="refresh-control">
@@ -180,11 +234,6 @@
       </div>
     </footer>
       </div>
-      
-      <!-- 证券行情内容 -->
-      <div id="stock-tab" class="tab-pane">
-        <iframe src="/stock" frameborder="0" class="stock-frame"></iframe>
-      </div>
     </div>
   </div>
 
@@ -218,6 +267,7 @@
     </div>
   </div>
 
+  <script src="js/sidebar.js?v=20260405"></script>
   <script src="js/app.js?v=202604021140"></script>
 </body>
 </html>

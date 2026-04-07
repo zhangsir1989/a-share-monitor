@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>证券信息管理 - A 股实时监控</title>
+  <link rel="stylesheet" href="css/style.css?v=20260404">
+  <link rel="stylesheet" href="css/sidebar.css?v=20260405">
+  <link rel="stylesheet" href="css/securities.css?v=20260405">
+</head>
+<body>
+  <div class="container">
+    <!-- 侧边栏导航 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📊 系统导航</h2>
+        <button class="btn-close-sidebar" id="close-sidebar">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="sidebar-link"><span class="link-icon">🏠</span><span class="link-text">首页</span></a>
+        <a href="/stock" class="sidebar-link"><span class="link-icon">📈</span><span class="link-text">证券行情</span></a>
+        <a href="/custom" class="sidebar-link"><span class="link-icon">⭐</span><span class="link-text">自定义</span></a>
+        <a href="/data-manager" class="sidebar-link active" data-requires-admin="true"><span class="link-icon">🗄️</span><span class="link-text">数据管理</span></a>
+        <a href="/system" class="sidebar-link" data-requires-admin="true"><span class="link-icon">⚙️</span><span class="link-text">系统管理</span></a>
+        <a href="/users" class="sidebar-link" data-requires-admin="true"><span class="link-icon">👥</span><span class="link-text">用户管理</span></a>
+        <a href="/change-password" class="sidebar-link" data-requires-user="true"><span class="link-icon">🔑</span><span class="link-text">修改密码</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <span class="user-avatar">👤</span>
+          <span class="user-display-name" id="sidebar-username">--</span>
+        </div>
+        <button class="btn-logout-sidebar" id="sidebar-logout-btn">🚪 退出登录</button>
+      </div>
+    </aside>
+
+    <!-- 二级侧边栏 -->
+    <aside class="sub-sidebar" id="sub-sidebar">
+      <div class="sub-sidebar-header">
+        <h3>📊 数据管理</h3>
+      </div>
+      <nav class="sub-sidebar-nav">
+        <a href="/users" class="sub-sidebar-link" data-requires-admin="true"><span class="link-icon">👥</span><span class="link-text">用户数据</span></a>
+        <a href="/custom-data" class="sub-sidebar-link" data-requires-admin="true"><span class="link-icon">⭐</span><span class="link-text">自选股数据</span></a>
+        <a href="/securities" class="sub-sidebar-link active"><span class="link-icon">📊</span><span class="link-text">证券信息</span></a>
+        <a href="/tick-trade" class="sub-sidebar-link" data-requires-admin="true"><span class="link-icon">📝</span><span class="link-text">逐笔成交</span></a>
+      </nav>
+    </aside>
+
+    <!-- 顶部导航 -->
+    <header class="header has-sub-sidebar">
+      <div class="header-left">
+        <button class="btn-menu-toggle" id="menu-toggle">☰</button>
+        <h1>📊 证券信息管理</h1>
+      </div>
+      <div class="header-controls">
+        <button class="btn btn-primary" id="btn-sync">🔄 同步证券</button>
+        <a href="/" class="btn">🏠 首页</a>
+      </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main-content has-sub-sidebar">
+      <!-- 统计卡片 -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="total-count">--</div>
+          <div class="stat-label">证券总数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="sh-count">--</div>
+          <div class="stat-label">沪市</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="sz-count">--</div>
+          <div class="stat-label">深市</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="bj-count">--</div>
+          <div class="stat-label">北交所</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="kc-count">--</div>
+          <div class="stat-label">科创板</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="etf-count">--</div>
+          <div class="stat-label">ETF</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="fund-count">--</div>
+          <div class="stat-label">基金</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="idx-count">--</div>
+          <div class="stat-label">指数/概念</div>
+        </div>
+      </div>
+
+      <!-- 搜索栏 -->
+      <div class="search-bar">
+        <div class="search-input-wrapper" style="position: relative;">
+          <input type="text" id="search-input" class="form-input" placeholder="搜索证券代码或名称...">
+          <div id="search-suggestions" class="search-suggestions" style="display: none;"></div>
+        </div>
+        <select id="market-filter" class="form-input">
+          <option value="">全部市场</option>
+          <option value="sh">沪市</option>
+          <option value="sz">深市</option>
+          <option value="bj">北交所</option>
+          <option value="kc">科创板</option>
+          <option value="etf">ETF</option>
+          <option value="fund">基金</option>
+          <option value="idx">指数/概念</option>
+        </select>
+        <select id="page-size-select" class="form-input">
+          <option value="20">20 条/页</option>
+          <option value="50">50 条/页</option>
+          <option value="100">100 条/页</option>
+          <option value="200">200 条/页</option>
+        </select>
+        <button class="btn btn-primary" id="btn-search">🔍 查询</button>
+        <button class="btn" id="btn-reset">🔄 重置</button>
+        <button class="btn btn-danger" id="btn-clear-all">🗑️ 全部清空</button>
+      </div>
+
+      <!-- 数据表格 -->
+      <div class="card">
+        <div class="card-body">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th width="120">证券代码</th>
+                <th width="150">证券名称</th>
+                <th width="80">市场</th>
+                <th width="80">状态</th>
+                <th width="180">更新时间</th>
+              </tr>
+            </thead>
+            <tbody id="securities-table">
+              <tr><td colspan="5" class="loading">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 分页 -->
+      <div class="pagination">
+        <span id="page-info">共 0 条</span>
+        <div class="pagination-btns">
+          <button class="btn-sm" id="btn-prev" disabled>◀ 上一页</button>
+          <span id="page-num">1</span>
+          <button class="btn-sm" id="btn-next" disabled>下一页 ▶</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer footer-with-sub-sidebar">
+      <span>证券信息管理</span>
+      <span>版权所有：营长</span>
+    </footer>
+  </div>
+
+  <script src="js/sidebar.js?v=20260405"></script>
+  <script src="js/securities.js?v=202604041330"></script>
+</body>
+</html>
