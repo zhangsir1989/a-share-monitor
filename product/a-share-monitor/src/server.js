@@ -1109,7 +1109,10 @@ app.get('/api/custom-stocks/list', (req, res) => {
       return res.status(401).json({ success: false, message: '未登录' });
     }
     
-    const results = db.exec(`SELECT stock_code, stock_market, added_at FROM custom_stocks WHERE user_id = '${userId}' ORDER BY added_at DESC`);
+    // 获取 type 参数，默认为 1（自选股）
+    const type = req.query.type || '1';
+    
+    const results = db.exec(`SELECT stock_code, stock_market, added_at FROM custom_stocks WHERE user_id = '${userId}' AND type = ${type} ORDER BY added_at DESC`);
     
     if (results.length === 0) {
       return res.json({ success: true, data: [] });
@@ -1139,33 +1142,34 @@ app.post('/api/custom-stocks/add', (req, res) => {
       return res.status(401).json({ success: false, message: '请先登录' });
     }
     
-    const { stock_code, stock_market } = req.body;
+    const { stock_code, stock_market, type } = req.body;
+    const stockType = type || 1;  // 默认为自选股
     
     if (!stock_code || !stock_market) {
       console.log('⚠️ 缺少参数:', stock_code, stock_market);
       return res.status(400).json({ success: false, message: '缺少股票代码或市场' });
     }
     
-    // 检查是否已存在
-    const check = db.exec(`SELECT COUNT(*) FROM custom_stocks WHERE user_id = '${userId}' AND stock_code = '${stock_code}' AND stock_market = '${stock_market}'`);
+    // 检查是否已存在（同类型下）
+    const check = db.exec(`SELECT COUNT(*) FROM custom_stocks WHERE user_id = '${userId}' AND stock_code = '${stock_code}' AND stock_market = '${stock_market}' AND type = ${stockType}`);
     if (check[0].values[0][0] > 0) {
       console.log('⚠️ 股票已存在');
-      return res.status(400).json({ success: false, message: '该股票已在自选列表中' });
+      return res.status(400).json({ success: false, message: '该股票已在列表中' });
     }
     
-    // 添加自选股
-    db.run(`INSERT INTO custom_stocks (user_id, stock_code, stock_market) VALUES ('${userId}', '${stock_code}', '${stock_market}')`);
+    // 添加自选股/持仓
+    db.run(`INSERT INTO custom_stocks (user_id, stock_code, stock_market, type) VALUES ('${userId}', '${stock_code}', '${stock_market}', ${stockType})`);
     saveDatabase();
     
-    console.log(`✅ 用户 ${userId} 添加自选股：${stock_market}${stock_code}`);
+    console.log(`✅ 用户 ${userId} 添加${stockType === 2 ? '持仓' : '自选股'}：${stock_market}${stock_code}`);
     res.json({ success: true, message: '已添加' });
   } catch (error) {
     console.error('添加自选股失败:', error.message);
-    res.status(500).json({ success: false, message: '添加自选股失败' });
+    res.status(500).json({ success: false, message: '添加失败' });
   }
 });
 
-// 删除自选股
+// 删除自选股/持仓
 app.post('/api/custom-stocks/delete', (req, res) => {
   try {
     const userId = req.session?.userId;
@@ -1173,21 +1177,22 @@ app.post('/api/custom-stocks/delete', (req, res) => {
       return res.status(401).json({ success: false, message: '未登录' });
     }
     
-    const { stock_code, stock_market } = req.body;
+    const { stock_code, stock_market, type } = req.body;
+    const stockType = type || 1;  // 默认为自选股
     
     if (!stock_code || !stock_market) {
       return res.status(400).json({ success: false, message: '缺少股票代码或市场' });
     }
     
-    // 删除自选股
-    db.run(`DELETE FROM custom_stocks WHERE user_id = '${userId}' AND stock_code = '${stock_code}' AND stock_market = '${stock_market}'`);
+    // 删除自选股/持仓
+    db.run(`DELETE FROM custom_stocks WHERE user_id = '${userId}' AND stock_code = '${stock_code}' AND stock_market = '${stock_market}' AND type = ${stockType}`);
     saveDatabase();
     
-    console.log(`✅ 用户 ${userId} 删除自选股：${stock_market}${stock_code}`);
+    console.log(`✅ 用户 ${userId} 删除${stockType === 2 ? '持仓' : '自选股'}：${stock_market}${stock_code}`);
     res.json({ success: true, message: '已删除' });
   } catch (error) {
-    console.error('删除自选股失败:', error.message);
-    res.status(500).json({ success: false, message: '删除自选股失败' });
+    console.error('删除失败:', error.message);
+    res.status(500).json({ success: false, message: '删除失败' });
   }
 });
 

@@ -179,7 +179,7 @@ function stopAutoRefresh() {
 async function loadStocks() {
   try {
     console.log('📦 开始从数据库加载自选股...');
-    const response = await fetch('/api/custom-stocks/list');
+    const response = await fetch('/api/custom-stocks/list?type=1');
     const result = await response.json();
     console.log('📦 数据库返回:', result);
     
@@ -244,7 +244,7 @@ async function saveStockToDb(code, market) {
     const response = await fetch('/api/custom-stocks/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stock_code: code, stock_market: market })
+      body: JSON.stringify({ stock_code: code, stock_market: market, type: 1 })
     });
     const result = await response.json();
     if (!result.success) {
@@ -265,7 +265,7 @@ async function deleteStockFromDb(code, market) {
     const response = await fetch('/api/custom-stocks/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stock_code: code, stock_market: market })
+      body: JSON.stringify({ stock_code: code, stock_market: market, type: 1 })
     });
     const result = await response.json();
     return result.success;
