@@ -591,6 +591,11 @@ app.get('/custom', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/custom.html'));
 });
 
+// 持仓页面
+app.get('/positions', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/positions.html'));
+});
+
 // 证券行情页面
 app.get('/stock', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/stock.html'));
@@ -1827,6 +1832,11 @@ app.post('/api/securities/sync', async (req, res) => {
 // 自选股页面（需要登录）
 app.get('/custom', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/custom.html'));
+});
+
+// 持仓页面（需要登录）
+app.get('/positions', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/positions.html'));
 });
 
 // 数据管理页面（需要登录，管理员专用）
