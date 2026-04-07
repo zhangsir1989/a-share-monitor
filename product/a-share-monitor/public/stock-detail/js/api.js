@@ -55,26 +55,15 @@ const API = {
   },
   
   /**
-   * 获取成交明细（东方财富 API）
-   * count: 获取条数，默认 5000 条（全部数据）
+   * 获取成交明细（后端代理）
    */
-  async getTradeDetail(code, market, count = 5000) {
+  async getTradeDetail(code, market, count = 100) {
     try {
-      const secid = market === 'sh' ? `1.${code}` : `0.${code}`;
-      const url = `https://push2.eastmoney.com/api/qt/stock/details/get?secid=${secid}&pos=-1&cnt=${count}&fltt=2&invt=2&fields=f19,f20,f17,f16,f21`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0',
-          'Referer': 'https://quote.eastmoney.com/'
-        },
-        timeout: 10000
-      });
-      
+      const response = await fetch(`/api/stock/${code}/trades?count=${count}`);
       const result = await response.json();
       
-      if (result.rc === 0 && result.data && result.data.details) {
-        return { success: true, data: result.data.details };
+      if (result.success) {
+        return { success: true, data: result.data };
       }
       
       return { success: true, data: [] };
@@ -148,137 +137,18 @@ const API = {
   },
   
   /**
-   * 获取资金流向（通过逐笔成交数据计算）
-   * 使用东方财富逐笔成交接口
-   * 
-   * 资金流向计算规则（按流通股占比）：
-   * - 小单：< 0.001%
-   * - 中单：0.001% ~ 0.005%
-   * - 大单：0.005% ~ 0.02%
-   * - 特大单：> 0.02%
-   * 
-   * 注意：排除集合竞价订单（开盘 9:15-9:25 和收盘 14:57-15:00）
+   * 获取资金流向（后端计算）
    */
   async getCapitalFlow(code, market) {
     try {
-      console.log('💰 开始获取逐笔成交数据...');
+      console.log('💰 请求资金流向 API...');
+      const response = await fetch(`/api/stock/${code}/capital-flow`);
+      const result = await response.json();
       
-      // 先获取股票基本信息（获取流通市值）
-      const basicResult = await this.getStockBasic(code, market);
-      let floatMarketCap = 0;  // 流通市值（元）
-      
-      if (basicResult.success && basicResult.data) {
-        // 后端返回的是亿元，转换为元
-        floatMarketCap = (basicResult.data.floatMarketCap || 0) * 100000000;
-      }
-      
-      console.log('📊 流通市值:', floatMarketCap, '元');
-      
-      // 获取全部逐笔成交数据（5000 条）
-      const tradeResult = await this.getTradeDetail(code, market, 5000);
-      
-      console.log('📊 逐笔成交响应:', tradeResult);
-      
-      if (!tradeResult.success || !tradeResult.data || tradeResult.data.length === 0) {
-        console.warn('⚠️ 无成交数据');
-        return { success: false, message: '无成交数据' };
-      }
-      
-      console.log(`📊 获取到 ${tradeResult.data.length} 条成交记录`);
-      
-      // 初始化资金统计（单位：元）
-      const capital = {
-        superLarge: { inflow: 0, outflow: 0, count: 0 },
-        large: { inflow: 0, outflow: 0, count: 0 },
-        medium: { inflow: 0, outflow: 0, count: 0 },
-        small: { inflow: 0, outflow: 0, count: 0 }
-      };
-      
-      let validCount = 0;
-      let neutralCount = 0;
-      let callAuctionCount = 0;
-      
-      // 遍历逐笔成交数据，计算资金流向
-      tradeResult.data.forEach((trade, index) => {
-        const tradeTime = trade.f19 || '';
-        
-        // 排除集合竞价
-        if (this.isCallAuctionTime(tradeTime)) {
-          callAuctionCount++;
-          return;
-        }
-        
-        validCount++;
-        
-        // 获取成交量和价格
-        const volume = trade.f17 || 0;  // 股
-        const price = trade.f20 || 0;    // 元（已除以 100）
-        const amount = volume * price;   // 元
-        
-        // 判断订单类型（按流通股占比）
-        const orderType = this.getOrderTypeByFloatCap(amount, floatMarketCap);
-        
-        // 判断买卖方向（f21: 0=中性，1=买入，2=卖出）
-        const direction = trade.f21 || 0;
-        
-        // 统计资金
-        if (direction === 1) {
-          capital[orderType].inflow += amount;
-          capital[orderType].count++;
-        } else if (direction === 2) {
-          capital[orderType].outflow += amount;
-          capital[orderType].count++;
-        } else {
-          neutralCount++;
-        }
-      });
-      
-      console.log(`✅ 有效订单：${validCount}，中性订单：${neutralCount}，集合竞价：${callAuctionCount}`);
-      console.log('📊 资金统计（元）:', capital);
-      
-      // 转换为亿元单位
-      const toYi = (val) => val / 100000000;
-      
-      const result = {
-        success: true,
-        data: {
-          superLarge: {
-            inflow: toYi(capital.superLarge.inflow),
-            outflow: toYi(capital.superLarge.outflow),
-            net: toYi(capital.superLarge.inflow - capital.superLarge.outflow),
-            count: capital.superLarge.count
-          },
-          large: {
-            inflow: toYi(capital.large.inflow),
-            outflow: toYi(capital.large.outflow),
-            net: toYi(capital.large.inflow - capital.large.outflow),
-            count: capital.large.count
-          },
-          medium: {
-            inflow: toYi(capital.medium.inflow),
-            outflow: toYi(capital.medium.outflow),
-            net: toYi(capital.medium.inflow - capital.medium.outflow),
-            count: capital.medium.count
-          },
-          small: {
-            inflow: toYi(capital.small.inflow),
-            outflow: toYi(capital.small.outflow),
-            net: toYi(capital.small.inflow - capital.small.outflow),
-            count: capital.small.count
-          },
-          mainInflow: toYi(capital.superLarge.inflow + capital.large.inflow),
-          mainOutflow: toYi(capital.superLarge.outflow + capital.large.outflow),
-          mainNetflow: toYi(capital.superLarge.inflow + capital.large.inflow - capital.superLarge.outflow - capital.large.outflow),
-          totalVolume: validCount,
-          neutralVolume: neutralCount
-        }
-      };
-      
-      console.log('💰 资金流向计算完成（亿元）:', result.data);
+      console.log('💰 资金流向结果:', result);
       return result;
-      
     } catch (error) {
-      console.error('❌ 计算资金流向失败:', error);
+      console.error('❌ 获取资金流向失败:', error);
       return { success: false, message: error.message };
     }
   },

@@ -607,6 +607,177 @@ app.get('/api/intraday/:code', async (req, res) => {
   res.json(result);
 });
 
+// 逐笔成交 API（代理东方财富接口）
+app.get('/api/stock/:code/trades', async (req, res) => {
+  try {
+    const code = req.params.code.replace(/^(sh|sz)/, '');
+    const market = code.startsWith('6') ? '1' : '0';
+    const secid = `${market}.${code}`;
+    const count = parseInt(req.query.count) || 5000;
+    
+    const url = `https://push2.eastmoney.com/api/qt/stock/details/get?secid=${secid}&pos=-1&cnt=${count}&fltt=2&invt=2&fields=f19,f20,f17,f16,f21`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://quote.eastmoney.com/'
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.rc === 0 && result.data && result.data.details) {
+      res.json({ success: true, data: result.data.details });
+    } else {
+      res.json({ success: true, data: [] });
+    }
+  } catch (error) {
+    console.error('获取逐笔成交失败:', error.message);
+    res.status(500).json({ success: false, message: '获取逐笔成交失败' });
+  }
+});
+
+// 资金流向计算 API（使用 MyData API）
+app.get('/api/stock/:code/capital-flow', async (req, res) => {
+  try {
+    const code = req.params.code;
+    const codeNum = code.replace(/^(sh|sz|bj)/, '');
+    const market = code.startsWith('sh') ? 'sh' : (code.startsWith('bj') ? 'bj' : 'sz');
+    
+    // MyData API Licence
+    const MYDATA_LICENCE = 'FB1A859B-6832-4F70-AAA2-38274F23FC90';
+    
+    // 1. 获取股票基本信息（获取流通市值）
+    const basicResult = await fetchStockDetail(code);
+    let floatMarketCap = 0;
+    
+    if (basicResult.success && basicResult.data) {
+      floatMarketCap = (basicResult.data.floatMarketCap || 0) * 100000000; // 亿元转元
+    }
+    
+    console.log(`📊 ${code} 流通市值: ${floatMarketCap} 元`);
+    
+    // 2. 使用 MyData API 获取逐笔成交数据
+    const tradesUrl = `https://api.mairuiapi.com/hsrl/zbjy/${codeNum}/${MYDATA_LICENCE}`;
+    
+    const tradesResponse = await fetch(tradesUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!tradesResponse.ok) {
+      console.error(`❌ MyData API 请求失败: ${tradesResponse.status}`);
+      return res.json({ success: false, message: '获取成交数据失败' });
+    }
+    
+    const trades = await tradesResponse.json();
+    
+    if (!Array.isArray(trades) || trades.length === 0) {
+      console.log(`⚠️ 无逐笔成交数据`);
+      return res.json({ success: false, message: '无成交数据' });
+    }
+    
+    console.log(`📊 获取到 ${trades.length} 条逐笔成交（MyData API）`);
+    
+    // 3. 计算资金流向（MyData 字段: d=日期, t=时间, v=成交量-股, p=成交价, ts=方向）
+    const capital = {
+      superLarge: { inflow: 0, outflow: 0, count: 0 },
+      large: { inflow: 0, outflow: 0, count: 0 },
+      medium: { inflow: 0, outflow: 0, count: 0 },
+      small: { inflow: 0, outflow: 0, count: 0 }
+    };
+    
+    let validCount = 0;
+    
+    trades.forEach(trade => {
+      const time = trade.t || '';  // MyData: t 字段
+      
+      // 排除集合竞价（9:15-9:25, 14:57-15:00）
+      const match = time.match(/(\d{1,2}):(\d{2}):(\d{2})/);
+      if (match) {
+        const hour = parseInt(match[1]);
+        const minute = parseInt(match[2]);
+        if ((hour === 9 && minute >= 15 && minute <= 25) || (hour === 14 && minute >= 57)) {
+          return;
+        }
+      }
+      
+      validCount++;
+      
+      const volume = trade.v || 0;  // MyData: v 字段（成交量-股）
+      const price = trade.p || 0;    // MyData: p 字段（成交价）
+      const amount = volume * price;  // 元
+      const direction = trade.ts || 0;  // MyData: ts 字段（0中性, 1买入, 2卖出）
+      
+      // 判断订单类型（使用固定金额阈值，更符合行业惯例）
+      let orderType = 'small';
+      const amountWan = amount / 10000;  // 万元
+      
+      // 特大单：>= 100万元
+      if (amountWan >= 100) orderType = 'superLarge';
+      // 大单：20-100万元
+      else if (amountWan >= 20) orderType = 'large';
+      // 中单：5-20万元
+      else if (amountWan >= 5) orderType = 'medium';
+      // 小单：< 5万元
+      
+      // 统计资金
+      if (direction === 1) {
+        capital[orderType].inflow += amount;
+        capital[orderType].count++;
+      } else if (direction === 2) {
+        capital[orderType].outflow += amount;
+        capital[orderType].count++;
+      }
+    });
+    
+    console.log(`✅ 有效订单: ${validCount}`);
+    
+    // 转换为亿元
+    const toYi = (val) => val / 100000000;
+    
+    res.json({
+      success: true,
+      data: {
+        superLarge: {
+          inflow: toYi(capital.superLarge.inflow),
+          outflow: toYi(capital.superLarge.outflow),
+          net: toYi(capital.superLarge.inflow - capital.superLarge.outflow),
+          count: capital.superLarge.count
+        },
+        large: {
+          inflow: toYi(capital.large.inflow),
+          outflow: toYi(capital.large.outflow),
+          net: toYi(capital.large.inflow - capital.large.outflow),
+          count: capital.large.count
+        },
+        medium: {
+          inflow: toYi(capital.medium.inflow),
+          outflow: toYi(capital.medium.outflow),
+          net: toYi(capital.medium.inflow - capital.medium.outflow),
+          count: capital.medium.count
+        },
+        small: {
+          inflow: toYi(capital.small.inflow),
+          outflow: toYi(capital.small.outflow),
+          net: toYi(capital.small.inflow - capital.small.outflow),
+          count: capital.small.count
+        },
+        mainInflow: toYi(capital.superLarge.inflow + capital.large.inflow),
+        mainOutflow: toYi(capital.superLarge.outflow + capital.large.outflow),
+        mainNetflow: toYi(capital.superLarge.inflow + capital.large.inflow - capital.superLarge.outflow - capital.large.outflow),
+        totalVolume: validCount
+      }
+    });
+    
+  } catch (error) {
+    console.error('计算资金流向失败:', error.message);
+    res.status(500).json({ success: false, message: '计算资金流向失败: ' + error.message });
+  }
+});
+
 // 可转债 API
 app.get('/api/convertibles/:stockCode', async (req, res) => {
   const result = await fetchConvertiblesForStock(req.params.stockCode);
