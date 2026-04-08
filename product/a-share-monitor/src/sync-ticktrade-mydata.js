@@ -14,6 +14,27 @@ const MAX_REQUESTS_PER_MINUTE = 2999;
 let requestCount = 0;
 let lastResetTime = Date.now();
 
+// 暂停标志
+let abortFlag = false;
+
+/**
+ * 设置暂停标志
+ * @param {boolean} abort - true 表示暂停同步
+ */
+function setAbort(abort) {
+  abortFlag = abort;
+  if (abort) {
+    console.log('⏸️ 已设置暂停标志，同步将在下一次循环时停止');
+  }
+}
+
+/**
+ * 获取暂停标志状态
+ */
+function getAbortStatus() {
+  return abortFlag;
+}
+
 /**
  * 从证券信息表获取需要同步逐笔成交的证券
  * 包括：沪深 A 股（主板、创业板、科创板）、ETF、LOF、场内基金
@@ -167,6 +188,7 @@ async function syncAllTickTrade(db, onProgress) {
   const startTime = Date.now();
   requestCount = 0;  // 重置计数器
   lastResetTime = Date.now();
+  abortFlag = false;  // 重置暂停标志
   
   // 1. 获取需要同步的证券列表
   const securities = getSecuritiesForTickTrade(db);
@@ -188,6 +210,21 @@ async function syncAllTickTrade(db, onProgress) {
   console.log(`📈 开始同步 ${total} 只证券的逐笔成交数据...`);
   
   for (let i = 0; i < securities.length; i++) {
+    // 检查暂停标志
+    if (abortFlag) {
+      console.log(`⏸️ 同步已暂停，已处理 ${i} 只证券`);
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      return {
+        success: true,
+        aborted: true,
+        totalSecurities: i,
+        successCount,
+        failCount,
+        totalRecords: totalSynced,
+        apiCalls: requestCount,
+        duration,
+        message: `同步已暂停，${i} 只证券已处理，${totalSynced} 条成交记录`
+      };
     const sec = securities[i];
     
     const count = await syncSingleTickTrade(db, sec.code, sec.market);
@@ -234,5 +271,7 @@ async function syncAllTickTrade(db, onProgress) {
 module.exports = {
   syncAllTickTrade,
   syncSingleTickTrade,
-  getSecuritiesForTickTrade
+  getSecuritiesForTickTrade,
+  setAbort,
+  getAbortStatus
 };

@@ -424,6 +424,17 @@ async function handleSync() {
       return;
     }
     
+    // 调用后端暂停 API
+    try {
+      const response = await fetch('/api/tick-trade/pause', {
+        method: 'POST'
+      });
+      const result = await response.json();
+      console.log('暂停结果:', result);
+    } catch (error) {
+      console.error('暂停失败:', error);
+    }
+    
     // 停止轮询
     if (syncPollingTimer) {
       clearInterval(syncPollingTimer);

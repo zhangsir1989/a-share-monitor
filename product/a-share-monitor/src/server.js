@@ -25,6 +25,8 @@ const PORT = 3000;
 let db = null;
 let syncSecurities = null;
 let syncTickTrade = null;
+let tickTradeSetAbort = null;
+let tickTradeGetAbortStatus = null;
 const DB_PATH = path.join(__dirname, '../data/users.db');
 
 // 初始化数据库连接
@@ -43,6 +45,8 @@ async function initDatabase() {
   // 初始化逐笔成交同步函数
   const syncTickTradeModule = require('./sync-ticktrade-mydata');
   syncTickTrade = syncTickTradeModule.syncAllTickTrade;
+  tickTradeSetAbort = syncTickTradeModule.setAbort;
+  tickTradeGetAbortStatus = syncTickTradeModule.getAbortStatus;
   console.log('✅ 逐笔成交同步功能已初始化（MyData API）');
   
   // 加载并调度数据库中的定时任务
@@ -1969,6 +1973,7 @@ app.post('/api/tick-trade/sync', async (req, res) => {
           syncProgressState.records = syncResult.totalRecords;
         }
         syncProgressState.running = false;
+        saveDatabase(); // 保存到磁盘
       } catch (err) {
         console.error('❌ 逐笔成交同步失败:', err.message);
         syncProgressState.running = false;
@@ -2005,6 +2010,32 @@ app.get('/api/tick-trade/sync-progress', (req, res) => {
   } catch (error) {
     console.error('查询同步进度失败:', error.message);
     res.status(500).json({ success: false, message: '查询进度失败' });
+  }
+});
+
+// 暂停同步
+app.post('/api/tick-trade/pause', (req, res) => {
+  try {
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    if (!syncProgressState.running) {
+      return res.json({ success: true, message: '当前没有同步任务运行' });
+    }
+    
+    // 设置暂停标志
+    if (tickTradeSetAbort) {
+      tickTradeSetAbort(true);
+    }
+    syncProgressState.running = false;
+    saveDatabase(); // 保存已同步的数据
+    
+    console.log('⏸️ 用户请求暂停逐笔成交同步');
+    res.json({ success: true, message: '同步已暂停' });
+  } catch (error) {
+    console.error('暂停同步失败:', error.message);
+    res.status(500).json({ success: false, message: '暂停失败' });
   }
 });
 
@@ -2111,6 +2142,7 @@ app.post('/api/securities/sync', async (req, res) => {
     // 异步执行同步任务
     syncSecurities(db).then(result => {
       console.log('✅ 证券同步后台完成:', result);
+      saveDatabase(); // 保存到磁盘
     }).catch(err => {
       console.error('❌ 证券同步后台失败:', err.message);
     });
