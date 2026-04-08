@@ -156,25 +156,28 @@ const UI = {
     if (volumeEl) volumeEl.textContent = Utils.formatVolume(Utils.safeNum(data.volume, 0));
     
     const amountEl = document.getElementById('basic-amount');
-    if (amountEl) amountEl.textContent = Utils.formatAmount(Utils.safeNum(data.amount, 0) * 10000);
+    if (amountEl) amountEl.textContent = Utils.formatAmount(Utils.safeNum(data.amount, 0));
     
     const marketCapEl = document.getElementById('basic-market-cap');
-    if (marketCapEl) marketCapEl.textContent = Utils.formatAmount(Utils.safeNum(data.totalMarketCap, 0) * 100000000);
+    if (marketCapEl) marketCapEl.textContent = Utils.formatAmount(Utils.safeNum(data.totalMarketCap, 0) * 100000000) + '元';
     
     const floatCapEl = document.getElementById('basic-float-cap');
-    if (floatCapEl) floatCapEl.textContent = Utils.formatAmount(Utils.safeNum(data.floatMarketCap, 0) * 100000000);
+    if (floatCapEl) floatCapEl.textContent = Utils.formatAmount(Utils.safeNum(data.floatMarketCap, 0) * 100000000) + '元';
     
     // 总股本和流通股本
     const totalSharesEl = document.getElementById('basic-total-shares');
     if (totalSharesEl) {
       const totalShares = Utils.safeNum(data.totalShares, 0);
-      totalSharesEl.textContent = (totalShares / 100000000).toFixed(2) + ' 亿股';
+      // API返回的是股数，需要转换为亿股
+      const sharesInYi = totalShares / 100000000;
+      totalSharesEl.textContent = sharesInYi >= 1 ? sharesInYi.toFixed(2) + '亿股' : (totalShares / 10000).toFixed(2) + '万股';
     }
     
     const floatSharesEl = document.getElementById('basic-float-shares');
     if (floatSharesEl) {
       const floatShares = Utils.safeNum(data.floatShares, 0);
-      floatSharesEl.textContent = (floatShares / 100000000).toFixed(2) + ' 亿股';
+      const floatInYi = floatShares / 100000000;
+      floatSharesEl.textContent = floatInYi >= 1 ? floatInYi.toFixed(2) + '亿股' : (floatShares / 10000).toFixed(2) + '万股';
     }
     
     // 市盈率

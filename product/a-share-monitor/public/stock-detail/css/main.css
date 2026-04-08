@@ -313,11 +313,19 @@
 }
 
 .order-price.sell {
-  color: var(--up-color);
+  /* 卖盘颜色根据涨跌动态变化 */
 }
 
 .order-price.buy {
-  color: var(--down-color);
+  /* 买盘颜色根据涨跌动态变化 */
+}
+
+.order-price.up {
+  color: var(--up-color);  /* 涨 - 红色 */
+}
+
+.order-price.down {
+  color: var(--down-color);  /* 跌 - 绿色 */
 }
 
 .order-volume {
