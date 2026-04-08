@@ -8,7 +8,9 @@ const StockState = {
   market: '',
   refreshTimer: null,
   tradeTimer: null,
-  refreshInterval: 3000,
+  capitalTimer: null,
+  refreshInterval: 500,     // 默认刷新间隔500ms
+  refreshPaused: false,     // 刷新暂停状态
   tickTradeExpanded: false  // 逐笔成交展开状态
 };
 
@@ -47,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 加载数据
   await loadAllData();
   
-  // 启动定时刷新
+  // 启动定时刷新（默认500ms）
   startAutoRefresh();
 });
 
@@ -111,40 +113,104 @@ async function loadTickTrades() {
 // ==================== 自动刷新 ====================
 
 function startAutoRefresh() {
-  // 基本数据刷新（3 秒）
-  if (StockState.refreshTimer) {
-    clearInterval(StockState.refreshTimer);
-  }
+  // 清除所有定时器
+  stopAutoRefresh();
   
+  // 快速刷新（500ms）- 成交明细、资金流向、五档
+  StockState.tradeTimer = setInterval(() => {
+    if (!StockState.refreshPaused && Utils.isTradingTime()) {
+      loadTradeDetail();
+      loadOrderBook();
+      loadCapitalFlow();
+    }
+  }, StockState.refreshInterval);
+  
+  // 正常刷新（1秒）- 基本数据
   StockState.refreshTimer = setInterval(() => {
-    if (Utils.isTradingTime()) {
-      loadAllData();
+    if (!StockState.refreshPaused && Utils.isTradingTime()) {
+      loadBasicInfo();
     }
   }, CONFIG.REFRESH.NORMAL);
   
-  // 成交明细刷新（1 秒）
+  console.log(`✅ 自动刷新已启动（间隔: ${StockState.refreshInterval}ms）`);
+  updateRefreshStatusUI();
+}
+
+function stopAutoRefresh() {
+  if (StockState.refreshTimer) {
+    clearInterval(StockState.refreshTimer);
+    StockState.refreshTimer = null;
+  }
   if (StockState.tradeTimer) {
     clearInterval(StockState.tradeTimer);
+    StockState.tradeTimer = null;
+  }
+  if (StockState.capitalTimer) {
+    clearInterval(StockState.capitalTimer);
+    StockState.capitalTimer = null;
+  }
+}
+
+// 单独加载函数（用于刷新）
+async function loadBasicInfo() {
+  const result = await API.getStockBasic(StockState.code, StockState.market);
+  if (result.success) {
+    UI.updateBasicInfo(result.data);
+    UI.updateBasicData(result.data);
+  }
+}
+
+async function loadOrderBook() {
+  const result = await API.getOrderBook(StockState.code, StockState.market);
+  if (result.success) {
+    UI.updateOrderBook(result.data);
+  }
+}
+
+async function loadCapitalFlow() {
+  const result = await API.getCapitalFlow(StockState.code, StockState.market);
+  if (result.success && result.data) {
+    UI.updateCapitalFlow(result.data);
+  }
+}
+
+// 暂停/恢复刷新
+function toggleRefreshPause() {
+  StockState.refreshPaused = !StockState.refreshPaused;
+  updateRefreshStatusUI();
+  
+  if (StockState.refreshPaused) {
+    console.log('⏸️ 刷新已暂停');
+  } else {
+    console.log('▶️ 刷新已恢复');
+  }
+}
+
+// 更新刷新状态 UI
+function updateRefreshStatusUI() {
+  const pauseBtn = document.getElementById('btn-pause-refresh');
+  const statusEl = document.getElementById('refresh-status');
+  const intervalEl = document.getElementById('current-interval');
+  
+  if (pauseBtn) {
+    pauseBtn.textContent = StockState.refreshPaused ? '▶️ 恢复' : '⏸️ 暂停';
+    pauseBtn.className = StockState.refreshPaused ? 'btn-resume' : 'btn-pause';
   }
   
-  StockState.tradeTimer = setInterval(() => {
-    if (Utils.isTradingTime()) {
-      loadTradeDetail();
-    }
-  }, CONFIG.REFRESH.FAST);
+  if (statusEl) {
+    statusEl.textContent = StockState.refreshPaused ? '已暂停' : '运行中';
+    statusEl.className = StockState.refreshPaused ? 'status-paused' : 'status-running';
+  }
   
-  // 资金流向刷新（1 秒）
-  setInterval(async () => {
-    if (Utils.isTradingTime()) {
-      console.log('💰 刷新资金流向...');
-      const result = await API.getCapitalFlow(StockState.code, StockState.market);
-      if (result.success && result.data) {
-        UI.updateCapitalFlow(result.data);
-      }
-    }
-  }, CONFIG.REFRESH.FAST);
-  
-  console.log('✅ 自动刷新已启动（1 秒/3 秒）');
+  if (intervalEl) {
+    intervalEl.textContent = `${StockState.refreshInterval}ms`;
+  }
+}
+
+// 设置刷新间隔
+function setRefreshInterval(interval) {
+  StockState.refreshInterval = interval;
+  startAutoRefresh();
 }
 
 function startClock() {
@@ -194,7 +260,24 @@ function bindEvents() {
     });
   }
   
-  // 刷新频率切换
+  // 刷新暂停按钮
+  const btnPauseRefresh = document.getElementById('btn-pause-refresh');
+  if (btnPauseRefresh) {
+    btnPauseRefresh.addEventListener('click', toggleRefreshPause);
+  }
+  
+  // 刷新间隔选择
+  const intervalSelect = document.getElementById('refresh-interval');
+  if (intervalSelect) {
+    intervalSelect.addEventListener('change', (e) => {
+      const interval = parseInt(e.target.value);
+      if (interval >= 100) {  // 最小100ms
+        setRefreshInterval(interval);
+      }
+    });
+  }
+  
+  // 刷新频率切换（成交明细区域）
   document.querySelectorAll('.detail-tabs .tab-btn').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.detail-tabs .tab-btn').forEach(t => t.classList.remove('active'));
@@ -202,16 +285,7 @@ function bindEvents() {
       
       const interval = parseInt(tab.dataset.refresh) * 1000;
       StockState.refreshInterval = interval;
-      
-      if (StockState.tradeTimer) {
-        clearInterval(StockState.tradeTimer);
-      }
-      
-      StockState.tradeTimer = setInterval(() => {
-        if (Utils.isTradingTime()) {
-          loadTradeDetail();
-        }
-      }, interval);
+      startAutoRefresh();
     });
   });
   

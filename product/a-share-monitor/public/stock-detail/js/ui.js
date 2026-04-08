@@ -47,55 +47,68 @@ const UI = {
   },
   
   /**
-   * 更新买卖盘口
+   * 更新买卖盘口（MyData API 格式）
    */
   updateOrderBook(data) {
     const { Utils } = window;
     
-    // 卖盘（f21-f30）
-    const sellPrices = [data.f29, data.f27, data.f25, data.f23, data.f21];
-    const sellVolumes = [data.f30, data.f28, data.f26, data.f24, data.f22];
+    // 获取昨收价用于判断涨跌
+    const prevCloseEl = document.getElementById('basic-prev-close');
+    const prevClose = prevCloseEl ? parseFloat(prevCloseEl.textContent) : 0;
     
-    for (let i = 0; i < 5; i++) {
-      const priceEl = document.getElementById(`sell-${5-i}-price`);
-      const volEl = document.getElementById(`sell-${5-i}-vol`);
+    // 判断价格涨跌并返回颜色类名
+    const getPriceClass = (price) => {
+      if (!price || price === 0) return '';
+      if (prevClose > 0) {
+        return price >= prevClose ? 'up' : 'down';
+      }
+      return '';
+    };
+    
+    // 卖盘（sell1-sell5）
+    for (let i = 1; i <= 5; i++) {
+      const priceEl = document.getElementById(`sell-${i}-price`);
+      const volEl = document.getElementById(`sell-${i}-vol`);
+      
+      const sellData = data[`sell${i}`];
+      const price = sellData ? sellData.price : 0;
+      const volume = sellData ? sellData.volume : 0;
       
       if (priceEl) {
-        const price = sellPrices[i] ? (sellPrices[i] / 100).toFixed(2) : '--';
-        priceEl.textContent = price;
-        priceEl.className = 'order-price sell ' + (price !== '--' ? 'up' : '');
+        priceEl.textContent = price > 0 ? price.toFixed(2) : '--';
+        priceEl.className = 'order-price sell ' + getPriceClass(price);
       }
       
       if (volEl) {
-        volEl.textContent = sellVolumes[i] ? Utils.formatVolume(sellVolumes[i]) : '--';
+        volEl.textContent = volume > 0 ? Utils.formatVolume(volume) : '--';
       }
     }
     
-    // 买盘（f31-f40）
-    const buyPrices = [data.f31, data.f33, data.f35, data.f37, data.f39];
-    const buyVolumes = [data.f32, data.f34, data.f36, data.f38, data.f40];
-    
-    for (let i = 0; i < 5; i++) {
-      const priceEl = document.getElementById(`buy-${i+1}-price`);
-      const volEl = document.getElementById(`buy-${i+1}-vol`);
+    // 买盘（buy1-buy5）
+    for (let i = 1; i <= 5; i++) {
+      const priceEl = document.getElementById(`buy-${i}-price`);
+      const volEl = document.getElementById(`buy-${i}-vol`);
+      
+      const buyData = data[`buy${i}`];
+      const price = buyData ? buyData.price : 0;
+      const volume = buyData ? buyData.volume : 0;
       
       if (priceEl) {
-        const price = buyPrices[i] ? (buyPrices[i] / 100).toFixed(2) : '--';
-        priceEl.textContent = price;
-        priceEl.className = 'order-price buy ' + (price !== '--' ? 'down' : '');
+        priceEl.textContent = price > 0 ? price.toFixed(2) : '--';
+        priceEl.className = 'order-price buy ' + getPriceClass(price);
       }
       
       if (volEl) {
-        volEl.textContent = buyVolumes[i] ? Utils.formatVolume(buyVolumes[i]) : '--';
+        volEl.textContent = volume > 0 ? Utils.formatVolume(volume) : '--';
       }
     }
     
     // 委比
     const ratioEl = document.getElementById('order-ratio');
     if (ratioEl) {
-      const ratio = data.f116 || 0;
-      ratioEl.textContent = `委比：${ratio.toFixed(2)}%`;
-      ratioEl.style.color = ratio >= 0 ? 'var(--down-color)' : 'var(--up-color)';
+      const ratio = data.weibi || 0;
+      ratioEl.textContent = `委比：${(ratio >= 0 ? '+' : '') + ratio.toFixed(2)}%`;
+      ratioEl.style.color = ratio >= 0 ? 'var(--up-color)' : 'var(--down-color)';
     }
   },
   

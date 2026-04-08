@@ -641,6 +641,57 @@ app.get('/api/stock/:code/trades', async (req, res) => {
   }
 });
 
+// 买卖五档 API（使用 MyData API）
+app.get('/api/stock/:code/five', async (req, res) => {
+  try {
+    const code = req.params.code.replace(/^(sh|sz|bj)/, '');
+    const MYDATA_LICENCE = 'FB1A859B-6832-4F70-AAA2-38274F23FC90';
+    
+    const url = `https://api.mairuiapi.com/hsstock/real/five/${code}/${MYDATA_LICENCE}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error(`❌ MyData 五档 API 请求失败: ${response.status}`);
+      return res.json({ success: false, message: '获取五档数据失败' });
+    }
+    
+    const data = await response.json();
+    
+    if (data && data.ps && data.pb) {
+      // MyData 五档数据格式转换
+      // ps: 卖价数组 [卖1, 卖2, 卖3, 卖4, 卖5]
+      // pb: 买价数组 [买1, 买2, 买3, 买4, 买5]
+      // vs: 卖量数组 [卖1量, 卖2量, ...]
+      // vb: 买量数组 [买1量, 买2量, ...]
+      const orderBook = {
+        sell1: { price: parseFloat(data.ps[0]) || 0, volume: parseInt(data.vs[0]) || 0 },
+        sell2: { price: parseFloat(data.ps[1]) || 0, volume: parseInt(data.vs[1]) || 0 },
+        sell3: { price: parseFloat(data.ps[2]) || 0, volume: parseInt(data.vs[2]) || 0 },
+        sell4: { price: parseFloat(data.ps[3]) || 0, volume: parseInt(data.vs[3]) || 0 },
+        sell5: { price: parseFloat(data.ps[4]) || 0, volume: parseInt(data.vs[4]) || 0 },
+        buy1: { price: parseFloat(data.pb[0]) || 0, volume: parseInt(data.vb[0]) || 0 },
+        buy2: { price: parseFloat(data.pb[1]) || 0, volume: parseInt(data.vb[1]) || 0 },
+        buy3: { price: parseFloat(data.pb[2]) || 0, volume: parseInt(data.vb[2]) || 0 },
+        buy4: { price: parseFloat(data.pb[3]) || 0, volume: parseInt(data.vb[3]) || 0 },
+        buy5: { price: parseFloat(data.pb[4]) || 0, volume: parseInt(data.vb[4]) || 0 },
+        weibi: 0
+      }; 
+      res.json({ success: true, data: orderBook });
+    } else {
+      res.json({ success: false, message: '五档数据格式错误' });
+    }
+  } catch (error) {
+    console.error('获取买卖五档失败:', error.message);
+    res.status(500).json({ success: false, message: '获取买卖五档失败' });
+  }
+});
+
 // 资金流向计算 API（使用 MyData API）
 app.get('/api/stock/:code/capital-flow', async (req, res) => {
   try {

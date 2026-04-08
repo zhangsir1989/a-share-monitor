@@ -48,6 +48,20 @@
         </div>
       </div>
       <div class="header-controls">
+        <!-- 刷新控制 -->
+        <div class="refresh-control">
+          <label class="refresh-label">刷新间隔:</label>
+          <select id="refresh-interval" class="refresh-select">
+            <option value="100">100ms</option>
+            <option value="200">200ms</option>
+            <option value="500" selected>500ms</option>
+            <option value="1000">1000ms</option>
+            <option value="3000">3000ms</option>
+            <option value="5000">5000ms</option>
+          </select>
+          <span id="refresh-status" class="status-running">运行中</span>
+          <button id="btn-pause-refresh" class="btn-pause">⏸️ 暂停</button>
+        </div>
         <button class="btn btn-primary" id="btn-add-custom">⭐ 加自选</button>
         <a href="/" class="btn">🏠 首页</a>
       </div>
