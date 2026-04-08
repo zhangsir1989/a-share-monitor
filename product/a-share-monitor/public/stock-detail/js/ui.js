@@ -180,7 +180,7 @@ const UI = {
       return;
     }
     
-    // 主力资金（单位：万元）
+    // 主力资金（单位：亿元）
     const mainInflow = data.mainInflow || 0;
     const mainOutflow = data.mainOutflow || 0;
     const mainNetflow = data.mainNetflow || 0;
@@ -204,11 +204,49 @@ const UI = {
       costEl.textContent = avgCost !== '--' ? avgCost + '元' : '计算中...';
     }
     
+    // 更新资金流向详细表格
+    this.updateCapitalDetailTable(data);
+    
     // 净订单分布
     this.updateCapitalBars(data);
     
     // 更新饼图
     this.updateCapitalPie(data);
+  },
+  
+  /**
+   * 更新资金流向详细表格
+   */
+  updateCapitalDetailTable(data) {
+    const types = ['super', 'large', 'medium', 'small'];
+    const dataKeys = ['superLarge', 'large', 'medium', 'small'];
+    const typeNames = ['特大单', '大单', '中单', '小单'];
+    
+    types.forEach((type, index) => {
+      const orderData = data[dataKeys[index]];
+      
+      // 流入
+      const inflowEl = document.getElementById(`${type}-inflow`);
+      if (inflowEl) {
+        const inflow = orderData?.inflow || 0;
+        inflowEl.textContent = inflow.toFixed(4);
+      }
+      
+      // 流出
+      const outflowEl = document.getElementById(`${type}-outflow`);
+      if (outflowEl) {
+        const outflow = orderData?.outflow || 0;
+        outflowEl.textContent = outflow.toFixed(4);
+      }
+      
+      // 净流入
+      const netEl = document.getElementById(`${type}-net`);
+      if (netEl) {
+        const net = orderData?.net || 0;
+        netEl.textContent = (net >= 0 ? '+' : '') + net.toFixed(4);
+        netEl.className = 'net-val ' + (net >= 0 ? 'positive' : 'negative');
+      }
+    });
   },
   
   /**
@@ -399,6 +437,60 @@ const UI = {
     const el = document.getElementById(elementId);
     if (el) {
       el.innerHTML = `<div class="error">${message}</div>`;
+    }
+  },
+  
+  /**
+   * 更新逐笔成交表格
+   */
+  updateTickTradeTable(trades, isExpanded = false) {
+    const tbody = document.getElementById('tick-trade-tbody');
+    
+    if (!tbody) return;
+    
+    if (!trades || trades.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="loading">暂无数据</td></tr>';
+      return;
+    }
+    
+    // 订单类型名称映射
+    const orderTypeNames = {
+      'superLarge': '特大单',
+      'large': '大单',
+      'medium': '中单',
+      'small': '小单'
+    }; 
+    
+    // 方向名称映射
+    const directionNames = {
+      'buy': '买入',
+      'sell': '卖出',
+      'neutral': '中性'
+    };
+    
+    const html = trades.map(trade => {
+      const directionClass = trade.direction === 'buy' ? 'direction-buy' : 
+                             (trade.direction === 'sell' ? 'direction-sell' : 'direction-neutral');
+      const orderTypeClass = trade.orderType || 'small';
+      
+      return `<tr>
+        <td>${trade.date || '--'}</td>
+        <td>${trade.time || '--'}</td>
+        <td>${trade.volume || 0}</td>
+        <td>${(trade.price || 0).toFixed(2)}</td>
+        <td>${(trade.amount || 0).toFixed(2)}</td>
+        <td class="${directionClass}">${directionNames[trade.direction] || '--'}</td>
+        <td><span class="type-badge ${orderTypeClass}">${orderTypeNames[trade.orderType] || '小单'}</span></td>
+      </tr>`;
+    }).join('');
+    
+    tbody.innerHTML = html;
+    
+    // 更新展开按钮状态
+    const expandBtn = document.getElementById('btn-expand-tick');
+    if (expandBtn) {
+      expandBtn.textContent = isExpanded ? '收起' : '展开全部';
+      expandBtn.className = 'btn-expand' + (isExpanded ? ' expanded' : '');
     }
   }
 };

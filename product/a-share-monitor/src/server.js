@@ -711,17 +711,26 @@ app.get('/api/stock/:code/capital-flow', async (req, res) => {
       const amount = volume * price;  // 元
       const direction = trade.ts || 0;  // MyData: ts 字段（0中性, 1买入, 2卖出）
       
-      // 判断订单类型（使用固定金额阈值，更符合行业惯例）
+      // 判断订单类型（使用流通市值比例）
       let orderType = 'small';
-      const amountWan = amount / 10000;  // 万元
       
-      // 特大单：>= 100万元
-      if (amountWan >= 100) orderType = 'superLarge';
-      // 大单：20-100万元
-      else if (amountWan >= 20) orderType = 'large';
-      // 中单：5-20万元
-      else if (amountWan >= 5) orderType = 'medium';
-      // 小单：< 5万元
+      if (floatMarketCap > 0) {
+        const percentage = amount / floatMarketCap;  // 占流通市值比例
+        
+        // 特大单：> 0.02% 流通市值
+        if (percentage > 0.0002) orderType = 'superLarge';
+        // 大单：0.005% ~ 0.02% 流通市值
+        else if (percentage > 0.00005) orderType = 'large';
+        // 中单：0.001% ~ 0.005% 流通市值
+        else if (percentage > 0.00001) orderType = 'medium';
+        // 小单：< 0.001% 流通市值
+      } else {
+        // 无流通市值时，使用固定金额阈值作为降级方案
+        const amountWan = amount / 10000;  // 万元
+        if (amountWan >= 100) orderType = 'superLarge';
+        else if (amountWan >= 20) orderType = 'large';
+        else if (amountWan >= 5) orderType = 'medium';
+      }
       
       // 统计资金
       if (direction === 1) {
@@ -775,6 +784,117 @@ app.get('/api/stock/:code/capital-flow', async (req, res) => {
   } catch (error) {
     console.error('计算资金流向失败:', error.message);
     res.status(500).json({ success: false, message: '计算资金流向失败: ' + error.message });
+  }
+});
+
+// 逐笔成交 API（获取全部明细，带订单类型分类）
+app.get('/api/stock/:code/tick-trades', async (req, res) => {
+  try {
+    const code = req.params.code;
+    const codeNum = code.replace(/^(sh|sz|bj)/, '');
+    const limit = parseInt(req.query.limit) || 10;  // 默认返回10条
+    const allData = req.query.all === 'true';  // 是否返回全部数据
+    
+    // MyData API Licence
+    const MYDATA_LICENCE = 'FB1A859B-6832-4F70-AAA2-38274F23FC90';
+    
+    // 1. 获取流通市值
+    const basicResult = await fetchStockDetail(code);
+    let floatMarketCap = 0;
+    if (basicResult.success && basicResult.data) {
+      floatMarketCap = (basicResult.data.floatMarketCap || 0) * 100000000; // 亿元转元
+    }
+    
+    // 2. 使用 MyData API 获取逐笔成交数据
+    const tradesUrl = `https://api.mairuiapi.com/hsrl/zbjy/${codeNum}/${MYDATA_LICENCE}`;
+    
+    const tradesResponse = await fetch(tradesUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!tradesResponse.ok) {
+      return res.json({ success: false, message: '获取成交数据失败' });
+    }
+    
+    const trades = await tradesResponse.json();
+    
+    if (!Array.isArray(trades) || trades.length === 0) {
+      return res.json({ success: true, data: [], total: 0 });
+    }
+    
+    // 3. 处理逐笔成交数据，添加订单类型分类
+    // MyData 字段: d=日期, t=时间, v=成交量-股, p=成交价, ts=方向(0中性,1买入,2卖出)
+    const processedTrades = trades
+      .filter(trade => {
+        // 排除集合竞价时间
+        const time = trade.t || '';
+        const match = time.match(/(\d{1,2}):(\d{2}):(\d{2})/);
+        if (match) {
+          const hour = parseInt(match[1]);
+          const minute = parseInt(match[2]);
+          if ((hour === 9 && minute >= 15 && minute <= 25) || (hour === 14 && minute >= 57)) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .map(trade => {
+        const volume = trade.v || 0;
+        const price = trade.p || 0;
+        const amount = volume * price;  // 元
+        const amountWan = amount / 10000;  // 万元
+        
+        // 订单类型分类（使用流通市值比例）
+        let orderType = 'small';
+        if (floatMarketCap > 0) {
+          const percentage = amount / floatMarketCap;
+          if (percentage > 0.0002) orderType = 'superLarge';
+          else if (percentage > 0.00005) orderType = 'large';
+          else if (percentage > 0.00001) orderType = 'medium';
+        } else {
+          if (amountWan >= 100) orderType = 'superLarge';
+          else if (amountWan >= 20) orderType = 'large';
+          else if (amountWan >= 5) orderType = 'medium';
+        }
+        
+        // 方向
+        let direction = 'neutral';
+        if (trade.ts === 1) direction = 'buy';
+        else if (trade.ts === 2) direction = 'sell';
+        
+        return {
+          date: trade.d || '',
+          time: trade.t || '',
+          volume: volume,
+          price: price,
+          amount: amountWan,  // 万元
+          direction: direction,
+          orderType: orderType
+        };
+      });
+    
+    // 截止15:01的数据（按时间升序：时间从小到大）
+    const sortedTrades = processedTrades.sort((a, b) => {
+      // 按时间升序排列（小到大）
+      return (a.time || '').localeCompare(b.time || '');
+    });
+    
+    // 返回最新10条（取最后10条，因为按时间升序排列后最新的是在末尾）
+    const resultTrades = allData ? sortedTrades : sortedTrades.slice(-limit);
+    
+    res.json({
+      success: true,
+      data: resultTrades,
+      total: sortedTrades.length,
+      showing: resultTrades.length
+    });
+    
+  } catch (error) {
+    console.error('获取逐笔成交失败:', error.message);
+    res.status(500).json({ success: false, message: '获取逐笔成交失败: ' + error.message });
   }
 });
 

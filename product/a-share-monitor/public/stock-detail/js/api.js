@@ -239,6 +239,26 @@ const API = {
     }
     
     return 'small';
+  },
+  
+  /**
+   * 获取逐笔成交数据（带订单类型分类）
+   */
+  async getTickTrades(code, limit = 10, all = false) {
+    try {
+      const url = `/api/stock/${code}/tick-trades?limit=${limit}&all=${all}`;
+      const response = await fetch(url);
+      const result = await response.json();
+      
+      if (result.success) {
+        return { success: true, data: result.data, total: result.total };
+      }
+      
+      return { success: false, message: result.message || '获取逐笔成交失败' };
+    } catch (error) {
+      console.error('获取逐笔成交失败:', error);
+      return { success: false, message: '网络错误' };
+    }
   }
 };
 

@@ -6,7 +6,7 @@
   <title>个股详细 - A 股实时监控</title>
   <link rel="stylesheet" href="../css/sidebar.css?v=20260406">
   <link rel="stylesheet" href="../css/style.css?v=20260404">
-  <link rel="stylesheet" href="css/main.css?v=20260406">
+  <link rel="stylesheet" href="css/main.css?v=20260410">
 </head>
 <body>
   <div class="container">
@@ -73,7 +73,7 @@
 
       <!-- 主要数据区域 -->
       <div class="main-grid">
-        <!-- 左侧：分时图 + 盘口 -->
+        <!-- 左侧：分时走势图 -->
         <div class="left-panel">
           <!-- 分时走势图 -->
           <div class="card chart-card">
@@ -91,8 +91,10 @@
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- 买卖五档 -->
+        <!-- 中间：买卖五档 -->
+        <div class="middle-panel">
           <div class="card order-book-card">
             <div class="card-header">
               <h3>📊 买卖五档</h3>
@@ -160,21 +162,53 @@
                   </div>
                 </div>
                 
-                <!-- 资金占比图例 -->
-                <div class="pie-legend">
-                  <div class="pie-legend-item"><span class="pie-legend-color" style="background:var(--down-color)"></span>特大单</div>
-                  <div class="pie-legend-item"><span class="pie-legend-color" style="background:#c0392b"></span>大单</div>
-                  <div class="pie-legend-item"><span class="pie-legend-color" style="background:#922b21"></span>中单</div>
-                  <div class="pie-legend-item"><span class="pie-legend-color" style="background:#145a32"></span>小单</div>
+                <!-- 资金流向详细表格 -->
+                <div class="capital-detail-table">
+                  <table class="capital-table">
+                    <thead>
+                      <tr>
+                        <th>类型</th>
+                        <th>流入(亿)</th>
+                        <th>流出(亿)</th>
+                        <th>净流入(亿)</th>
+                      </tr>
+                    </thead>
+                    <tbody id="capital-detail-tbody">
+                      <tr class="super-large-row">
+                        <td><span class="type-badge super">特大单</span></td>
+                        <td class="inflow-val" id="super-inflow">--</td>
+                        <td class="outflow-val" id="super-outflow">--</td>
+                        <td class="net-val" id="super-net">--</td>
+                      </tr>
+                      <tr class="large-row">
+                        <td><span class="type-badge large">大单</span></td>
+                        <td class="inflow-val" id="large-inflow">--</td>
+                        <td class="outflow-val" id="large-outflow">--</td>
+                        <td class="net-val" id="large-net">--</td>
+                      </tr>
+                      <tr class="medium-row">
+                        <td><span class="type-badge medium">中单</span></td>
+                        <td class="inflow-val" id="medium-inflow">--</td>
+                        <td class="outflow-val" id="medium-outflow">--</td>
+                        <td class="net-val" id="medium-net">--</td>
+                      </tr>
+                      <tr class="small-row">
+                        <td><span class="type-badge small">小单</span></td>
+                        <td class="inflow-val" id="small-inflow">--</td>
+                        <td class="outflow-val" id="small-outflow">--</td>
+                        <td class="net-val" id="small-net">--</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
                 
                 <!-- 订单类型说明 -->
-                <div class="order-type-hints" style="margin-top:15px;padding-top:15px;border-top:1px solid var(--border-color);font-size:11px;color:var(--text-secondary);">
-                  <div style="margin-bottom:6px;"><span style="color:var(--down-color)">●</span> 特大单：＞0.02% 流通市值</div>
-                  <div style="margin-bottom:6px;"><span style="color:#c0392b">●</span> 大单：0.005% ~ 0.02% 流通市值</div>
-                  <div style="margin-bottom:6px;"><span style="color:#922b21">●</span> 中单：0.001% ~ 0.005% 流通市值</div>
-                  <div><span style="color:#145a32">●</span> 小单：＜0.001% 流通市值</div>
-                  <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border-color);color:var(--text-secondary);">💡 注：集合竞价（9:15-9:25, 14:57-15:00）已排除</div>
+                <div class="order-type-hints" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color);font-size:11px;color:var(--text-secondary);">
+                  <div style="margin-bottom:4px;"><span style="color:var(--up-color)">●</span> 特大单：> 0.02% 流通市值</div>
+                  <div style="margin-bottom:4px;"><span style="color:#c0392b">●</span> 大单：0.005% ~ 0.02% 流通市值</div>
+                  <div style="margin-bottom:4px;"><span style="color:#922b21">●</span> 中单：0.001% ~ 0.005% 流通市值</div>
+                  <div><span style="color:var(--down-color)">●</span> 小单：< 0.001% 流通市值</div>
+                  <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-color);color:var(--text-secondary);">注：集合竞价（9:15-9:25, 14:57-15:00）已排除</div>
                 </div>
                 
                 <!-- 净订单分布 -->
@@ -244,6 +278,33 @@
               </div>
             </div>
           </div>
+          
+          <!-- 逐笔成交（资金分析正下方） -->
+          <div class="card tick-trade-card">
+            <div class="card-header">
+              <h3>📋 逐笔成交</h3>
+              <span class="tick-trade-info">截止15:01所有明细 | 时间升序</span>
+              <button class="btn-expand" id="btn-expand-tick">展开全部</button>
+            </div>
+            <div class="card-body">
+              <table class="tick-trade-table">
+                <thead>
+                  <tr>
+                    <th width="80">日期</th>
+                    <th width="90">时间</th>
+                    <th width="80">数量</th>
+                    <th width="80">价格</th>
+                    <th width="90">金额(万)</th>
+                    <th width="70">方向</th>
+                    <th width="80">订单类型</th>
+                  </tr>
+                </thead>
+                <tbody id="tick-trade-tbody">
+                  <tr><td colspan="7" class="loading">加载中...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -286,8 +347,8 @@
   <script src="../js/sidebar.js?v=20260406"></script>
   <script src="js/config.js?v=20260406"></script>
   <script src="js/utils.js?v=20260406"></script>
-  <script src="js/api.js?v=20260409"></script>
-  <script src="js/ui.js?v=20260409"></script>
-  <script src="js/main.js?v=20260406"></script>
+  <script src="js/api.js?v=20260410"></script>
+  <script src="js/ui.js?v=20260410"></script>
+  <script src="js/main.js?v=20260410"></script>
 </body>
 </html>

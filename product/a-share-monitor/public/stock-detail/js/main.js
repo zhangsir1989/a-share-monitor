@@ -8,7 +8,8 @@ const StockState = {
   market: '',
   refreshTimer: null,
   tradeTimer: null,
-  refreshInterval: 3000
+  refreshInterval: 3000,
+  tickTradeExpanded: false  // 逐笔成交展开状态
 };
 
 // ==================== 初始化 ====================
@@ -84,6 +85,9 @@ async function loadAllData() {
   } else {
     console.warn('⚠️ 资金流向计算失败:', capitalResult.message);
   }
+  
+  // 加载逐笔成交（默认显示10条）
+  await loadTickTrades();
 }
 
 async function loadTradeDetail() {
@@ -91,6 +95,16 @@ async function loadTradeDetail() {
   if (result.success) {
     UI.updateTradeDetail(result.data);
     console.log('✅ 成交明细加载完成');
+  }
+}
+
+async function loadTickTrades() {
+  const result = await API.getTickTrades(StockState.code, 10, StockState.tickTradeExpanded);
+  if (result.success) {
+    UI.updateTickTradeTable(result.data, StockState.tickTradeExpanded);
+    console.log(`✅ 逐笔成交加载完成: ${result.data.length}条 (总共${result.total}条)`);
+  } else {
+    console.warn('⚠️ 逐笔成交加载失败:', result.message);
   }
 }
 
@@ -200,6 +214,15 @@ function bindEvents() {
       }, interval);
     });
   });
+  
+  // 逐笔成交展开/收起按钮
+  const btnExpandTick = document.getElementById('btn-expand-tick');
+  if (btnExpandTick) {
+    btnExpandTick.addEventListener('click', async () => {
+      StockState.tickTradeExpanded = !StockState.tickTradeExpanded;
+      await loadTickTrades();
+    });
+  }
 }
 
 function updatePageTitle(code) {
