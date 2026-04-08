@@ -16,8 +16,8 @@
 
 /* 指数展示区域 */
 .index-display {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 16px;
   padding-top: 16px;
@@ -28,11 +28,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 8px;
+  padding: 12px 16px;
   background: var(--bg-primary);
   border-radius: 8px;
   transition: all 0.2s;
   cursor: pointer;
+  min-width: 120px;
 }
 
 .index-item:hover {
@@ -73,7 +74,12 @@
 /* 响应式布局 */
 @media (max-width: 768px) {
   .index-display {
-    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  
+  .index-item {
+    min-width: 100px;
+    padding: 10px 12px;
   }
 }
 
@@ -279,7 +285,7 @@
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: default;
   border: 1px solid transparent;
-  min-width: 700px;
+  min-width: 600px;
   flex-wrap: nowrap;
 }
 

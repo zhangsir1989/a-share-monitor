@@ -182,13 +182,13 @@
 }
 
 .header {
-  margin-left: 240px;
-  transition: margin-left 0.3s ease;
+  /* header在container内，不需要额外margin */
+  transition: all 0.3s ease;
 }
 
 .footer {
-  margin-left: 240px;
-  transition: margin-left 0.3s ease;
+  /* footer在container内，不需要额外margin */
+  transition: all 0.3s ease;
 }
 
 /* 主侧边栏折叠时 */
@@ -443,6 +443,16 @@
   
   .sub-sidebar.open {
     transform: translateX(0);
+  }
+  
+  /* 移动端container不需要左边距，侧边栏是悬浮的 */
+  .container,
+  .container.sidebar-collapsed,
+  .container.sub-collapsed,
+  .container.sidebar-collapsed.sub-collapsed,
+  .container.no-sub-sidebar,
+  .container.no-sub-sidebar.sidebar-collapsed {
+    padding-left: 20px !important;
   }
   
   .main-content,

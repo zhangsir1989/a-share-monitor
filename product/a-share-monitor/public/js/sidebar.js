@@ -242,12 +242,20 @@ function updateSubSidebarButton(subSidebar) {
 
 // 更新布局类名
 function updateLayoutClasses() {
+  const container = document.querySelector('.container');
   const mainContent = document.querySelector('.main-content');
   const header = document.querySelector('.header');
   const footer = document.querySelector('.footer');
   const subSidebar = document.getElementById('sub-sidebar');
   
   const hasSub = subSidebar && !sidebarState.subCollapsed;
+  
+  // 更新容器
+  if (container) {
+    container.classList.toggle('sidebar-collapsed', sidebarState.mainCollapsed);
+    container.classList.toggle('sub-collapsed', sidebarState.subCollapsed);
+    container.classList.toggle('no-sub-sidebar', !subSidebar);
+  }
   
   // 更新主内容区
   if (mainContent) {
@@ -388,8 +396,11 @@ function restoreSidebarState() {
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
   initSidebar();
-  // 不再自动恢复折叠状态，默认展开所有侧边栏
-  // setTimeout(restoreSidebarState, 100);
+  // 默认展开所有侧边栏
+  setTimeout(() => {
+    // 初始化布局类名
+    updateLayoutClasses();
+  }, 100);
   console.log('✅ 侧边栏初始化完成，默认展开状态');
 });
 

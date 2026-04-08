@@ -30,6 +30,32 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
+  padding-left: 460px; /* 240px 主侧边栏 + 200px 二级侧边栏 + 20px 间距 */
+  transition: padding-left 0.3s ease;
+}
+
+/* 主侧边栏折叠时 */
+.container.sidebar-collapsed {
+  padding-left: 280px; /* 60px 主侧边栏 + 200px 二级侧边栏 + 20px */
+}
+
+/* 二级侧边栏折叠时 */
+.container.sub-collapsed {
+  padding-left: 280px; /* 240px 主侧边栏 + 20px */
+}
+
+/* 双侧边栏都折叠时 */
+.container.sidebar-collapsed.sub-collapsed {
+  padding-left: 80px; /* 60px 主侧边栏 + 20px */
+}
+
+/* 只有一级侧边栏的页面 */
+.container.no-sub-sidebar {
+  padding-left: 260px; /* 240px + 20px */
+}
+
+.container.no-sub-sidebar.sidebar-collapsed {
+  padding-left: 80px; /* 60px + 20px */
 }
 
 /* 头部样式 */
