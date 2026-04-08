@@ -264,19 +264,21 @@ async function fetchStockDetail(query) {
     
     const codeWithMarket = market + code;
     
-    // 使用 MyData API 获取实时数据
+    // 使用 MyData API 获取实时数据（券商数据源）
     const MYDATA_LICENCE = 'FB1A859B-6832-4F70-AAA2-38274F23FC90';
     const realtimeUrl = `https://api.mairuiapi.com/hsstock/real/time/${code}/${MYDATA_LICENCE}`;
     
-    const realtimeResp = await axios.get(realtimeUrl, {
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
-        'Accept': 'application/json'
-      }
-    });
+    // 同时请求网络数据源获取量比和今年涨幅
+    const ssjyUrl = `https://api.mairuiapi.com/hsrl/ssjy/${code}/${MYDATA_LICENCE}`;
+    
+    // 并行请求两个接口
+    const [realtimeResp, ssjyResp] = await Promise.all([
+      axios.get(realtimeUrl, { timeout: 10000, headers: { 'User-Agent': 'Mozilla/5.0' } }),
+      axios.get(ssjyUrl, { timeout: 10000, headers: { 'User-Agent': 'Mozilla/5.0' } })
+    ]);
     
     const realtimeData = realtimeResp.data;
+    const ssjyData = ssjyResp.data;
     
     if (!realtimeData || !realtimeData.p) {
       // 如果 MyData 失败，回退到腾讯 API
@@ -338,28 +340,6 @@ async function fetchStockDetail(query) {
       console.warn('获取财务指标失败:', e.message);
     }
     
-    // 计算今年涨幅（需要历史数据）
-    let ytdChange = '--';
-    try {
-      const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
-      const historyUrl = `https://api.mairuiapi.com/hsstock/history/${code}.${market.toUpperCase()}/d/n/${MYDATA_LICENCE}?st=${yearStart}&et=${today}`;
-      const historyResp = await axios.get(historyUrl, {
-        timeout: 5000,
-        headers: { 'User-Agent': 'Mozilla/5.0' }
-      });
-      const historyData = historyResp.data;
-      if (historyData && historyData.length > 0) {
-        const firstPrice = historyData[0].o || historyData[0].c;
-        const lastPrice = historyData[historyData.length - 1].c;
-        if (firstPrice > 0) {
-          ytdChange = ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2);
-        }
-      }
-    } catch (e) {
-      console.warn('获取历史数据失败:', e.message);
-    }
-    
     return {
       success: true,
       data: {
@@ -376,20 +356,20 @@ async function fetchStockDetail(query) {
         amount: realtimeData.cje || 0,  // 成交额
         limitUp,
         limitDown,
-        turnoverRate: (realtimeData.tr || 0).toFixed(2),
-        actualTurnover: (realtimeData.tr || 0).toFixed(2),  // 实际换手率
-        volumeRatio: '--',  // MyData API 暂无此字段
+        turnoverRate: (realtimeData.tr || ssjyData.hs || 0).toFixed(2),
+        actualTurnover: (realtimeData.tr || ssjyData.hs || 0).toFixed(2),  // 实际换手率
+        volumeRatio: (ssjyData.lb || 0).toFixed(2),  // 量比 - 从 ssjy 接口获取
         peStatic,
         peDynamic: peDynamic !== '--' ? peDynamic.toFixed(2) : '--',
         peTtm,
         pb: (realtimeData.pb_ratio || 0).toFixed(2),
-        totalMarketCap: (instrumentData.tv || 0) / 100000000,  // 总市值（亿）
-        floatMarketCap: (instrumentData.fv || 0) / 100000000,  // 流通市值（亿）
-        totalShares: instrumentData.tv || 0,  // 总股本
-        floatShares: instrumentData.fv || 0,  // 流通股本
+        totalMarketCap: (ssjyData.sz || instrumentData.tv || 0) / 100000000,  // 总市值（亿）
+        floatMarketCap: (ssjyData.lt || instrumentData.fv || 0) / 100000000,  // 流通市值（亿）
+        totalShares: (ssjyData.sz || instrumentData.tv || 0),  // 总股本
+        floatShares: (ssjyData.lt || instrumentData.fv || 0),  // 流通股本
         outerVol: '--',  // 外盘 - MyData API 暂无
         innerVol: '--',  // 内盘 - MyData API 暂无
-        ytdChange
+        ytdChange: (ssjyData.zdfnc || 0).toFixed(2)  // 今年涨幅 - 从 ssjy 接口获取
       }
     };
   } catch (e) {
