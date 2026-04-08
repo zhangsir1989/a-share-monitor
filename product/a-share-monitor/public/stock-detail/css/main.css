@@ -345,6 +345,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
 }
 
 .capital-header {
@@ -371,6 +373,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
+  min-width: 280px;
 }
 
 .capital-left {
