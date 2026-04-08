@@ -222,6 +222,7 @@
   border-radius: 12px;
   padding: 20px;
   min-height: 400px;
+  overflow-x: auto;
 }
 
 .list-header {
@@ -264,6 +265,7 @@
 .stock-list {
   display: grid;
   gap: 12px;
+  min-width: fit-content;
 }
 
 /* 股票卡片 */
@@ -277,6 +279,8 @@
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: default;
   border: 1px solid transparent;
+  min-width: 700px;
+  flex-wrap: nowrap;
 }
 
 .stock-card:hover {
