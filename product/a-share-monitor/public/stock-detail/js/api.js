@@ -233,6 +233,25 @@ const API = {
   },
 
   /**
+   * 获取分时走势数据
+   */
+  async getIntraday(code, market) {
+    try {
+      const response = await fetch(`/api/intraday/${code}`);
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        return { success: true, data: result }; 
+      }
+      
+      return { success: false, message: '获取分时数据失败' }; 
+    } catch (error) {
+      console.error('获取分时走势失败:', error);
+      return { success: false, message: '网络错误' }; 
+    }
+  },
+
+  /**
    * 获取逐笔成交数据(带订单类型分类)
    */
   async getTickTrades(code, limit = 10, all = false) {
