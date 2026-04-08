@@ -245,23 +245,165 @@ async function fetchStockDetail(query) {
     let code = query.trim();
     let market = '';
     
-    if (/^\d{6}$/.test(code)) {
-      // 指数代码判断
-      // 上证指数：000001, 000016, 000300, 000688 等（以 000 开头的指数）
-      // 深证指数：399001, 399006 等（以 399 开头）
+    if (/^(sh|sz|bj)/.test(code)) {
+      // 已带市场前缀
+      market = code.substring(0, 2);
+      code = code.substring(2);
+    } else if (/^\d{6}$/.test(code)) {
+      // 纯代码，判断市场
       if (code === '000001' || code === '000016' || code === '000300' || code.startsWith('0000')) {
-        market = 'sh';  // 上证指数
+        market = 'sh';
       } else if (code.startsWith('399')) {
-        market = 'sz';  // 深证指数
+        market = 'sz';
       } else if (code.startsWith('6') || code.startsWith('9') || code.startsWith('5')) {
-        market = 'sh';  // 上海股票/ETF
+        market = 'sh';
       } else {
-        market = 'sz';  // 深圳股票
+        market = 'sz';
       }
-      code = market + code;
     }
     
-    const resp = await txApi.get(`http://qt.gtimg.cn/q=${code}`);
+    const codeWithMarket = market + code;
+    
+    // 使用 MyData API 获取实时数据
+    const MYDATA_LICENCE = 'FB1A859B-6832-4F70-AAA2-38274F23FC90';
+    const realtimeUrl = `https://api.mairuiapi.com/hsstock/real/time/${code}/${MYDATA_LICENCE}`;
+    
+    const realtimeResp = await axios.get(realtimeUrl, {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': 'application/json'
+      }
+    });
+    
+    const realtimeData = realtimeResp.data;
+    
+    if (!realtimeData || !realtimeData.p) {
+      // 如果 MyData 失败，回退到腾讯 API
+      return await fetchStockDetailFromTencent(codeWithMarket);
+    }
+    
+    // 从 MyData API 解析数据
+    const price = realtimeData.p || 0;
+    const prevClose = realtimeData.yc || 0;
+    const change = realtimeData.ud || (price - prevClose);
+    const changePercent = realtimeData.pc || (prevClose > 0 ? ((price - prevClose) / prevClose * 100) : 0);
+    
+    // 获取股票基础信息（涨跌停价等）
+    const instrumentUrl = `https://api.mairuiapi.com/hsstock/instrument/${code}.${market.toUpperCase()}/${MYDATA_LICENCE}`;
+    let instrumentData = {};
+    try {
+      const instrumentResp = await axios.get(instrumentUrl, {
+        timeout: 5000,
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+      instrumentData = instrumentResp.data || {};
+    } catch (e) {
+      console.warn('获取股票基础信息失败:', e.message);
+    }
+    
+    // 计算涨跌停价
+    const limitUp = instrumentData.up || prevClose * 1.1;
+    const limitDown = instrumentData.dp || prevClose * 0.9;
+    
+    // 获取财务指标（市盈率等）
+    const indicatorsUrl = `https://api.mairuiapi.com/hsstock/financial/pershareindex/${code}/${MYDATA_LICENCE}`;
+    let peStatic = '--';
+    let peDynamic = realtimeData.pe || '--';
+    let peTtm = '--';
+    
+    try {
+      const indicatorsResp = await axios.get(indicatorsUrl, {
+        timeout: 5000,
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+      const indicatorsData = indicatorsResp.data;
+      if (indicatorsData && indicatorsData.length > 0) {
+        // 从最新的财务数据计算静态市盈率
+        // 静态市盈率 = 当前股价 / 上年度每股收益
+        const latestEps = indicatorsData[0].xsmgsy || indicatorsData[0].jbmgsy || 0;
+        if (latestEps > 0 && price > 0) {
+          peStatic = (price / latestEps).toFixed(2);
+        }
+        // TTM 市盈率 = 当前股价 / 最近四个季度每股收益之和
+        let ttmEps = 0;
+        for (let i = 0; i < Math.min(4, indicatorsData.length); i++) {
+          ttmEps += (indicatorsData[i].xsmgsy || indicatorsData[i].jbmgsy || 0);
+        }
+        if (ttmEps > 0 && price > 0) {
+          peTtm = (price / ttmEps).toFixed(2);
+        }
+      }
+    } catch (e) {
+      console.warn('获取财务指标失败:', e.message);
+    }
+    
+    // 计算今年涨幅（需要历史数据）
+    let ytdChange = '--';
+    try {
+      const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      const historyUrl = `https://api.mairuiapi.com/hsstock/history/${code}.${market.toUpperCase()}/d/n/${MYDATA_LICENCE}?st=${yearStart}&et=${today}`;
+      const historyResp = await axios.get(historyUrl, {
+        timeout: 5000,
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+      const historyData = historyResp.data;
+      if (historyData && historyData.length > 0) {
+        const firstPrice = historyData[0].o || historyData[0].c;
+        const lastPrice = historyData[historyData.length - 1].c;
+        if (firstPrice > 0) {
+          ytdChange = ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2);
+        }
+      }
+    } catch (e) {
+      console.warn('获取历史数据失败:', e.message);
+    }
+    
+    return {
+      success: true,
+      data: {
+        code: codeWithMarket,
+        name: instrumentData.name || '',
+        price,
+        change,
+        changePercent,
+        open: realtimeData.o || 0,
+        high: realtimeData.h || 0,
+        low: realtimeData.l || 0,
+        prevClose,
+        volume: realtimeData.pv || realtimeData.v || 0,  // 成交量（股）
+        amount: realtimeData.cje || 0,  // 成交额
+        limitUp,
+        limitDown,
+        turnoverRate: (realtimeData.tr || 0).toFixed(2),
+        actualTurnover: (realtimeData.tr || 0).toFixed(2),  // 实际换手率
+        volumeRatio: '--',  // MyData API 暂无此字段
+        peStatic,
+        peDynamic: peDynamic !== '--' ? peDynamic.toFixed(2) : '--',
+        peTtm,
+        pb: (realtimeData.pb_ratio || 0).toFixed(2),
+        totalMarketCap: (instrumentData.tv || 0) / 100000000,  // 总市值（亿）
+        floatMarketCap: (instrumentData.fv || 0) / 100000000,  // 流通市值（亿）
+        totalShares: instrumentData.tv || 0,  // 总股本
+        floatShares: instrumentData.fv || 0,  // 流通股本
+        outerVol: '--',  // 外盘 - MyData API 暂无
+        innerVol: '--',  // 内盘 - MyData API 暂无
+        ytdChange
+      }
+    };
+  } catch (e) {
+    console.error('查询个股失败:', e.message);
+    return { success: false, message: '查询失败' };
+  }
+}
+
+/**
+ * 从腾讯 API 获取股票数据（备用）
+ */
+async function fetchStockDetailFromTencent(codeWithMarket) {
+  try {
+    const resp = await txApi.get(`http://qt.gtimg.cn/q=${codeWithMarket}`);
     const text = iconv.decode(resp.data, 'gbk');
     const match = text.match(/v_\w+="([^"]+)"/);
     
@@ -271,56 +413,33 @@ async function fetchStockDetail(query) {
     const price = parseFloat(parts[3]) || 0;
     const prevClose = parseFloat(parts[4]) || 0;
     
-    // 腾讯API字段索引：
-    // [1]名称 [3]现价 [4]昨收 [5]今开 [6]成交量 [7]外盘 [8]内盘
-    // [9]买一价 [11]买二价 [13]买三价 [15]买四价 [17]买五价
-    // [19]卖一价 [21]卖二价 [23]卖三价 [25]卖四价 [27]卖五价
-    // [30]日期 [31]涨跌额 [32]涨跌幅 [33]最高 [34]最低
-    // [35]成交量手 [36]成交额万 [37]成交额万 [38]换手率 [39]振幅
-    // [42]市盈率 [43]市净率 [44]总市值 [45]流通市值 [46]涨停价 [47]跌停价
-    // [48]量比 [49]委比 [50]市销率
-    
+    // 腾讯API字段索引
     const open = parseFloat(parts[5]) || 0;
     const high = parseFloat(parts[33]) || 0;
     const low = parseFloat(parts[34]) || 0;
     const volume = parseFloat(parts[6]) || 0;
-    const amount = parseFloat(parts[37]) || 0;  // 万元
-    const turnoverRate = parseFloat(parts[38]) || 0;  // 换手率%
-    
-    // [43]市净率 [44]总市值(亿) [45]流通市值(亿)
+    const amount = parseFloat(parts[37]) || 0;
+    const turnoverRate = parseFloat(parts[38]) || 0;
+    const outerVol = parseFloat(parts[7]) || 0;  // 外盘
+    const innerVol = parseFloat(parts[8]) || 0;  // 内盘
     const pb = parseFloat(parts[43]) || 0;
     const totalMarketCap = parseFloat(parts[44]) || 0;
     const floatMarketCap = parseFloat(parts[45]) || 0;
-    
-    // [46]未知 [47]涨停价 [48]跌停价 [49]量比
     const limitUp = parseFloat(parts[47]) || 0;
     const limitDown = parseFloat(parts[48]) || 0;
     const volumeRatio = parseFloat(parts[49]) || 0;
-    
-    // 市盈率需要从其他地方获取或计算
-    // 腾讯API中 [46] 可能是某个指标，但不一定是市盈率
-    // 尝试从多个位置获取市盈率
     let pe = parseFloat(parts[46]) || 0;
-    if (pe <= 0 || pe > 1000) {
-      // 如果没有有效的市盈率，尝试从市值和价格计算
-      if (totalMarketCap > 0 && price > 0) {
-        // 这是一个粗略估计
-        pe = totalMarketCap / (price * 0.1);  // 粗略计算
-      }
-    }
     
-    // 检查涨跌停价是否有效，如果无效则计算
+    // 检查涨跌停价是否有效
     let validLimitUp = limitUp;
     let validLimitDown = limitDown;
     
     if (!validLimitUp || validLimitUp <= 0 || Math.abs(validLimitUp - prevClose) > prevClose * 0.5) {
-      // 涨停价无效，计算
-      const code6 = code.replace(/^(sh|sz|bj)/, '');
+      const code6 = codeWithMarket.replace(/^(sh|sz|bj)/, '');
       if (code6.startsWith('688') || code6.startsWith('300') || code6.startsWith('301')) {
         validLimitUp = prevClose * 1.2;
         validLimitDown = prevClose * 0.8;
       } else if (code6.startsWith('8') || code6.startsWith('4')) {
-        // 北交所30%
         validLimitUp = prevClose * 1.3;
         validLimitDown = prevClose * 0.7;
       } else {
@@ -332,7 +451,7 @@ async function fetchStockDetail(query) {
     return {
       success: true,
       data: {
-        code,
+        code: codeWithMarket,
         name: parts[1] || '',
         price,
         change: price - prevClose,
@@ -346,18 +465,23 @@ async function fetchStockDetail(query) {
         limitUp: validLimitUp,
         limitDown: validLimitDown,
         turnoverRate: turnoverRate.toFixed(2),
+        actualTurnover: turnoverRate.toFixed(2),
         volumeRatio: volumeRatio.toFixed(2),
-        pe: pe > 0 ? pe.toFixed(2) : '--',
+        peStatic: pe > 0 ? pe.toFixed(2) : '--',
+        peDynamic: pe > 0 ? pe.toFixed(2) : '--',
+        peTtm: '--',
         pb: pb > 0 ? pb.toFixed(2) : '--',
         totalMarketCap: totalMarketCap > 0 ? totalMarketCap.toFixed(2) : '--',
         floatMarketCap: floatMarketCap > 0 ? floatMarketCap.toFixed(2) : '--',
-        // 计算股本（市值/股价，单位：股）
         totalShares: (totalMarketCap > 0 && price > 0) ? Math.round(totalMarketCap * 100000000 / price) : 0,
-        floatShares: (floatMarketCap > 0 && price > 0) ? Math.round(floatMarketCap * 100000000 / price) : 0
+        floatShares: (floatMarketCap > 0 && price > 0) ? Math.round(floatMarketCap * 100000000 / price) : 0,
+        outerVol,
+        innerVol,
+        ytdChange: '--'
       }
     };
   } catch (e) {
-    console.error('查询个股失败:', e.message);
+    console.error('腾讯 API 查询个股失败:', e.message);
     return { success: false, message: '查询失败' };
   }
 }

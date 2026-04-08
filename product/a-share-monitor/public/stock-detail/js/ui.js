@@ -179,7 +179,36 @@ const UI = {
     
     // 市盈率
     const peStaticEl = document.getElementById('basic-pe-static');
-    if (peStaticEl) peStaticEl.textContent = Utils.safeNum(data.pe, 0).toFixed(2);
+    if (peStaticEl) peStaticEl.textContent = data.peStatic || '--';
+    
+    const peDynamicEl = document.getElementById('basic-pe-dynamic');
+    if (peDynamicEl) peDynamicEl.textContent = data.peDynamic || '--';
+    
+    const peTtmEl = document.getElementById('basic-pe-ttm');
+    if (peTtmEl) peTtmEl.textContent = data.peTtm || '--';
+    
+    // 外盘内盘
+    const outerEl = document.getElementById('basic-outer');
+    if (outerEl) outerEl.textContent = data.outerVol ? Utils.formatVolume(data.outerVol) : '--';
+    
+    const innerEl = document.getElementById('basic-inner');
+    if (innerEl) innerEl.textContent = data.innerVol ? Utils.formatVolume(data.innerVol) : '--';
+    
+    // 实际换手率
+    const realTurnoverEl = document.getElementById('basic-real-turnover');
+    if (realTurnoverEl) realTurnoverEl.textContent = data.actualTurnover ? data.actualTurnover + '%' : '--';
+    
+    // 今年涨幅
+    const ytdChangeEl = document.getElementById('basic-ytd-change');
+    if (ytdChangeEl) {
+      const ytd = parseFloat(data.ytdChange);
+      if (!isNaN(ytd)) {
+        ytdChangeEl.textContent = (ytd >= 0 ? '+' : '') + ytd.toFixed(2) + '%';
+        ytdChangeEl.className = 'basic-value ' + (ytd >= 0 ? 'up' : 'down');
+      } else {
+        ytdChangeEl.textContent = '--';
+      }
+    }
   },
   
   /**
