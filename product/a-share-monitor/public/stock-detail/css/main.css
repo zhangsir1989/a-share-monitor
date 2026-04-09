@@ -241,6 +241,7 @@
   position: relative;
   color: var(--text-secondary);
   padding: 10px;
+  min-width: 420px;  /* 保证最小宽度 */
 }
 
 .chart-placeholder {
