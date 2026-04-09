@@ -287,7 +287,10 @@ async function addStock(code, name, market) {
   
   // 确定市场（如果没有传入）
   if (!market) {
-    if (code.startsWith('6') || code.startsWith('9') || code.startsWith('5')) {
+    // 港股：5 位数字代码
+    if (/^\d{5}$/.test(code)) {
+      market = 'hk';
+    } else if (code.startsWith('6') || code.startsWith('9') || code.startsWith('5')) {
       market = 'sh';
     } else if (code.startsWith('0') || code.startsWith('3')) {
       market = 'sz';
@@ -557,7 +560,16 @@ function renderStockCards(prevData = {}) {
       const code = card.dataset.code;
       if (code) {
         // 判断市场
-        const market = code.startsWith('6') || code.startsWith('5') || code.startsWith('9') ? 'sh' : 'sz';
+        let market = 'sh';
+        if (/^\d{5}$/.test(code)) {
+          market = 'hk';  // 港股：5 位数字
+        } else if (code.startsWith('6') || code.startsWith('5') || code.startsWith('9')) {
+          market = 'sh';
+        } else if (code.startsWith('0') || code.startsWith('3')) {
+          market = 'sz';
+        } else if (code.startsWith('8') || code.startsWith('4')) {
+          market = 'bj';
+        }
         window.location.href = `/stock-detail/?code=${code}&market=${market}&from=positions`;
       }
     });

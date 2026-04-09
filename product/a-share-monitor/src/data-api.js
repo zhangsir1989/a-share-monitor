@@ -255,12 +255,15 @@ async function fetchStockDetail(query) {
     let code = query.trim();
     let market = '';
     
-    if (/^(sh|sz|bj)/.test(code)) {
+    if (/^(sh|sz|bj|hk)/.test(code)) {
       // 已带市场前缀
       market = code.substring(0, 2);
       code = code.substring(2);
+    } else if (/^\d{5}$/.test(code)) {
+      // 港股：5 位数字
+      market = 'hk';
     } else if (/^\d{6}$/.test(code)) {
-      // 纯代码，判断市场
+      // A 股：6 位数字
       if (code === '000001' || code === '000016' || code === '000300' || code.startsWith('0000')) {
         market = 'sh';
       } else if (code.startsWith('399')) {
