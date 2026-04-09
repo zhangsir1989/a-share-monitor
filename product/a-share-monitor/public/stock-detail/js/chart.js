@@ -1,5 +1,5 @@
 /**
- * 分时走势图渲染 - 标准版（参考同花顺/东方财富）
+ * 分时走势图渲染 - 标准版（参考同花顺）
  */
 
 const Chart = {
@@ -86,8 +86,7 @@ const Chart = {
     const height = this.canvas.height;
     
     // 布局：价格图 (315px) + 成交量 (135px) = 450px
-    // 右侧增加 padding 用于显示价格刻度
-    const padding = { top: 30, right: 70, bottom: 25, left: 55 };
+    const padding = { top: 30, right: 60, bottom: 25, left: 50 };
     const chartWidth = width - padding.left - padding.right;
     const priceChartHeight = 315;
     const volumeHeight = 135;
@@ -116,7 +115,7 @@ const Chart = {
       return padding.top + priceChartHeight - ((price - displayMin) / range) * priceChartHeight;
     };
 
-    // 1. 绘制网格
+    // 1. 绘制网格和刻度
     this.drawGrid(padding, chartWidth, priceChartHeight, displayMin, displayMax, yScale);
 
     // 2. 绘制昨收价线（0 轴）
@@ -128,7 +127,7 @@ const Chart = {
     this.drawAvgLine(padding, chartWidth, avgY);
 
     // 4. 绘制价格曲线和填充区域
-    this.drawPriceCurve(xScale, yScale, padding.top, padding.top + priceChartHeight);
+    this.drawPriceCurve(xScale, yScale);
 
     // 5. 绘制盘后数据
     if (this.afterHoursData?.length > 0) {
@@ -168,7 +167,7 @@ const Chart = {
       this.ctx.textAlign = 'right';
       this.ctx.fillText(price.toFixed(2), padding.left - 5, y + 4);
 
-      // 右侧涨跌幅标签
+      // 右侧涨跌幅标签（关键修复：显示涨跌幅%）
       const change = price - this.prevClose;
       const changePercent = (change / this.prevClose) * 100;
       const sign = change >= 0 ? '+' : '';
@@ -232,11 +231,11 @@ const Chart = {
   },
 
   /**
-   * 绘制价格曲线和填充区域（参考标准行情软件）
+   * 绘制价格曲线和填充区域
    * - 曲线：根据整体涨跌选择颜色（红涨绿跌）
    * - 填充：从价格曲线到昨收线之间的区域
    */
-  drawPriceCurve(xScale, yScale, yTop, yBottom) {
+  drawPriceCurve(xScale, yScale) {
     const lastPrice = this.stats.close;
     const isUp = lastPrice >= this.prevClose;
     const lineColor = isUp ? '#ff4d4f' : '#52c41a';
@@ -263,7 +262,7 @@ const Chart = {
     this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
 
-    // 绘制收盘价点
+    // 绘制收盘价点（带白色边框）
     const lastX = xScale(this.data.length - 1);
     const lastY = yScale(lastPrice);
     
@@ -305,22 +304,25 @@ const Chart = {
     const sign = isUp ? '+' : '';
 
     this.ctx.font = '12px Arial';
-    this.ctx.textAlign = 'left';
     
-    // 第一行：开、高
+    // 第一行：开、高、涨跌幅
     this.ctx.fillStyle = '#8b949e';
+    this.ctx.textAlign = 'left';
     this.ctx.fillText(`开 ${this.stats.open.toFixed(2)}`, x, y - 10);
-    this.ctx.fillText(`高 ${this.stats.high.toFixed(2)}`, x + chartWidth / 2 - 40, y - 10);
+    this.ctx.fillText(`高 ${this.stats.high.toFixed(2)}`, x + chartWidth / 3, y - 10);
     
-    // 第二行：低、收
-    this.ctx.fillText(`低 ${this.stats.low.toFixed(2)}`, x, y + 5);
-    this.ctx.fillText(`收 ${this.stats.close.toFixed(2)}`, x + chartWidth / 2 - 40, y + 5);
-    
-    // 涨跌幅显示在右上角
+    // 涨跌幅在右上角
     this.ctx.fillStyle = color;
     this.ctx.font = 'bold 13px Arial';
     this.ctx.textAlign = 'right';
     this.ctx.fillText(`${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`, x + chartWidth, y - 10);
+    
+    // 第二行：低、收
+    this.ctx.fillStyle = '#8b949e';
+    this.ctx.font = '12px Arial';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText(`低 ${this.stats.low.toFixed(2)}`, x, y + 5);
+    this.ctx.fillText(`收 ${this.stats.close.toFixed(2)}`, x + chartWidth / 3, y + 5);
   },
 
   /**
