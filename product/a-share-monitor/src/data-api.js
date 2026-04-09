@@ -635,8 +635,8 @@ function getDataSourceStatus() {
  */
 async function fetchMainIndices() {
   try {
-    // 上证指数 (sh000001), 深证成指 (sz399001), 创业板指 (sz399006), 科创 50(sh000688), 中证 500(sh000905)
-    const resp = await txApi.get('http://qt.gtimg.cn/q=sh000001,sz399001,sz399006,sh000688,sh000905');
+    // 上证指数 (sh000001), 深证成指 (sz399001), 创业板指 (sz399006), 科创 50(sh000688), 中证 500(sh000905), 恒生指数 (hkHSI)
+    const resp = await txApi.get('http://qt.gtimg.cn/q=sh000001,sz399001,sz399006,sh000688,sh000905,hkHSI');
     const text = iconv.decode(resp.data, 'gbk');
     const lines = text.split('\n');
     const indices = {};

@@ -958,7 +958,7 @@ async function fetchIndices() {
 
 // 更新指数显示
 function updateIndicesDisplay(indices) {
-  const indexCodes = ['sh000001', 'sz399001', 'sz399006', 'sh000688', 'sh000905'];
+  const indexCodes = ['sh000001', 'sz399001', 'sz399006', 'sh000688', 'sh000905', 'hkHSI'];
   
   indexCodes.forEach(code => {
     const indexData = indices[code];
