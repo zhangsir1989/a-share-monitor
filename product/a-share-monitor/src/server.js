@@ -385,7 +385,9 @@ app.get('/api/stocks/batch', async (req, res) => {
     // 构建查询字符串（添加市场前缀）
     const stockCodes = codeList.map(code => {
       // 已经有前缀的直接返回
-      if (code.startsWith('sh') || code.startsWith('sz') || code.startsWith('bj')) return code;
+      if (code.startsWith('sh') || code.startsWith('sz') || code.startsWith('bj') || code.startsWith('hk')) return code;
+      // 港股：5 位数字
+      if (/^\d{5}$/.test(code)) return 'hk' + code;
       // 北交所股票（以8或4开头）
       if (code.startsWith('8') || code.startsWith('4')) return 'bj' + code;
       // 上海股票/ETF/指数（6、9、5开头，以及51开头的上海ETF）
@@ -411,7 +413,7 @@ app.get('/api/stocks/batch', async (req, res) => {
         const parts = match[2].split('~');
         
         // 提取原始代码（去掉市场前缀 sh/sz/bj）
-        const code = fullCode.replace(/^(sh|sz|bj)/, '');
+        const code = fullCode.replace(/^(sh|sz|bj|hk)/, '');
         
         const price = parseFloat(parts[3]) || 0;
         const prevClose = parseFloat(parts[4]) || 0;
