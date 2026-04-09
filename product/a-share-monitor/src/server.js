@@ -504,12 +504,21 @@ app.get('/api/stock/search', async (req, res) => {
         const name = parts[2];
         const pinyin = parts[3] || '';
         
-        // 过滤：只返回 A 股（sh/sz + 6 位数字代码）
+        // A 股：sh/sz + 6 位数字
         if ((market === 'sh' || market === 'sz') && /^\d{6}$/.test(code)) {
           results.push({
             code: code,
             name: name,
             market: market,
+            pinyin: pinyin.toUpperCase()
+          });
+        }
+        // 港股：hk + 5 位数字
+        else if (market === 'hk' && /^\d{5}$/.test(code)) {
+          results.push({
+            code: code,
+            name: name,
+            market: 'hk',
             pinyin: pinyin.toUpperCase()
           });
         }
