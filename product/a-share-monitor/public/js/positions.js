@@ -558,7 +558,7 @@ function renderStockCards(prevData = {}) {
       if (code) {
         // 判断市场
         const market = code.startsWith('6') || code.startsWith('5') || code.startsWith('9') ? 'sh' : 'sz';
-        window.open(`/stock-detail/?code=${code}&market=${market}`, '_blank');
+        window.location.href = `/stock-detail/?code=${code}&market=${market}&from=positions`;
       }
     });
   });

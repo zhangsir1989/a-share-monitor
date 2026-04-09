@@ -256,7 +256,13 @@ function bindEvents() {
     btnBack.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (window.history.length > 1) {
+      
+      // 检查是否从持仓页跳转而来
+      const fromPositions = new URLSearchParams(window.location.search).get('from') === 'positions';
+      
+      if (fromPositions) {
+        window.location.href = '/positions';
+      } else if (window.history.length > 1) {
         window.history.back();
       } else {
         window.location.href = '/custom';
