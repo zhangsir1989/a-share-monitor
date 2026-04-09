@@ -17,8 +17,8 @@
 /* 指数展示区域 */
 .index-display {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(6, 1fr);  /* 6 个指数一行 */
+  gap: 8px;  /* 减小间距 */
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border-color);
@@ -28,11 +28,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 8px;
+  padding: 10px 6px;  /* 减小 padding */
   background: var(--bg-primary);
-  border-radius: 8px;
+  border-radius: 6px;
   transition: all 0.2s;
   cursor: pointer;
+  min-width: 0;  /* 允许缩小 */
 }
 
 .index-item:hover {
@@ -41,21 +42,26 @@
 }
 
 .index-name {
-  font-size: 12px;
+  font-size: 11px;  /* 减小字体 */
   color: var(--text-secondary);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
+  white-space: nowrap;  /* 不换行 */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .index-value {
-  font-size: 16px;
+  font-size: 14px;  /* 减小字体 */
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
+  white-space: nowrap;
 }
 
 .index-change {
-  font-size: 12px;
+  font-size: 11px;  /* 减小字体 */
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .index-change.up {
@@ -71,9 +77,33 @@
 }
 
 /* 响应式布局 */
+@media (max-width: 1200px) {
+  .index-display {
+    grid-template-columns: repeat(4, 1fr);  /* 中等屏幕 4 列 */
+  }
+}
+
 @media (max-width: 768px) {
   .index-display {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);  /* 小屏幕 3 列 */
+  }
+}
+
+@media (max-width: 480px) {
+  .index-display {
+    grid-template-columns: repeat(2, 1fr);  /* 超小屏幕 2 列 */
+  }
+  
+  .index-name {
+    font-size: 10px;
+  }
+  
+  .index-value {
+    font-size: 12px;
+  }
+  
+  .index-change {
+    font-size: 10px;
   }
 }
 
