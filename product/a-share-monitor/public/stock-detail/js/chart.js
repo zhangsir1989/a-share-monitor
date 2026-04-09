@@ -1,6 +1,6 @@
 /**
- * 分时走势图渲染 - 优化版
- * 修复：0 轴位置、成交量颜色、右侧价格显示、图表宽度
+ * 分时走势图渲染 - 正确版
+ * 修复：价格曲线、0 轴位置、成交量颜色
  */
 
 const Chart = {
@@ -28,7 +28,6 @@ const Chart = {
     const container = this.canvas.parentElement;
     if (!container) return;
     
-    // 增加最小宽度到 400px，让图表更宽
     let width = Math.max(container.clientWidth - 20, 400);
     let height = 450;
     
@@ -88,7 +87,6 @@ const Chart = {
     const height = this.canvas.height;
     
     // 布局：价格图 (315px) + 成交量 (135px) = 450px
-    // 右侧 padding 减小，因为不再显示价格标签
     const padding = { top: 25, right: 10, bottom: 25, left: 55 };
     const chartWidth = width - padding.left - padding.right;
     const priceChartHeight = 315;
@@ -97,23 +95,21 @@ const Chart = {
     this.ctx.clearRect(0, 0, width, height);
 
     const prices = this.data.map(d => d.price);
-    const maxPrice = Math.max(...prices, this.prevClose);
-    const minPrice = Math.min(...prices, this.prevClose);
+    const maxPrice = Math.max(...prices);
+    const minPrice = Math.min(...prices);
     
-    // 计算价格范围，确保昨收价在中间位置
-    const priceRange = maxPrice - minPrice;
-    const paddingRange = priceRange * 0.1 || 0.1; // 10% 的上下留白
+    // 关键修复：以昨收价为中心，计算对称的价格范围
+    const maxChange = Math.max(
+      Math.abs(maxPrice - this.prevClose),
+      Math.abs(minPrice - this.prevClose)
+    );
     
-    // 确保昨收价在可视范围内
-    let displayMin = Math.min(minPrice, this.prevClose) - paddingRange;
-    let displayMax = Math.max(maxPrice, this.prevClose) + paddingRange;
-    
-    // 让昨收价大致在中间位置
-    const midPrice = (displayMax + displayMin) / 2;
-    const range = (displayMax - displayMin) / 2;
-    displayMin = midPrice - range;
-    displayMax = midPrice + range;
+    // 上下各扩展 10% 的波动范围
+    const range = maxChange * 1.1 || this.prevClose * 0.01;
+    const displayMin = this.prevClose - range;
+    const displayMax = this.prevClose + range;
 
+    // 坐标转换函数
     const xScale = (i) => padding.left + (i / (this.data.length - 1)) * chartWidth;
     const yScale = (price) => {
       const range = displayMax - displayMin || 0.01;
@@ -123,7 +119,7 @@ const Chart = {
     // 1. 绘制网格和价格刻度（左侧）
     this.drawGrid(padding, chartWidth, priceChartHeight, displayMin, displayMax);
 
-    // 2. 绘制昨收价线（0 轴）
+    // 2. 绘制昨收价线（0 轴）- 在正中间
     const prevCloseY = yScale(this.prevClose);
     this.drawPrevCloseLine(padding, chartWidth, prevCloseY);
 
@@ -154,7 +150,7 @@ const Chart = {
     this.ctx.strokeStyle = '#30363d';
     this.ctx.lineWidth = 0.5;
 
-    // 绘制 5 条横线（价格刻度）
+    // 绘制 5 条横线（价格刻度），均匀分布
     const lines = 5;
     for (let i = 0; i <= lines; i++) {
       const y = padding.top + (i / lines) * priceChartHeight;
@@ -232,7 +228,7 @@ const Chart = {
     const areaColor = isUp ? 'rgba(255, 77, 79, 0.08)' : 'rgba(82, 196, 26, 0.08)';
     const lineColor = isUp ? '#ff4d4f' : '#52c41a';
 
-    // 绘制填充区域
+    // 绘制填充区域（从昨收价到价格曲线）
     this.ctx.beginPath();
     this.ctx.moveTo(xScale(0), yScale(this.prevClose));
     for (let i = 0; i < this.data.length; i++) {
@@ -243,15 +239,16 @@ const Chart = {
     this.ctx.fillStyle = areaColor;
     this.ctx.fill();
 
-    // 绘制曲线 - 分段着色（每段根据该点价格相对昨收的涨跌）
+    // 绘制曲线 - 分段着色（每段根据起点价格相对昨收的涨跌）
     this.ctx.lineWidth = 1.5;
     for (let i = 0; i < this.data.length - 1; i++) {
       const price = this.data[i].price;
+      const nextPrice = this.data[i + 1].price;
       const segmentUp = price >= this.prevClose;
       
       this.ctx.beginPath();
       this.ctx.moveTo(xScale(i), yScale(price));
-      this.ctx.lineTo(xScale(i + 1), yScale(this.data[i + 1].price));
+      this.ctx.lineTo(xScale(i + 1), yScale(nextPrice));
       this.ctx.strokeStyle = segmentUp ? '#ff4d4f' : '#52c41a';
       this.ctx.stroke();
     }
@@ -318,7 +315,7 @@ const Chart = {
 
   /**
    * 绘制成交量柱状图 - 正确的颜色（红涨绿跌）
-   * 颜色根据该时刻价格相对昨收的涨跌，不是相对开盘
+   * 颜色根据该时刻价格相对昨收的涨跌
    */
   drawVolumeBarCorrect(padding, chartWidth, volumeHeight, yBase) {
     const volumes = this.data.map(d => d.volume || 0);
