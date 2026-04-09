@@ -9,6 +9,7 @@ const Chart = {
   data: null,
   prevClose: 0,
   stats: null,  // 统计信息
+  afterHoursData: null,  // 盘后数据
 
   /**
    * 初始化图表
@@ -40,8 +41,8 @@ const Chart = {
     if (!container) return;
     
     // 确保容器有有效尺寸
-    let width = Math.max(container.clientWidth - 20, 200);
-    let height = 350;  // 增加高度到350px
+    let width = Math.max(container.clientWidth - 20, 300);  // 最小宽度 300px
+    let height = 450;  // 增加高度到 450px，让图表更清晰
     
     // 如果容器宽度为 0，等待下一帧重新计算
     if (container.clientWidth <= 20) {
@@ -69,10 +70,20 @@ const Chart = {
       return;
     }
 
-    this.data = responseData.data;
+    // 分离盘中数据和盘后数据
+    this.data = responseData.data.filter(d => {
+      const time = d.time;
+      return time >= '09:30' && time <= '15:00';
+    });
+    
+    this.afterHoursData = responseData.data.filter(d => {
+      const time = d.time;
+      return time > '15:00';
+    });
+    
     this.prevClose = responseData.prevClose || this.data[0]?.prevClose || 0;
     
-    // 计算统计信息
+    // 计算统计信息（仅盘中数据）
     this.calculateStats();
     
     this.draw();
@@ -120,16 +131,16 @@ const Chart = {
     const width = this.canvas.width;
     const height = this.canvas.height;
     
-    // 布局：价格图 (245px) + 成交量 (105px) = 350px，比例约 7:3
+    // 布局：价格图 (315px) + 成交量 (135px) = 450px，比例约 7:3
     const padding = { top: 25, right: 65, bottom: 25, left: 55 };
     const chartWidth = width - padding.left - padding.right;
-    const priceChartHeight = 245;  // 价格图高度 (70%)
-    const volumeHeight = 105;      // 成交量高度 (30%)
+    const priceChartHeight = 315;  // 价格图高度 (70%)
+    const volumeHeight = 135;      // 成交量高度 (30%)
 
     // 清空画布
     this.ctx.clearRect(0, 0, width, height);
 
-    // 获取价格范围
+    // 获取价格范围（仅盘中数据）
     const prices = this.data.map(d => d.price);
     const maxPrice = Math.max(...prices, this.prevClose);
     const minPrice = Math.min(...prices, this.prevClose);
@@ -155,13 +166,18 @@ const Chart = {
     // 绘制均价线
     this.drawAvgLine(padding, chartWidth, yScale(this.stats.avgPrice), this.stats.avgPrice);
 
-    // 绘制价格曲线
+    // 绘制价格曲线（仅盘中）
     this.drawPriceLine(xScale, yScale);
+
+    // 绘制盘后数据（如果有）
+    if (this.afterHoursData && this.afterHoursData.length > 0) {
+      this.drawAfterHoursData(xScale, yScale, padding.top, padding.top + priceChartHeight);
+    }
 
     // 绘制统计信息
     this.drawStats(padding.left, padding.top, chartWidth);
 
-    // 绘制成交量柱状图
+    // 绘制成交量柱状图（仅盘中）
     const volumeYBase = padding.top + priceChartHeight + 5;
     this.drawVolumeBar(padding, chartWidth, volumeHeight, volumeYBase);
 
@@ -270,7 +286,7 @@ const Chart = {
    * 绘制价格曲线
    */
   drawPriceLine(xScale, yScale) {
-    const lastPrice = this.data[this.data.length - 1].price;
+    const lastPrice = this.stats.close;  // 使用收盘价（15:00 的价格）
     const isUp = lastPrice >= this.prevClose;
     const color = isUp ? '#ff4d4f' : '#52c41a';
 
@@ -300,20 +316,60 @@ const Chart = {
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
 
-    // 绘制当前价格点
+    // 绘制收盘价点（15:00）
     const lastX = xScale(this.data.length - 1);
     const lastY = yScale(lastPrice);
     
     this.ctx.beginPath();
-    this.ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+    this.ctx.arc(lastX, lastY, 5, 0, Math.PI * 2);
     this.ctx.fillStyle = color;
     this.ctx.fill();
+    this.ctx.strokeStyle = '#fff';
+    this.ctx.lineWidth = 2;
+    this.ctx.stroke();
     
-    // 当前价格标签
+    // 收盘价标签
     this.ctx.fillStyle = color;
     this.ctx.font = 'bold 12px Arial';
     this.ctx.textAlign = 'left';
-    this.ctx.fillText(lastPrice.toFixed(2), lastX + 10, lastY);
+    this.ctx.fillText(lastPrice.toFixed(2) + ' (收盘)', lastX + 10, lastY);
+  },
+
+  /**
+   * 绘制盘后数据（如果有）
+   */
+  drawAfterHoursData(xScale, yScale, yTop, yBottom) {
+    if (!this.afterHoursData || this.afterHoursData.length === 0) return;
+    
+    this.ctx.strokeStyle = '#1890ff';
+    this.ctx.lineWidth = 2;
+    this.ctx.setLineDash([5, 5]);
+    
+    this.ctx.beginPath();
+    
+    // 从 15:00 的收盘价开始
+    const closePrice = this.stats.close;
+    const lastIntradayX = xScale(this.data.length - 1);
+    const closeY = yScale(closePrice);
+    
+    this.ctx.moveTo(lastIntradayX, closeY);
+    
+    // 绘制盘后数据点
+    for (const d of this.afterHoursData) {
+      // 盘后数据在 15:00 右侧延伸
+      const extraX = lastIntradayX + 30;  // 向右延伸 30px
+      const y = yScale(d.price);
+      this.ctx.lineTo(extraX, y);
+    }
+    
+    this.ctx.stroke();
+    this.ctx.setLineDash([]);
+    
+    // 盘后数据标签
+    this.ctx.fillStyle = '#1890ff';
+    this.ctx.font = '11px Arial';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText('盘后', lastIntradayX + 35, yScale(this.afterHoursData[this.afterHoursData.length - 1]?.price || closePrice));
   },
 
   /**
