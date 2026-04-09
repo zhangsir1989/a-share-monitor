@@ -1,5 +1,6 @@
 /**
- * 分时走势图渲染 - 完全匹配参考图
+ * 分时走势图渲染 - 正确逻辑版
+ * 填充区域：0 轴上方红色，下方绿色（根据每个时刻价格相对昨收）
  */
 
 const Chart = {
@@ -126,22 +127,25 @@ const Chart = {
     const avgY = yScale(this.stats.avgPrice);
     this.drawAvgLine(padding, chartWidth, avgY);
 
-    // 4. 绘制价格曲线和填充区域
-    this.drawPriceCurve(xScale, yScale);
+    // 4. 绘制填充区域（关键修复：0 轴上方红色，下方绿色）
+    this.drawAreaFill(xScale, yScale, prevCloseY);
 
-    // 5. 绘制盘后数据
+    // 5. 绘制价格曲线（单色线）
+    this.drawPriceLine(xScale, yScale);
+
+    // 6. 绘制盘后数据
     if (this.afterHoursData?.length > 0) {
       this.drawAfterHoursData(xScale, yScale, this.stats.close);
     }
 
-    // 6. 绘制统计信息（顶部）
+    // 7. 绘制统计信息（顶部）
     this.drawStats(padding.left, padding.top, chartWidth);
 
-    // 7. 绘制成交量（红涨绿跌）
+    // 8. 绘制成交量（红涨绿跌）
     const volumeYBase = padding.top + priceChartHeight + 5;
     this.drawVolumeBar(padding, chartWidth, volumeHeight, volumeYBase);
 
-    // 8. 绘制时间轴
+    // 9. 绘制时间轴
     this.drawTimeAxis(padding, chartWidth, volumeYBase + volumeHeight + 5);
   },
 
@@ -160,7 +164,7 @@ const Chart = {
       this.ctx.lineTo(padding.left + chartWidth, y);
       this.ctx.stroke();
 
-      // 左侧价格标签（关键修复：根据相对昨收价位置显示颜色）
+      // 左侧价格标签（根据相对昨收价位置显示颜色）
       const price = priceMax - (i / lines) * (priceMax - priceMin);
       const isAbovePrevClose = price >= this.prevClose;
       
@@ -233,26 +237,16 @@ const Chart = {
   },
 
   /**
-   * 绘制价格曲线和填充区域
+   * 绘制填充区域 - 关键修复
+   * 逻辑：0 轴（昨收价）上方填充红色，下方填充绿色
+   * 遍历每个数据点，判断其相对昨收价的位置，分别填充
    */
-  drawPriceCurve(xScale, yScale) {
+  drawAreaFill(xScale, yScale, prevCloseY) {
     const lastPrice = this.stats.close;
     const isUp = lastPrice >= this.prevClose;
     const lineColor = isUp ? '#ff4d4f' : '#52c41a';
-    const areaColor = isUp ? 'rgba(255, 77, 79, 0.15)' : 'rgba(82, 196, 26, 0.15)';
 
-    // 绘制填充区域（从价格曲线到昨收线）
-    this.ctx.beginPath();
-    this.ctx.moveTo(xScale(0), yScale(this.prevClose));
-    for (let i = 0; i < this.data.length; i++) {
-      this.ctx.lineTo(xScale(i), yScale(this.data[i].price));
-    }
-    this.ctx.lineTo(xScale(this.data.length - 1), yScale(this.prevClose));
-    this.ctx.closePath();
-    this.ctx.fillStyle = areaColor;
-    this.ctx.fill();
-
-    // 绘制价格曲线（单色，根据整体涨跌）
+    // 绘制价格曲线（单色线，根据整体涨跌）
     this.ctx.beginPath();
     this.ctx.moveTo(xScale(0), yScale(this.data[0].price));
     for (let i = 1; i < this.data.length; i++) {
@@ -262,30 +256,87 @@ const Chart = {
     this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
 
-    // 绘制收盘价点（白色圆点 + 红色边框）
-    const lastX = xScale(this.data.length - 1);
-    const lastY = yScale(lastPrice);
-    
-    // 白色填充
-    this.ctx.beginPath();
-    this.ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
-    this.ctx.fillStyle = '#fff';
-    this.ctx.fill();
-    
-    // 彩色边框
-    this.ctx.strokeStyle = lineColor;
-    this.ctx.lineWidth = 2;
-    this.ctx.stroke();
-    
-    // 右侧显示收盘涨跌幅
-    const change = lastPrice - this.prevClose;
-    const changePercent = (change / this.prevClose) * 100;
-    const sign = change >= 0 ? '+' : '';
-    
-    this.ctx.fillStyle = lineColor;
-    this.ctx.font = '10px Arial';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(`${sign}${changePercent.toFixed(2)}%`, lastX + 10, lastY);
+    // 填充区域：遍历每个线段，判断在 0 轴上方还是下方
+    for (let i = 0; i < this.data.length - 1; i++) {
+      const price1 = this.data[i].price;
+      const price2 = this.data[i + 1].price;
+      const x1 = xScale(i);
+      const x2 = xScale(i + 1);
+      const y1 = yScale(price1);
+      const y2 = yScale(price2);
+
+      // 判断这个线段是在 0 轴上方还是下方
+      const isAbove1 = price1 >= this.prevClose;
+      const isAbove2 = price2 >= this.prevClose;
+
+      if (isAbove1 && isAbove2) {
+        // 整个线段在 0 轴上方，填充红色
+        this.ctx.beginPath();
+        this.ctx.moveTo(x1, prevCloseY);
+        this.ctx.lineTo(x1, y1);
+        this.ctx.lineTo(x2, y2);
+        this.ctx.lineTo(x2, prevCloseY);
+        this.ctx.closePath();
+        this.ctx.fillStyle = 'rgba(255, 77, 79, 0.15)';
+        this.ctx.fill();
+      } else if (!isAbove1 && !isAbove2) {
+        // 整个线段在 0 轴下方，填充绿色
+        this.ctx.beginPath();
+        this.ctx.moveTo(x1, prevCloseY);
+        this.ctx.lineTo(x1, y1);
+        this.ctx.lineTo(x2, y2);
+        this.ctx.lineTo(x2, prevCloseY);
+        this.ctx.closePath();
+        this.ctx.fillStyle = 'rgba(82, 196, 26, 0.15)';
+        this.ctx.fill();
+      } else {
+        // 线段跨越 0 轴，需要分割
+        const intersectX = x1 + (x2 - x1) * (this.prevClose - price1) / (price2 - price1);
+        const intersectY = prevCloseY;
+
+        if (isAbove1) {
+          // 上方部分（红色）
+          this.ctx.beginPath();
+          this.ctx.moveTo(x1, prevCloseY);
+          this.ctx.lineTo(x1, y1);
+          this.ctx.lineTo(intersectX, intersectY);
+          this.ctx.closePath();
+          this.ctx.fillStyle = 'rgba(255, 77, 79, 0.15)';
+          this.ctx.fill();
+
+          // 下方部分（绿色）
+          this.ctx.beginPath();
+          this.ctx.moveTo(intersectX, prevCloseY);
+          this.ctx.lineTo(x2, y2);
+          this.ctx.lineTo(x2, prevCloseY);
+          this.ctx.closePath();
+          this.ctx.fillStyle = 'rgba(82, 196, 26, 0.15)';
+          this.ctx.fill();
+        } else {
+          // 下方部分（绿色）
+          this.ctx.beginPath();
+          this.ctx.moveTo(x1, prevCloseY);
+          this.ctx.lineTo(x1, y1);
+          this.ctx.lineTo(intersectX, intersectY);
+          this.ctx.closePath();
+          this.ctx.fillStyle = 'rgba(82, 196, 26, 0.15)';
+          this.ctx.fill();
+
+          // 上方部分（红色）
+          this.ctx.beginPath();
+          this.ctx.moveTo(intersectX, prevCloseY);
+          this.ctx.lineTo(x2, y2);
+          this.ctx.lineTo(x2, prevCloseY);
+          this.ctx.closePath();
+          this.ctx.fillStyle = 'rgba(255, 77, 79, 0.15)';
+          this.ctx.fill();
+        }
+      }
+    }
+  },
+
+  drawPriceLine(xScale, yScale) {
+    // 价格线已经在 drawAreaFill 中绘制了
   },
 
   drawAfterHoursData(xScale, yScale, closePrice) {
