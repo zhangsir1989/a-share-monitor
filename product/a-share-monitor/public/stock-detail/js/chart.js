@@ -1,5 +1,5 @@
 /**
- * 分时走势图渲染 - 标准版（参考同花顺）
+ * 分时走势图渲染 - 完全匹配参考图
  */
 
 const Chart = {
@@ -86,7 +86,7 @@ const Chart = {
     const height = this.canvas.height;
     
     // 布局：价格图 (315px) + 成交量 (135px) = 450px
-    const padding = { top: 30, right: 60, bottom: 25, left: 50 };
+    const padding = { top: 30, right: 60, bottom: 25, left: 55 };
     const chartWidth = width - padding.left - padding.right;
     const priceChartHeight = 315;
     const volumeHeight = 135;
@@ -160,14 +160,16 @@ const Chart = {
       this.ctx.lineTo(padding.left + chartWidth, y);
       this.ctx.stroke();
 
-      // 左侧价格标签
+      // 左侧价格标签（关键修复：根据相对昨收价位置显示颜色）
       const price = priceMax - (i / lines) * (priceMax - priceMin);
-      this.ctx.fillStyle = '#8b949e';
+      const isAbovePrevClose = price >= this.prevClose;
+      
+      this.ctx.fillStyle = isAbovePrevClose ? '#ff4d4f' : '#52c41a';
       this.ctx.font = '11px Arial';
       this.ctx.textAlign = 'right';
       this.ctx.fillText(price.toFixed(2), padding.left - 5, y + 4);
 
-      // 右侧涨跌幅标签（关键修复：显示涨跌幅%）
+      // 右侧涨跌幅标签
       const change = price - this.prevClose;
       const changePercent = (change / this.prevClose) * 100;
       const sign = change >= 0 ? '+' : '';
@@ -232,8 +234,6 @@ const Chart = {
 
   /**
    * 绘制价格曲线和填充区域
-   * - 曲线：根据整体涨跌选择颜色（红涨绿跌）
-   * - 填充：从价格曲线到昨收线之间的区域
    */
   drawPriceCurve(xScale, yScale) {
     const lastPrice = this.stats.close;
@@ -262,17 +262,30 @@ const Chart = {
     this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
 
-    // 绘制收盘价点（带白色边框）
+    // 绘制收盘价点（白色圆点 + 红色边框）
     const lastX = xScale(this.data.length - 1);
     const lastY = yScale(lastPrice);
     
+    // 白色填充
     this.ctx.beginPath();
     this.ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
-    this.ctx.fillStyle = lineColor;
+    this.ctx.fillStyle = '#fff';
     this.ctx.fill();
-    this.ctx.strokeStyle = '#fff';
+    
+    // 彩色边框
+    this.ctx.strokeStyle = lineColor;
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
+    
+    // 右侧显示收盘涨跌幅
+    const change = lastPrice - this.prevClose;
+    const changePercent = (change / this.prevClose) * 100;
+    const sign = change >= 0 ? '+' : '';
+    
+    this.ctx.fillStyle = lineColor;
+    this.ctx.font = '10px Arial';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText(`${sign}${changePercent.toFixed(2)}%`, lastX + 10, lastY);
   },
 
   drawAfterHoursData(xScale, yScale, closePrice) {
@@ -305,29 +318,25 @@ const Chart = {
 
     this.ctx.font = '12px Arial';
     
-    // 第一行：开、高、涨跌幅
+    // 第一行：开、高
     this.ctx.fillStyle = '#8b949e';
     this.ctx.textAlign = 'left';
     this.ctx.fillText(`开 ${this.stats.open.toFixed(2)}`, x, y - 10);
-    this.ctx.fillText(`高 ${this.stats.high.toFixed(2)}`, x + chartWidth / 3, y - 10);
+    this.ctx.fillText(`高 ${this.stats.high.toFixed(2)}`, x + chartWidth / 2 - 30, y - 10);
+    
+    // 第二行：低、收
+    this.ctx.fillText(`低 ${this.stats.low.toFixed(2)}`, x, y + 5);
+    this.ctx.fillText(`收 ${this.stats.close.toFixed(2)}`, x + chartWidth / 2 - 30, y + 5);
     
     // 涨跌幅在右上角
     this.ctx.fillStyle = color;
     this.ctx.font = 'bold 13px Arial';
     this.ctx.textAlign = 'right';
     this.ctx.fillText(`${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`, x + chartWidth, y - 10);
-    
-    // 第二行：低、收
-    this.ctx.fillStyle = '#8b949e';
-    this.ctx.font = '12px Arial';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(`低 ${this.stats.low.toFixed(2)}`, x, y + 5);
-    this.ctx.fillText(`收 ${this.stats.close.toFixed(2)}`, x + chartWidth / 3, y + 5);
   },
 
   /**
    * 绘制成交量柱状图 - 红涨绿跌
-   * 颜色根据该时刻价格相对昨收的涨跌
    */
   drawVolumeBar(padding, chartWidth, volumeHeight, yBase) {
     const volumes = this.data.map(d => d.volume || 0);
