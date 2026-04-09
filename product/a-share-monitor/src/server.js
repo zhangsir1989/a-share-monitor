@@ -983,6 +983,47 @@ app.use((req, res, next) => {
 });
 
 // 登录 API
+// 注册 API
+app.post('/api/register', async (req, res) => {
+  const { username, password, confirmPassword } = req.body;
+  
+  try {
+    // 验证输入
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
+    }
+    
+    if (password !== confirmPassword) {
+      return res.status(400).json({ success: false, message: '两次输入的密码不一致' });
+    }
+    
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: '密码长度至少 6 位' });
+    }
+    
+    if (username.length < 3) {
+      return res.status(400).json({ success: false, message: '用户名长度至少 3 位' });
+    }
+    
+    // 检查用户名是否已存在
+    const existing = db.exec(`SELECT user_id FROM users WHERE user_id = '${username}'`);
+    if (existing.length > 0 && existing[0].values.length > 0) {
+      return res.status(400).json({ success: false, message: '用户名已存在，请直接登录' });
+    }
+    
+    // 插入新用户
+    db.run(`INSERT INTO users (user_id, password, username, role, is_active, created_at) 
+            VALUES ('${username}', '${password}', '${username}', 0, 1, CURRENT_TIMESTAMP)`);
+    saveDatabase();
+    
+    console.log(`✅ 用户 ${username} 注册成功`);
+    res.json({ success: true, message: '注册成功，请登录' });
+  } catch (error) {
+    console.error('注册失败:', error.message);
+    res.status(500).json({ success: false, message: '系统错误，请稍后重试' });
+  }
+});
+
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   

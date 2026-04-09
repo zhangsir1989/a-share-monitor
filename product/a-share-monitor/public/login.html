@@ -343,16 +343,17 @@
 
       <div id="success-message" class="success-message">
         <span>✅</span>
-        <span>登录成功，正在跳转...</span>
+        <span id="success-text">登录成功，正在跳转...</span>
       </div>
 
+      <!-- 登录表单 -->
       <form id="login-form">
         <div class="form-group">
-          <label class="form-label" for="username">用户名</label>
+          <label class="form-label" for="login-username">用户名</label>
           <div class="input-wrapper">
             <input 
               type="text" 
-              id="username" 
+              id="login-username" 
               class="form-input" 
               placeholder="请输入用户名"
               autocomplete="username"
@@ -363,11 +364,11 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="password">密码</label>
+          <label class="form-label" for="login-password">密码</label>
           <div class="input-wrapper">
             <input 
               type="password" 
-              id="password" 
+              id="login-password" 
               class="form-input" 
               placeholder="请输入密码"
               autocomplete="current-password"
@@ -390,6 +391,66 @@
         </button>
       </form>
 
+      <!-- 注册表单 -->
+      <form id="register-form" style="display: none;">
+        <div class="form-group">
+          <label class="form-label" for="register-username">用户名</label>
+          <div class="input-wrapper">
+            <input 
+              type="text" 
+              id="register-username" 
+              class="form-input" 
+              placeholder="请输入用户名（至少 3 位）"
+              autocomplete="username"
+              required
+              minlength="3"
+            >
+            <span class="input-icon">👤</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="register-password">密码</label>
+          <div class="input-wrapper">
+            <input 
+              type="password" 
+              id="register-password" 
+              class="form-input" 
+              placeholder="请输入密码（至少 6 位）"
+              autocomplete="new-password"
+              required
+              minlength="6"
+            >
+            <span class="input-icon">🔒</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirm-password">确认密码</label>
+          <div class="input-wrapper">
+            <input 
+              type="password" 
+              id="confirm-password" 
+              class="form-input" 
+              placeholder="请再次输入密码"
+              autocomplete="new-password"
+              required
+            >
+            <span class="input-icon">🔐</span>
+          </div>
+        </div>
+
+        <button type="submit" class="login-btn" id="register-btn">
+          注册
+        </button>
+      </form>
+
+      <!-- 切换链接 -->
+      <div class="footer-text" style="margin-top: 20px;">
+        <span id="switch-text">还没有账号？</span>
+        <a href="#" class="forgot-password" id="switch-form" style="margin-left: 8px;">立即注册</a>
+      </div>
+
       <div class="footer-text">
         版权所有 © 2026 A 股实时监控系统
       </div>
@@ -397,10 +458,45 @@
   </div>
 
   <script>
+    let isLoginForm = true;  // 当前显示的是登录表单
+
     // 页面加载时检查是否已登录
     window.addEventListener('DOMContentLoaded', () => {
       checkRememberedCredentials();
+      initSwitchForm();
     });
+
+    // 初始化表单切换
+    function initSwitchForm() {
+      const switchBtn = document.getElementById('switch-form');
+      const switchText = document.getElementById('switch-text');
+      
+      switchBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        isLoginForm = !isLoginForm;
+        
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const errorMsg = document.getElementById('error-message');
+        const successMsg = document.getElementById('success-message');
+        
+        // 隐藏消息
+        errorMsg.classList.remove('show');
+        successMsg.classList.remove('show');
+        
+        if (isLoginForm) {
+          loginForm.style.display = 'block';
+          registerForm.style.display = 'none';
+          switchText.textContent = '还没有账号？';
+          switchBtn.textContent = '立即注册';
+        } else {
+          loginForm.style.display = 'none';
+          registerForm.style.display = 'block';
+          switchText.textContent = '已有账号？';
+          switchBtn.textContent = '立即登录';
+        }
+      });
+    }
 
     // 检查记住的凭证
     function checkRememberedCredentials() {
@@ -408,8 +504,8 @@
       if (remembered) {
         try {
           const { username, password } = JSON.parse(remembered);
-          document.getElementById('username').value = username;
-          document.getElementById('password').value = password;
+          document.getElementById('login-username').value = username;
+          document.getElementById('login-password').value = password;
           document.getElementById('remember-me').checked = true;
         } catch (e) {
           localStorage.removeItem('rememberedCredentials');
@@ -421,8 +517,8 @@
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value;
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
       const rememberMe = document.getElementById('remember-me').checked;
       const loginBtn = document.getElementById('login-btn');
       const errorMsg = document.getElementById('error-message');
@@ -469,7 +565,6 @@
 
           // 延迟跳转
           setTimeout(() => {
-            // 获取原始目标页面
             const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
             window.location.href = redirect;
           }, 1000);
@@ -489,12 +584,72 @@
       }
     });
 
-    // 输入框聚焦时隐藏错误消息
-    document.querySelectorAll('.form-input').forEach(input => {
-      input.addEventListener('focus', () => {
-        document.getElementById('error-message').classList.remove('show');
-      });
+    // 注册表单提交
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('register-username').value.trim();
+      const password = document.getElementById('register-password').value;
+      const confirmPassword = document.getElementById('confirm-password').value;
+      const registerBtn = document.getElementById('register-btn');
+      const errorMsg = document.getElementById('error-message');
+      const successMsg = document.getElementById('success-message');
+
+      // 隐藏之前的消息
+      errorMsg.classList.remove('show');
+      successMsg.classList.remove('show');
+
+      // 验证密码匹配
+      if (password !== confirmPassword) {
+        errorMsg.querySelector('#error-text').textContent = '两次输入的密码不一致';
+        errorMsg.classList.add('show');
+        return;
+      }
+
+      // 禁用按钮，显示加载状态
+      registerBtn.disabled = true;
+      registerBtn.innerHTML = '<span class="spinner"></span> 注册中...';
+
+      try {
+        const response = await fetch('/api/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username, password, confirmPassword })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 注册成功
+          successMsg.querySelector('#success-text').textContent = result.message;
+          successMsg.classList.add('show');
+          
+          // 清空表单
+          document.getElementById('register-form').reset();
+          
+          // 1.5 秒后切换到登录表单
+          setTimeout(() => {
+            successMsg.classList.remove('show');
+            document.getElementById('switch-form').click();
+          }, 1500);
+        } else {
+          // 注册失败
+          errorMsg.querySelector('#error-text').textContent = result.message || '注册失败';
+          errorMsg.classList.add('show');
+          registerBtn.disabled = false;
+          registerBtn.textContent = '注册';
+        }
+      } catch (error) {
+        console.error('注册失败:', error);
+        errorMsg.querySelector('#error-text').textContent = '网络错误，请稍后重试';
+        errorMsg.classList.add('show');
+        registerBtn.disabled = false;
+        registerBtn.textContent = '注册';
+      }
     });
+
   </script>
 </body>
 </html>

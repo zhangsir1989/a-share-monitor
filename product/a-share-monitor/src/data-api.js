@@ -1,11 +1,21 @@
 /**
  * A 股实时数据 API 接口
- * 数据源：腾讯财经
+ * 数据源：MyData API (麦蕊智数) + 腾讯财经（备用）
  */
 
 const axios = require('axios');
 const iconv = require('iconv-lite');
 const sectors = require('./sectors');
+
+// MyData API 配置
+const MYDATA_LICENCE = 'FB1A859B-6832-4F70-AAA2-38274F23FC90';
+const MYDATA_BASE_URL = 'https://api.mairuiapi.com';
+
+// MyData API 客户端
+const mydataApi = axios.create({
+  timeout: 15000,
+  headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': '*/*' }
+});
 
 // 板块代码映射
 const sectorCodes = {
@@ -25,7 +35,7 @@ const txApi = axios.create({
   responseType: 'arraybuffer'
 });
 
-let dataSourceStatus = { volume: 'tencent', turnover: 'unknown' };
+let dataSourceStatus = { volume: 'mydata', turnover: 'mydata', limitUp: 'mydata', cashflow: 'unknown' };
 
 /**
  * 获取全市场成交量数据

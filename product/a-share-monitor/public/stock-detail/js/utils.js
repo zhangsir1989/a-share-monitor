@@ -58,22 +58,31 @@ const Utils = {
   },
   
   /**
-   * 判断是否在交易时间
+   * 判断是否在交易时间（使用北京时间 UTC+8）
    */
   isTradingTime() {
     const now = new Date();
-    const day = now.getDay();
+    // 获取北京时间 (UTC+8)
+    const utcHours = now.getUTCHours();
+    const utcMinutes = now.getUTCMinutes();
+    const beijingHour = utcHours + 8;
+    const beijingMinute = utcMinutes;
+    // 处理跨日
+    let beijingTime = (beijingHour % 24) * 60 + beijingMinute;
+    
+    // 北京时间周几
+    const utcDay = now.getUTCDay();
+    let beijingDay = utcDay;
+    if (beijingHour >= 24) {
+      beijingDay = (utcDay + 1) % 7;
+    }
     
     // 周末不交易
-    if (day === 0 || day === 6) return false;
-    
-    const hour = now.getHours();
-    const minute = now.getMinutes();
-    const time = hour * 60 + minute;
+    if (beijingDay === 0 || beijingDay === 6) return false;
     
     const { TRADING_TIME } = CONFIG;
-    return (time >= TRADING_TIME.MORNING_START && time <= TRADING_TIME.MORNING_END) ||
-           (time >= TRADING_TIME.AFTERNOON_START && time <= TRADING_TIME.AFTERNOON_END);
+    return (beijingTime >= TRADING_TIME.MORNING_START && beijingTime <= TRADING_TIME.MORNING_END) ||
+           (beijingTime >= TRADING_TIME.AFTERNOON_START && beijingTime <= TRADING_TIME.AFTERNOON_END);
   },
   
   /**

@@ -235,13 +235,12 @@
 
 /* 图表容器 */
 .chart-container {
-  height: 320px;
+  height: 380px;
   background: var(--bg-primary);
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
   color: var(--text-secondary);
+  padding: 10px;
 }
 
 .chart-placeholder {
