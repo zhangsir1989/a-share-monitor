@@ -2506,3 +2506,52 @@ async function startServer() {
 }
 
 startServer();
+
+// 分时数据查询 API
+app.get('/api/intraday-data', (req, res) => {
+  try {
+    const { page = 1, pageSize = 50, stock_code = '', trade_date = '', market = '' } = req.query;
+    const safePage = parseInt(page) || 1;
+    const safePageSize = Math.min(parseInt(pageSize) || 50, 500);
+    const offset = (safePage - 1) * safePageSize;
+    
+    // 构建查询条件
+    const conditions = [];
+    if (stock_code) conditions.push(`stock_code = '${stock_code}'`);
+    if (trade_date) conditions.push(`trade_date = '${trade_date}'`);
+    if (market) conditions.push(`stock_code LIKE '${market}%'`);
+    
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    
+    // 查询总数
+    const countResult = db.exec(`SELECT COUNT(*) FROM intraday_data ${whereClause}`);
+    const total = countResult.length > 0 ? countResult[0].values[0][0] : 0;
+    
+    // 查询数据
+    const result = db.exec(`
+      SELECT stock_code, trade_date, time, price, open, high, low, volume, amount, prevClose
+      FROM intraday_data ${whereClause}
+      ORDER BY trade_date DESC, time ASC
+      LIMIT ${safePageSize} OFFSET ${offset}
+    `);
+    
+    const data = result.length > 0 ? result[0].values.map(row => ({
+      stock_code: row[0],
+      trade_date: row[1],
+      time: row[2],
+      price: row[3],
+      open: row[4],
+      high: row[5],
+      low: row[6],
+      volume: row[7],
+      amount: row[8],
+      prevClose: row[9]
+    })) : [];
+    
+    res.json({ success: true, data, total, page: safePage, pageSize: safePageSize });
+    
+  } catch (error) {
+    console.error('分时数据查询失败:', error.message);
+    res.status(500).json({ success: false, message: '查询失败' });
+  }
+});

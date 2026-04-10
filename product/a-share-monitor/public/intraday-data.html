@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分时数据查询 - A 股实时监控</title>
+  <link rel="stylesheet" href="css/sidebar.css?v=20260410">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/data-manager.css">
+  <style>
+    .query-form {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .form-group label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    
+    .form-group input, .form-group select {
+      padding: 10px 14px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--accent-color);
+    }
+    
+    .btn-query {
+      padding: 10px 24px;
+      background: linear-gradient(135deg, var(--accent-color) 0%, #096dd9 100%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      align-self: flex-end;
+    }
+    
+    .btn-query:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+    }
+    
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .data-table th, .data-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .data-table th {
+      background: var(--bg-card);
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+    
+    .data-table td {
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+    
+    .data-table tr:hover {
+      background: var(--bg-card);
+    }
+    
+    .price-up {
+      color: #ff4d4f;
+    }
+    
+    .price-down {
+      color: #52c41a;
+    }
+    
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+    }
+    
+    .pagination button {
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .pagination button:hover:not(:disabled) {
+      background: var(--accent-color);
+      border-color: var(--accent-color);
+    }
+    
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .pagination span {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+    
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 侧边栏导航 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📊 系统导航</h2>
+        <button class="btn-close-sidebar" id="close-sidebar">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="sidebar-link" data-page="home">
+          <span class="link-icon">🏠</span>
+          <span class="link-text">首页</span>
+        </a>
+        <a href="/stock" class="sidebar-link" data-page="stock">
+          <span class="link-icon">📈</span>
+          <span class="link-text">证券行情</span>
+        </a>
+        <a href="/custom" class="sidebar-link" data-page="custom">
+          <span class="link-icon">⭐</span>
+          <span class="link-text">自定义</span>
+        </a>
+        <a href="/data-manager" class="sidebar-link active" data-page="data-manager">
+          <span class="link-icon">🗄️</span>
+          <span class="link-text">数据管理</span>
+        </a>
+        <a href="/system" class="sidebar-link" data-page="system">
+          <span class="link-icon">⚙️</span>
+          <span class="link-text">系统管理</span>
+        </a>
+        <a href="/users" class="sidebar-link" data-page="users">
+          <span class="link-icon">👥</span>
+          <span class="link-text">用户管理</span>
+        </a>
+        <a href="/change-password" class="sidebar-link" data-page="change-password" data-requires-user="true">
+          <span class="link-icon">🔑</span>
+          <span class="link-text">修改密码</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <span class="user-avatar">👤</span>
+          <span class="user-display-name" id="sidebar-username">--</span>
+        </div>
+        <button class="btn-logout-sidebar" id="sidebar-logout-btn" title="退出登录">
+          🚪 退出登录
+        </button>
+      </div>
+    </aside>
+
+    <!-- 二级侧边栏 -->
+    <aside class="sub-sidebar" id="sub-sidebar">
+      <div class="sub-sidebar-header">
+        <h3>🗄️ 数据管理</h3>
+      </div>
+      <nav class="sub-sidebar-nav">
+        <a href="/data-manager" class="sub-sidebar-link">
+          <span class="link-icon">👥</span>
+          <span class="link-text">用户数据管理</span>
+        </a>
+        <a href="/custom" class="sub-sidebar-link">
+          <span class="link-icon">⭐</span>
+          <span class="link-text">自选股数据</span>
+        </a>
+        <a href="/securities" class="sub-sidebar-link">
+          <span class="link-icon">📊</span>
+          <span class="link-text">证券信息</span>
+        </a>
+        <a href="/tick-trade" class="sub-sidebar-link">
+          <span class="link-icon">📝</span>
+          <span class="link-text">逐笔成交明细</span>
+        </a>
+        <a href="/intraday-data" class="sub-sidebar-link active">
+          <span class="link-icon">📈</span>
+          <span class="link-text">分时数据查询</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- 顶部导航 -->
+    <header class="header has-sub-sidebar">
+      <div class="header-left">
+        <button class="btn-menu-toggle" id="menu-toggle">☰</button>
+        <h1>📈 分时数据查询</h1>
+      </div>
+      <div class="header-controls">
+        <a href="/" class="btn">🏠 返回首页</a>
+      </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="main-content has-sub-sidebar">
+      <!-- 查询表单 -->
+      <div class="query-form">
+        <div class="form-group">
+          <label>股票代码</label>
+          <input type="text" id="stock-code" placeholder="输入 6 位代码">
+        </div>
+        <div class="form-group">
+          <label>交易日期</label>
+          <input type="date" id="trade-date">
+        </div>
+        <div class="form-group">
+          <label>市场</label>
+          <select id="market">
+            <option value="">全部</option>
+            <option value="sh">沪市</option>
+            <option value="sz">深市</option>
+            <option value="hk">港股</option>
+          </select>
+        </div>
+        <button class="btn-query" id="query-btn">🔍 查询</button>
+      </div>
+
+      <!-- 数据表格 -->
+      <div id="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>价格</th>
+              <th>开盘</th>
+              <th>最高</th>
+              <th>最低</th>
+              <th>成交量</th>
+              <th>成交额</th>
+              <th>昨收</th>
+              <th>涨跌</th>
+            </tr>
+          </thead>
+          <tbody id="data-body">
+            <tr>
+              <td colspan="9" class="empty-state">
+                <div class="icon">📊</div>
+                <p>请输入查询条件</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 分页 -->
+      <div class="pagination" id="pagination" style="display: none;">
+        <button id="prev-btn" disabled>⏮ 上一页</button>
+        <span id="page-info">第 1 页 / 共 1 页</span>
+        <button id="next-btn" disabled>下一页 ⏭</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/sidebar.js?v=20260410"></script>
+  <script src="js/intraday-data.js?v=20260410"></script>
+</body>
+</html>
