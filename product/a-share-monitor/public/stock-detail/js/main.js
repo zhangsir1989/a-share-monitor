@@ -59,12 +59,12 @@ async function loadAllData() {
   console.log('📡 开始加载数据...');
   
   // 初始化分时图表
-  Chart.init('intraday-canvas');
+  IntradayChart.init('intraday-canvas');
   
   // 加载分时走势数据
   const intradayResult = await API.getIntraday(StockState.code, StockState.market);
   if (intradayResult.success) {
-    Chart.render(intradayResult.data);
+    IntradayChart.render(intradayResult.data);
     console.log('✅ 分时走势加载完成');
   } else {
     Chart.drawPlaceholder('分时数据加载失败');
@@ -173,7 +173,7 @@ async function loadBasicInfo() {
   // 同时更新分时图
   const intradayResult = await API.getIntraday(StockState.code, StockState.market);
   if (intradayResult.success) {
-    Chart.render(intradayResult.data);
+    IntradayChart.render(intradayResult.data);
   }
 }
 
