@@ -30,7 +30,7 @@ const Chart = {
     if (!container) return;
     
     let width = Math.max(container.clientWidth - 20, 400);
-    let height = 420;  // 减小高度，不需要时间轴空间
+    let height = 450;  // 增加高度，留出时间轴空间
     
     if (container.clientWidth <= 20) {
       requestAnimationFrame(() => this.resize());
@@ -41,6 +41,8 @@ const Chart = {
     this.canvas.height = height;
     this.canvas.style.width = width + 'px';
     this.canvas.style.height = height + 'px';
+    
+    console.log('📊 Canvas 尺寸:', width, 'x', height);
     
     if (this.data) this.draw();
   },
@@ -92,8 +94,8 @@ const Chart = {
     const width = this.canvas.width;
     const height = this.canvas.height;
     
-    // 布局：价格图 (285px) + 成交量 (135px) = 420px
-    const padding = { top: 30, right: 60, bottom: 0, left: 55 };
+    // 布局：价格图 (285px) + 成交量 (135px) + 时间轴 (30px) = 450px
+    const padding = { top: 30, right: 60, bottom: 30, left: 55 };
     const chartWidth = width - padding.left - padding.right;
     const priceChartHeight = 285;
     const volumeHeight = 135;
@@ -147,6 +149,9 @@ const Chart = {
     // 7. 绘制成交量（红涨绿跌）
     const volumeYBase = padding.top + priceChartHeight;
     this.drawVolumeBar(padding, chartWidth, volumeHeight, volumeYBase);
+
+    // 8. 绘制时间轴（底部）
+    this.drawTimeAxis(padding, chartWidth, volumeYBase + volumeHeight);
   },
 
   drawGrid(padding, chartWidth, priceChartHeight, priceMin, priceMax, yScale) {
@@ -185,7 +190,19 @@ const Chart = {
       this.ctx.fillText(`${sign}${changePercent.toFixed(2)}%`, padding.left + chartWidth + 5, y + 4);
     }
 
-    // 移除竖线（时间），因为底部没有时间轴
+    // 竖线（时间）- 与底部时间轴对应
+    const timePoints = ['09:30', '10:00', '10:30', '11:00', '11:30', '13:00', '13:30', '14:00', '14:30', '15:00'];
+    for (const t of timePoints) {
+      const index = this.findTimeIndex(t);
+      if (index >= 0) {
+        const x = padding.left + (index / (this.data.length - 1)) * chartWidth;
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, padding.top);
+        this.ctx.lineTo(x, padding.top + priceChartHeight);
+        this.ctx.strokeStyle = '#30363d';
+        this.ctx.stroke();
+      }
+    }
   },
 
   drawPrevCloseLine(padding, chartWidth, y) {
@@ -417,6 +434,9 @@ const Chart = {
         this.ctx.fillText(t, x, yPosition);
       }
     }
+    
+    console.log('⏰ 时间轴绘制完成，数据点数:', this.data.length);
+    console.log('⏰ 15:00 索引:', this.findTimeIndex('15:00'), 'x 坐标:', padding.left + (this.findTimeIndex('15:00') / (this.data.length - 1)) * chartWidth);
   },
 
   /**
