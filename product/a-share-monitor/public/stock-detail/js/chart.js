@@ -112,18 +112,30 @@ const Chart = {
     // 交易时间：9:30-11:30, 13:00-15:00
     const marketOpen = 9 * 60 + 30;  // 570
     const marketClose = 15 * 60;     // 900
-    const currentMinutesFromOpen = Math.min(currentTotalMinutes - marketOpen, marketClose - marketOpen);
-    const totalTradingMinutes = 240; // 4 小时 = 240 分钟
+    const marketNoonStart = 13 * 60; // 780
+    const marketNoonEnd = 11 * 60 + 30; // 690
     
     // 计算当前应该绘制的数据点索引
-    // 242 个点对应 240 分钟，约 1 分钟 1 个点
-    const currentIndex = Math.min(
-      Math.floor((currentMinutesFromOpen / totalTradingMinutes) * (this.data.length - 1)),
-      this.data.length - 1
-    );
+    let currentIndex = this.data.length - 1; // 默认绘制全部
+    
+    if (currentTotalMinutes >= marketOpen && currentTotalMinutes <= marketClose) {
+      // 在交易时间内
+      if (currentTotalMinutes <= marketNoonEnd) {
+        // 上午：9:30-11:30
+        const minutesFromOpen = currentTotalMinutes - marketOpen;
+        currentIndex = Math.floor((minutesFromOpen / 120) * 120); // 上午 120 个点
+      } else if (currentTotalMinutes >= marketNoonStart) {
+        // 下午：13:00-15:00
+        const minutesFromOpen = 120 + (currentTotalMinutes - marketNoonStart); // 上午 120 分钟 + 下午经过的分钟
+        currentIndex = Math.floor((minutesFromOpen / 240) * (this.data.length - 1));
+      }
+    }
+    
+    // 确保索引有效
+    currentIndex = Math.max(0, Math.min(currentIndex, this.data.length - 1));
     
     console.log('⏰ 当前时间:', currentHour + ':' + currentMinute);
-    console.log('⏰ 当前索引:', currentIndex, '时间:', this.data[currentIndex]?.time);
+    console.log('⏰ 当前索引:', currentIndex, '时间:', this.data[currentIndex]?.time, '价格:', this.data[currentIndex]?.price);
     console.log('⏰ 总数据点:', this.data.length);
 
     const prices = this.data.map(d => d.price);
