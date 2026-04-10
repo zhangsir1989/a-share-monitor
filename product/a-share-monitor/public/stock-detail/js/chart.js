@@ -1,6 +1,7 @@
 /**
  * 分时走势图渲染 - 正确逻辑版
- * 填充区域：0 轴上方红色，下方绿色（根据每个时刻价格相对昨收）
+ * 时间轴：9:30 开始，15:00 结束
+ * 根据 API 返回的数据，找出每个时间点对应的价格，连线绘制
  */
 
 const Chart = {
@@ -55,6 +56,11 @@ const Chart = {
     this.afterHoursData = responseData.data.filter(d => d.time > '15:00');
     this.prevClose = responseData.prevClose || this.data[0]?.prevClose || 0;
     
+    console.log('📊 分时图数据:', this.data.length, '个点');
+    console.log('📊 第一个点:', this.data[0]?.time, this.data[0]?.price);
+    console.log('📊 最后一个点:', this.data[this.data.length - 1]?.time, this.data[this.data.length - 1]?.price);
+    console.log('📊 昨收价:', this.prevClose);
+    
     this.calculateStats();
     this.draw();
   },
@@ -81,7 +87,7 @@ const Chart = {
   },
 
   draw() {
-    if (!this.ctx || !this.data) return;
+    if (!this.ctx || !this.data || this.data.length === 0) return;
 
     const width = this.canvas.width;
     const height = this.canvas.height;
@@ -109,7 +115,7 @@ const Chart = {
     const displayMin = this.prevClose - range;
     const displayMax = this.prevClose + range;
 
-    // 坐标转换函数
+    // 坐标转换函数：根据数据索引计算 x 坐标，根据价格计算 y 坐标
     const xScale = (i) => padding.left + (i / (this.data.length - 1)) * chartWidth;
     const yScale = (price) => {
       const range = displayMax - displayMin || 0.01;
@@ -127,25 +133,22 @@ const Chart = {
     const avgY = yScale(this.stats.avgPrice);
     this.drawAvgLine(padding, chartWidth, avgY);
 
-    // 4. 绘制填充区域（关键修复：0 轴上方红色，下方绿色）
+    // 4. 绘制填充区域（0 轴上方红色，下方绿色）
     this.drawAreaFill(xScale, yScale, prevCloseY);
 
-    // 5. 绘制价格曲线（单色线）
-    this.drawPriceLine(xScale, yScale);
-
-    // 6. 绘制盘后数据
+    // 5. 绘制盘后数据
     if (this.afterHoursData?.length > 0) {
       this.drawAfterHoursData(xScale, yScale, this.stats.close);
     }
 
-    // 7. 绘制统计信息（顶部）
+    // 6. 绘制统计信息（顶部）
     this.drawStats(padding.left, padding.top, chartWidth);
 
-    // 8. 绘制成交量（红涨绿跌）
+    // 7. 绘制成交量（红涨绿跌）
     const volumeYBase = padding.top + priceChartHeight + 5;
     this.drawVolumeBar(padding, chartWidth, volumeHeight, volumeYBase);
 
-    // 9. 绘制时间轴
+    // 8. 绘制时间轴（9:30-15:00）
     this.drawTimeAxis(padding, chartWidth, volumeYBase + volumeHeight + 5);
   },
 
@@ -185,7 +188,7 @@ const Chart = {
       this.ctx.fillText(`${sign}${changePercent.toFixed(2)}%`, padding.left + chartWidth + 5, y + 4);
     }
 
-    // 竖线（时间）
+    // 竖线（时间）- 根据实际数据中的时间点位置绘制
     const timePoints = ['09:30', '10:00', '10:30', '11:00', '11:30', '13:00', '13:30', '14:00', '14:30', '15:00'];
     for (const t of timePoints) {
       const index = this.findTimeIndex(t);
@@ -237,16 +240,16 @@ const Chart = {
   },
 
   /**
-   * 绘制填充区域 - 关键修复
-   * 逻辑：0 轴（昨收价）上方填充红色，下方填充绿色
-   * 遍历每个数据点，判断其相对昨收价的位置，分别填充
+   * 绘制填充区域 - 核心逻辑
+   * 遍历每个数据点，根据时间顺序获取价格，判断在 0 轴上方还是下方
+   * 0 轴上方填充红色，下方填充绿色
    */
   drawAreaFill(xScale, yScale, prevCloseY) {
     const lastPrice = this.stats.close;
     const isUp = lastPrice >= this.prevClose;
     const lineColor = isUp ? '#ff4d4f' : '#52c41a';
 
-    // 绘制价格曲线（单色线，根据整体涨跌）
+    // 先绘制价格曲线（单色线，根据整体涨跌）
     this.ctx.beginPath();
     this.ctx.moveTo(xScale(0), yScale(this.data[0].price));
     for (let i = 1; i < this.data.length; i++) {
@@ -335,10 +338,6 @@ const Chart = {
     }
   },
 
-  drawPriceLine(xScale, yScale) {
-    // 价格线已经在 drawAreaFill 中绘制了
-  },
-
   drawAfterHoursData(xScale, yScale, closePrice) {
     const lastIntradayX = xScale(this.data.length - 1);
     const closeY = yScale(closePrice);
@@ -419,6 +418,7 @@ const Chart = {
   },
 
   drawTimeAxis(padding, chartWidth, yPosition) {
+    // 时间轴：9:30 开始，15:00 结束
     const targetTimes = ['09:30', '10:00', '10:30', '11:00', '11:30', '13:00', '13:30', '14:00', '14:30', '15:00'];
     
     this.ctx.fillStyle = '#8b949e';
@@ -434,15 +434,27 @@ const Chart = {
     }
   },
 
+  /**
+   * 找出指定时间在数据中的索引位置
+   * 通过遍历数据，找到 time 字段匹配的时间点
+   */
   findTimeIndex(targetTime) {
+    // 精确匹配
     for (let i = 0; i < this.data.length; i++) {
-      if (this.data[i].time === targetTime) return i;
+      if (this.data[i].time === targetTime) {
+        return i;
+      }
     }
-    const [h, m] = targetTime.split(':').map(Number);
-    const targetMin = h * 60 + m;
+    // 如果找不到精确匹配，返回近似位置
+    const [targetHour, targetMin] = targetTime.split(':').map(Number);
+    const targetMinutes = targetHour * 60 + targetMin;
+    
     for (let i = 0; i < this.data.length; i++) {
-      const [hh, mm] = this.data[i].time.split(':').map(Number);
-      if (hh * 60 + mm >= targetMin) return i;
+      const [h, m] = this.data[i].time.split(':').map(Number);
+      const minutes = h * 60 + m;
+      if (minutes >= targetMinutes) {
+        return i;
+      }
     }
     return this.data.length - 1;
   },
