@@ -2443,10 +2443,40 @@ app.get('/securities', requireAuth, (req, res) => {
 
 // 逐笔成交明细页面（需要登录，管理员专用）
 app.get('/tick-trade', requireAuth, (req, res) => {
+
+// 分时数据查询页面
+app.get('/intraday-data', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
+});
   if (req.session?.userRole !== '1') {
+
+// 分时数据查询页面
+app.get('/intraday-data', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
+});
     return res.redirect('/');
+
+// 分时数据查询页面
+app.get('/intraday-data', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
+});
   }
+
+// 分时数据查询页面
+app.get('/intraday-data', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
+});
   res.sendFile(path.join(__dirname, '../public/tick-trade.html'));
+
+// 分时数据查询页面
+app.get('/intraday-data', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
+});
+});
+
+// 分时数据查询页面
+app.get('/intraday-data', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
 });
 
 // 证券行情页面（需要登录）
