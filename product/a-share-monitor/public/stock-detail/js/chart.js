@@ -30,7 +30,7 @@ const Chart = {
     if (!container) return;
     
     let width = Math.max(container.clientWidth - 20, 400);
-    let height = 450;
+    let height = 480;  // 增加高度到 480px，留出时间轴空间
     
     if (container.clientWidth <= 20) {
       requestAnimationFrame(() => this.resize());
@@ -92,8 +92,8 @@ const Chart = {
     const width = this.canvas.width;
     const height = this.canvas.height;
     
-    // 布局：价格图 (315px) + 成交量 (135px) = 450px
-    const padding = { top: 30, right: 60, bottom: 25, left: 55 };
+    // 布局：价格图 (315px) + 成交量 (135px) + 时间轴 (30px) = 480px
+    const padding = { top: 30, right: 60, bottom: 30, left: 55 };
     const chartWidth = width - padding.left - padding.right;
     const priceChartHeight = 315;
     const volumeHeight = 135;
