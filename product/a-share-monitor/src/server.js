@@ -14,7 +14,9 @@ const {
   fetchConvertiblesForStock,
   fetchSectorStocks,
   fetchMainIndices,
-  getDataSourceStatus
+  getDataSourceStatus,
+  fetchIntradayHistory,
+  fetchStockLatest
 } = require('./data-api');
 const stockList = require('./stocks');
 
@@ -2540,6 +2542,28 @@ startServer();
 // 分时数据查询 API
 app.get('/api/intraday-data', (req, res) => {
   try {
+    // 确保表存在
+    try {
+      db.run(`CREATE TABLE IF NOT EXISTS intraday_data (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stock_code TEXT NOT NULL,
+        trade_date TEXT NOT NULL,
+        time TEXT NOT NULL,
+        price REAL,
+        open REAL,
+        high REAL,
+        low REAL,
+        volume INTEGER,
+        amount REAL,
+        prevClose REAL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_intraday_code_date ON intraday_data(stock_code, trade_date)`);
+      saveDatabase();
+    } catch (e) {
+      console.log('⚠️ 表已存在或创建失败:', e.message);
+    }
+    
     const { page = 1, pageSize = 50, stock_code = '', trade_date = '', market = '' } = req.query;
     const safePage = parseInt(page) || 1;
     const safePageSize = Math.min(parseInt(pageSize) || 50, 500);
