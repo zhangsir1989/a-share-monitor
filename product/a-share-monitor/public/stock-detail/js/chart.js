@@ -103,7 +103,8 @@ const Chart = {
     console.log('📊 收盘价:', this.stats.close);
     
     // 布局：价格图 (285px) + 成交量 (135px) + 时间轴 (30px) = 450px
-    const padding = { top: 30, right: 60, bottom: 30, left: 55 };
+    // 右侧 padding 减小，让图表更宽，价格曲线终点更靠右
+    const padding = { top: 30, right: 10, bottom: 30, left: 55 };
     const chartWidth = width - padding.left - padding.right;
     const priceChartHeight = 285;
     const volumeHeight = 135;
@@ -202,16 +203,16 @@ const Chart = {
       this.ctx.textAlign = 'right';
       this.ctx.fillText(price.toFixed(2), padding.left - 5, y + 4);
 
-      // 右侧涨跌幅标签
-      const change = price - this.prevClose;
-      const changePercent = (change / this.prevClose) * 100;
-      const sign = change >= 0 ? '+' : '';
-      const color = change >= 0 ? '#ff4d4f' : '#52c41a';
-      
-      this.ctx.fillStyle = color;
-      this.ctx.font = '10px Arial';
-      this.ctx.textAlign = 'left';
-      this.ctx.fillText(`${sign}${changePercent.toFixed(2)}%`, padding.left + chartWidth + 5, y + 4);
+      // 右侧涨跌幅标签（右侧 padding 减小，不显示）
+      // const change = price - this.prevClose;
+      // const changePercent = (change / this.prevClose) * 100;
+      // const sign = change >= 0 ? '+' : '';
+      // const color = change >= 0 ? '#ff4d4f' : '#52c41a';
+      // 
+      // this.ctx.fillStyle = color;
+      // this.ctx.font = '10px Arial';
+      // this.ctx.textAlign = 'left';
+      // this.ctx.fillText(`${sign}${changePercent.toFixed(2)}%`, padding.left + chartWidth + 5, y + 4);
     }
 
     // 竖线（时间）- 与底部时间轴对应
