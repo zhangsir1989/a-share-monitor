@@ -102,6 +102,29 @@ const Chart = {
     const volumeHeight = 135;
 
     this.ctx.clearRect(0, 0, width, height);
+    
+    // 获取当前时间，确定绘制到哪个时间点
+    const now = new Date();
+    const currentHour = now.getUTCHours() + 8; // 北京时间
+    const currentMinute = now.getUTCMinutes();
+    const currentTotalMinutes = currentHour * 60 + currentMinute;
+    
+    // 交易时间：9:30-11:30, 13:00-15:00
+    const marketOpen = 9 * 60 + 30;  // 570
+    const marketClose = 15 * 60;     // 900
+    const currentMinutesFromOpen = Math.min(currentTotalMinutes - marketOpen, marketClose - marketOpen);
+    const totalTradingMinutes = 240; // 4 小时 = 240 分钟
+    
+    // 计算当前应该绘制的数据点索引
+    // 242 个点对应 240 分钟，约 1 分钟 1 个点
+    const currentIndex = Math.min(
+      Math.floor((currentMinutesFromOpen / totalTradingMinutes) * (this.data.length - 1)),
+      this.data.length - 1
+    );
+    
+    console.log('⏰ 当前时间:', currentHour + ':' + currentMinute);
+    console.log('⏰ 当前索引:', currentIndex, '时间:', this.data[currentIndex]?.time);
+    console.log('⏰ 总数据点:', this.data.length);
 
     const prices = this.data.map(d => d.price);
     const maxPrice = Math.max(...prices);
@@ -127,6 +150,10 @@ const Chart = {
     
     // 昨收价 Y 坐标（0 轴位置）
     const prevCloseY = yScale(this.prevClose);
+    
+    // 当前价格曲线的终点 X 坐标
+    const currentX = xScale(currentIndex);
+    const currentPrice = this.data[currentIndex].price;
 
     // 1. 绘制网格和刻度
     this.drawGrid(padding, chartWidth, priceChartHeight, displayMin, displayMax, yScale);
@@ -139,7 +166,7 @@ const Chart = {
     this.drawAvgLine(padding, chartWidth, avgY);
 
     // 4. 绘制填充区域（0 轴上方红色，下方绿色）
-    this.drawAreaFill(xScale, yScale, prevCloseY);
+    this.drawAreaFill(xScale, yScale, prevCloseY, currentIndex);
 
     // 5. 绘制盘后数据
     if (this.afterHoursData?.length > 0) {
@@ -249,9 +276,9 @@ const Chart = {
    * 遍历每个数据点，根据时间顺序获取价格，判断在 0 轴上方还是下方
    * 0 轴上方填充红色，下方填充绿色
    */
-  drawAreaFill(xScale, yScale, prevCloseY) {
-    const lastPrice = this.stats.close;
-    const isUp = lastPrice >= this.prevClose;
+  drawAreaFill(xScale, yScale, prevCloseY, currentIndex) {
+    const currentPrice = this.data[currentIndex].price;
+    const isUp = currentPrice >= this.prevClose;
     const lineColor = isUp ? '#ff4d4f' : '#52c41a';
 
     console.log('📈 ========== 价格曲线绘制 ==========');
@@ -260,7 +287,7 @@ const Chart = {
     // 先绘制价格曲线（单色线，根据整体涨跌）
     this.ctx.beginPath();
     this.ctx.moveTo(xScale(0), yScale(this.data[0].price));
-    for (let i = 1; i < this.data.length; i++) {
+    for (let i = 1; i <= currentIndex; i++) {
       this.ctx.lineTo(xScale(i), yScale(this.data[i].price));
     }
     this.ctx.strokeStyle = lineColor;
@@ -270,7 +297,7 @@ const Chart = {
     console.log('📈 价格曲线绘制完成，共', this.data.length, '个点');
 
     // 填充区域：遍历每个线段，判断在 0 轴上方还是下方
-    for (let i = 0; i < this.data.length - 1; i++) {
+    for (let i = 0; i < currentIndex; i++) {
       const price1 = this.data[i].price;
       const price2 = this.data[i + 1].price;
       const x1 = xScale(i);
