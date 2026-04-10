@@ -94,6 +94,14 @@ const Chart = {
     const width = this.canvas.width;
     const height = this.canvas.height;
     
+    console.log('📊 ========== 分时图绘制开始 ==========');
+    console.log('📊 Canvas 尺寸:', width, 'x', height);
+    console.log('📊 数据点数:', this.data.length);
+    console.log('📊 第一个点:', this.data[0]?.time, this.data[0]?.price);
+    console.log('📊 最后一个点:', this.data[this.data.length - 1]?.time, this.data[this.data.length - 1]?.price);
+    console.log('📊 昨收价:', this.prevClose);
+    console.log('📊 收盘价:', this.stats.close);
+    
     // 布局：价格图 (285px) + 成交量 (135px) + 时间轴 (30px) = 450px
     const padding = { top: 30, right: 60, bottom: 30, left: 55 };
     const chartWidth = width - padding.left - padding.right;
@@ -106,6 +114,8 @@ const Chart = {
     const maxPrice = Math.max(...prices);
     const minPrice = Math.min(...prices);
     
+    console.log('📊 最高价:', maxPrice, '最低价:', minPrice);
+    
     // 以昨收价为中心对称计算价格范围
     const maxChange = Math.max(
       Math.abs(maxPrice - this.prevClose),
@@ -117,18 +127,32 @@ const Chart = {
     const displayMin = this.prevClose - range;
     const displayMax = this.prevClose + range;
 
+    console.log('📊 价格范围:', displayMin.toFixed(2), '-', displayMax.toFixed(2));
+    console.log('📊 昨收价位置:', ((displayMax - this.prevClose) / (displayMax - displayMin) * 100).toFixed(1) + '%');
+
     // 坐标转换函数：根据数据索引计算 x 坐标，根据价格计算 y 坐标
     const xScale = (i) => padding.left + (i / (this.data.length - 1)) * chartWidth;
     const yScale = (price) => {
       const range = displayMax - displayMin || 0.01;
       return padding.top + priceChartHeight - ((price - displayMin) / range) * priceChartHeight;
     };
+    
+    // 测试关键点坐标
+    const firstX = xScale(0);
+    const lastX = xScale(this.data.length - 1);
+    const firstY = yScale(this.data[0].price);
+    const lastY = yScale(this.data[this.data.length - 1].price);
+    const prevCloseY = yScale(this.prevClose);
+    
+    console.log('📍 起点坐标:', firstX.toFixed(1), firstY.toFixed(1), '(09:30,', this.data[0].price + ')');
+    console.log('📍 终点坐标:', lastX.toFixed(1), lastY.toFixed(1), '(15:00,', this.data[this.data.length - 1].price + ')');
+    console.log('📍 昨收价 Y 坐标:', prevCloseY.toFixed(1));
+    console.log('📍 15:00 时间轴 X 坐标:', padding.left + (this.findTimeIndex('15:00') / (this.data.length - 1)) * chartWidth);
 
     // 1. 绘制网格和刻度
     this.drawGrid(padding, chartWidth, priceChartHeight, displayMin, displayMax, yScale);
 
     // 2. 绘制昨收价线（0 轴）
-    const prevCloseY = yScale(this.prevClose);
     this.drawPrevCloseLine(padding, chartWidth, prevCloseY);
 
     // 3. 绘制均价线
@@ -251,6 +275,9 @@ const Chart = {
     const isUp = lastPrice >= this.prevClose;
     const lineColor = isUp ? '#ff4d4f' : '#52c41a';
 
+    console.log('📈 ========== 价格曲线绘制 ==========');
+    console.log('📈 收盘价:', lastPrice, '相对昨收:', isUp ? '涨' : '跌', '颜色:', lineColor);
+
     // 先绘制价格曲线（单色线，根据整体涨跌）
     this.ctx.beginPath();
     this.ctx.moveTo(xScale(0), yScale(this.data[0].price));
@@ -260,6 +287,8 @@ const Chart = {
     this.ctx.strokeStyle = lineColor;
     this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
+    
+    console.log('📈 价格曲线绘制完成，共', this.data.length, '个点');
 
     // 填充区域：遍历每个线段，判断在 0 轴上方还是下方
     for (let i = 0; i < this.data.length - 1; i++) {
@@ -427,16 +456,15 @@ const Chart = {
     this.ctx.font = '11px Arial';
     this.ctx.textAlign = 'center';
 
+    console.log('⏰ ========== 时间轴绘制 ==========');
     for (const t of targetTimes) {
       const index = this.findTimeIndex(t);
       if (index >= 0) {
         const x = padding.left + (index / (this.data.length - 1)) * chartWidth;
         this.ctx.fillText(t, x, yPosition);
+        console.log('⏰', t, '索引:', index, 'x 坐标:', x.toFixed(1), '占比:', (index / (this.data.length - 1) * 100).toFixed(1) + '%');
       }
     }
-    
-    console.log('⏰ 时间轴绘制完成，数据点数:', this.data.length);
-    console.log('⏰ 15:00 索引:', this.findTimeIndex('15:00'), 'x 坐标:', padding.left + (this.findTimeIndex('15:00') / (this.data.length - 1)) * chartWidth);
   },
 
   /**
