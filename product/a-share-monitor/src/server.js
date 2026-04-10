@@ -616,14 +616,112 @@ app.get('/stock', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/stock.html'));
 });
 
-// 分时图 API
+// 分时图 API - 从数据库获取历史数据 + 实时接口获取当前数据
 app.get('/api/intraday/:code', async (req, res) => {
   const code = req.params.code.replace(/^(sh|sz|bj|hk)/, '');
   const market = req.params.code.match(/^(sh|sz|bj|hk)/)?.[1] || (code.startsWith('6') ? 'sh' : 'sz');
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   
-  // 使用 MyData API 获取分时历史数据
-  const result = await fetchIntradayHistory(code, market);
-  res.json(result);
+  try {
+    // 1. 从数据库获取今天的历史数据
+    let historicalData = [];
+    try {
+      const result = db.exec(`SELECT time, price, open, high, low, volume, amount, prevClose FROM intraday_data WHERE stock_code = '${code}' AND trade_date = '${today}' ORDER BY time`);
+      if (result.length > 0) {
+        historicalData = result[0].values.map(row => ({
+          time: row[0],
+          price: row[1],
+          open: row[2],
+          high: row[3],
+          low: row[4],
+          volume: row[5],
+          amount: row[6],
+          prevClose: row[7]
+        }));
+        console.log('📚 从数据库获取历史数据:', historicalData.length, '条');
+      }
+    } catch (e) {
+      // 表不存在，忽略
+      console.log('⚠️ intraday_data 表不存在，将创建');
+      try {
+        db.run(`CREATE TABLE IF NOT EXISTS intraday_data (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          stock_code TEXT NOT NULL,
+          trade_date TEXT NOT NULL,
+          time TEXT NOT NULL,
+          price REAL,
+          open REAL,
+          high REAL,
+          low REAL,
+          volume INTEGER,
+          amount REAL,
+          prevClose REAL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_intraday_code_date ON intraday_data(stock_code, trade_date)`);
+        saveDatabase();
+        console.log('✅ intraday_data 表创建成功');
+      } catch (e2) {
+        console.error('❌ 创建表失败:', e2.message);
+      }
+    }
+    
+    // 2. 从实时 API 获取当前数据
+    const latestResult = await fetchStockLatest(code, market);
+    let currentData = null;
+    let prevClose = historicalData.length > 0 ? historicalData[0].prevClose : 0;
+    
+    if (latestResult.success && latestResult.data) {
+      currentData = latestResult.data;
+      prevClose = currentData.prevClose;
+      
+      // 3. 存储到数据库
+      try {
+        const check = db.exec(`SELECT id FROM intraday_data WHERE stock_code = '${code}' AND trade_date = '${today}' AND time = '${currentData.time}'`);
+        if (check.length === 0 || check[0].values.length === 0) {
+          db.run(`INSERT INTO intraday_data (stock_code, trade_date, time, price, open, high, low, volume, amount, prevClose) 
+                  VALUES ('${code}', '${today}', '${currentData.time}', ${currentData.price}, ${currentData.open}, ${currentData.high}, ${currentData.low}, ${currentData.volume}, ${currentData.amount}, ${currentData.prevClose})`);
+          saveDatabase();
+          console.log('💾 存储实时数据到数据库:', currentData.time, currentData.price);
+        }
+      } catch (e) {
+        console.error('❌ 存储数据失败:', e.message);
+      }
+    }
+    
+    // 4. 合并历史数据和当前数据
+    const allData = [...historicalData];
+    if (currentData) {
+      // 检查是否已存在
+      const exists = historicalData.some(d => d.time === currentData.time);
+      if (!exists) {
+        allData.push({
+          time: currentData.time,
+          price: currentData.price,
+          open: currentData.open,
+          high: currentData.high,
+          low: currentData.low,
+          volume: currentData.volume,
+          amount: currentData.amount,
+          prevClose: currentData.prevClose
+        });
+      }
+    }
+    
+    // 5. 按时间排序
+    allData.sort((a, b) => a.time.localeCompare(b.time));
+    
+    res.json({
+      success: true,
+      prevClose: prevClose,
+      data: allData,
+      source: historicalData.length > 0 ? 'database+api' : 'api'
+    });
+    
+  } catch (error) {
+    console.error('❌ 分时图 API 失败:', error.message);
+    res.status(500).json({ success: false, message: '获取失败' });
+  }
 });
 
 // 逐笔成交 API（代理东方财富接口）

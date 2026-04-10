@@ -756,3 +756,62 @@ module.exports = {
   getDataSourceStatus,
   fetchIntradayHistory
 };
+
+/**
+ * 获取最新实时数据（MyData API，1 分钟）
+ * @param {string} code 股票代码（6 位数字）
+ * @param {string} market 市场（sh/sz/hk）
+ */
+async function fetchStockLatest(code, market) {
+  try {
+    const url = `${MYDATA_BASE_URL}/hsstock/latest/${code}.${market.toUpperCase()}/1/n/${MYDATA_LICENCE}?lt=1`;
+    
+    console.log('📡 MyData 实时 API:', url);
+    
+    const response = await mydataApi.get(url);
+    const data = response.data;
+    
+    if (!Array.isArray(data) || data.length === 0) {
+      return { success: false, message: '无实时数据' };
+    }
+    
+    const item = data[0];
+    const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
+    const time = timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '00:00';
+    
+    return {
+      success: true,
+      data: {
+        time: time,
+        price: item.c || 0,
+        open: item.o || 0,
+        high: item.h || 0,
+        low: item.l || 0,
+        volume: item.v || 0,
+        amount: item.a || 0,
+        prevClose: item.pc || 0,
+        timestamp: item.t
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ MyData 实时 API 失败:', error.message);
+    return { success: false, message: '获取失败' };
+  }
+}
+
+// 更新导出
+module.exports = {
+  fetchMarketVolume,
+  fetchLimitUpSectors,
+  fetchHighTurnover,
+  fetchSectorCashflow,
+  fetchStockDetail,
+  fetchIntradayData,
+  fetchConvertiblesForStock,
+  fetchSectorStocks,
+  fetchMainIndices,
+  getDataSourceStatus,
+  fetchIntradayHistory,
+  fetchStockLatest
+};
