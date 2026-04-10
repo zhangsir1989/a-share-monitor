@@ -30,7 +30,7 @@ const Chart = {
     if (!container) return;
     
     let width = Math.max(container.clientWidth - 20, 400);
-    let height = 480;  // 增加高度到 480px，留出时间轴空间
+    let height = 420;  // 减小高度，不需要时间轴空间
     
     if (container.clientWidth <= 20) {
       requestAnimationFrame(() => this.resize());
@@ -92,10 +92,10 @@ const Chart = {
     const width = this.canvas.width;
     const height = this.canvas.height;
     
-    // 布局：价格图 (315px) + 成交量 (135px) + 时间轴 (30px) = 480px
-    const padding = { top: 30, right: 60, bottom: 30, left: 55 };
+    // 布局：价格图 (285px) + 成交量 (135px) = 420px
+    const padding = { top: 30, right: 60, bottom: 0, left: 55 };
     const chartWidth = width - padding.left - padding.right;
-    const priceChartHeight = 315;
+    const priceChartHeight = 285;
     const volumeHeight = 135;
 
     this.ctx.clearRect(0, 0, width, height);
@@ -145,11 +145,8 @@ const Chart = {
     this.drawStats(padding.left, padding.top, chartWidth);
 
     // 7. 绘制成交量（红涨绿跌）
-    const volumeYBase = padding.top + priceChartHeight + 5;
+    const volumeYBase = padding.top + priceChartHeight;
     this.drawVolumeBar(padding, chartWidth, volumeHeight, volumeYBase);
-
-    // 8. 绘制时间轴（9:30-15:00）
-    this.drawTimeAxis(padding, chartWidth, volumeYBase + volumeHeight + 5);
   },
 
   drawGrid(padding, chartWidth, priceChartHeight, priceMin, priceMax, yScale) {
@@ -188,19 +185,7 @@ const Chart = {
       this.ctx.fillText(`${sign}${changePercent.toFixed(2)}%`, padding.left + chartWidth + 5, y + 4);
     }
 
-    // 竖线（时间）- 根据实际数据中的时间点位置绘制
-    const timePoints = ['09:30', '10:00', '10:30', '11:00', '11:30', '13:00', '13:30', '14:00', '14:30', '15:00'];
-    for (const t of timePoints) {
-      const index = this.findTimeIndex(t);
-      if (index >= 0) {
-        const x = padding.left + (index / (this.data.length - 1)) * chartWidth;
-        this.ctx.beginPath();
-        this.ctx.moveTo(x, padding.top);
-        this.ctx.lineTo(x, padding.top + priceChartHeight);
-        this.ctx.strokeStyle = '#30363d';
-        this.ctx.stroke();
-      }
-    }
+    // 移除竖线（时间），因为底部没有时间轴
   },
 
   drawPrevCloseLine(padding, chartWidth, y) {
@@ -236,7 +221,7 @@ const Chart = {
     this.ctx.fillStyle = '#1890ff';
     this.ctx.font = '11px Arial';
     this.ctx.textAlign = 'right';
-    this.ctx.fillText('均价 ' + this.stats.avgPrice.toFixed(2), padding.left - 5, y + 15);
+    this.ctx.fillText('均价 ' + this.stats.avgPrice.toFixed(2), padding.left - 5, y - 5);
   },
 
   /**

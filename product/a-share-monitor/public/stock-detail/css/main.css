@@ -235,7 +235,7 @@
 
 /* 图表容器 */
 .chart-container {
-  height: 480px;
+  height: 420px;
   background: var(--bg-primary);
   border-radius: 8px;
   position: relative;
