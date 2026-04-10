@@ -685,3 +685,74 @@ module.exports = {
   fetchMainIndices,
   getDataSourceStatus
 };
+
+/**
+ * 获取分时历史数据（MyData API，5 分钟 K 线）
+ * @param {string} code 股票代码（6 位数字）
+ * @param {string} market 市场（sh/sz/hk）
+ * @param {string} date 日期（YYYYMMDD）
+ */
+async function fetchIntradayHistory(code, market, date = null) {
+  try {
+    if (!date) {
+      const today = new Date();
+      date = today.toISOString().slice(0, 10).replace(/-/g, '');
+    }
+    
+    const url = `https://api.mairuiapi.com/hsstock/history/${code}.${market.toUpperCase()}/5/n/${MYDATA_LICENCE}?st=${date}&et=${date}&lt=48`;
+    
+    console.log('📊 MyData 分时历史 API:', url);
+    
+    const response = await axios.get(url, {
+      timeout: 10000,
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    
+    const data = response.data;
+    
+    if (!Array.isArray(data) || data.length === 0) {
+      return { success: false, message: '无分时数据' };
+    }
+    
+    const intradayData = data.map(item => {
+      const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
+      const time = timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '00:00';
+      
+      return {
+        time: time,
+        price: item.c || 0,
+        open: item.o || 0,
+        high: item.h || 0,
+        low: item.l || 0,
+        volume: item.v || 0,
+        amount: item.a || 0,
+        prevClose: item.pc || 0
+      };
+    });
+    
+    return {
+      success: true,
+      prevClose: data[0]?.pc || 0,
+      data: intradayData
+    };
+    
+  } catch (error) {
+    console.error('❌ MyData 分时历史 API 失败:', error.message);
+    return { success: false, message: '获取失败' };
+  }
+}
+
+// 更新导出
+module.exports = {
+  fetchMarketVolume,
+  fetchLimitUpSectors,
+  fetchHighTurnover,
+  fetchSectorCashflow,
+  fetchStockDetail,
+  fetchIntradayData,
+  fetchConvertiblesForStock,
+  fetchSectorStocks,
+  fetchMainIndices,
+  getDataSourceStatus,
+  fetchIntradayHistory
+};

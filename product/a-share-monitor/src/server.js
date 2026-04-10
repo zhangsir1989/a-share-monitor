@@ -618,7 +618,11 @@ app.get('/stock', (req, res) => {
 
 // 分时图 API
 app.get('/api/intraday/:code', async (req, res) => {
-  const result = await fetchIntradayData(req.params.code);
+  const code = req.params.code.replace(/^(sh|sz|bj|hk)/, '');
+  const market = req.params.code.match(/^(sh|sz|bj|hk)/)?.[1] || (code.startsWith('6') ? 'sh' : 'sz');
+  
+  // 使用 MyData API 获取分时历史数据
+  const result = await fetchIntradayHistory(code, market);
   res.json(result);
 });
 

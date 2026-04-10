@@ -100,32 +100,35 @@ const IntradayChart = {
     const currentMinute = now.getUTCMinutes();
     const currentTotalMinutes = currentHour * 60 + currentMinute;
     
-    // 交易时间：9:30-11:30, 13:00-15:00
-    const marketOpen = 9 * 60 + 30;  // 570
-    const marketClose = 15 * 60;     // 900
-    const marketNoonStart = 13 * 60; // 780
-    const marketNoonEnd = 11 * 60 + 30; // 690
+    // 交易时间：9:30-11:30(120 分钟), 13:00-15:00(120 分钟)
+    const marketOpen = 9 * 60 + 30;      // 570 - 上午开盘
+    const marketNoonEnd = 11 * 60 + 30;  // 690 - 上午收盘
+    const marketAfternoonStart = 13 * 60; // 780 - 下午开盘
+    const marketClose = 15 * 60;         // 900 - 下午收盘
     
     // 计算当前应该绘制的数据点索引
     let currentIndex = this.data.length - 1; // 默认绘制全部
     
-    if (currentTotalMinutes >= marketOpen && currentTotalMinutes <= marketClose) {
-      // 在交易时间内
-      if (currentTotalMinutes <= marketNoonEnd) {
-        // 上午：9:30-11:30
-        const minutesFromOpen = currentTotalMinutes - marketOpen;
-        currentIndex = Math.floor((minutesFromOpen / 120) * 120); // 上午 120 个点
-      } else if (currentTotalMinutes >= marketNoonStart) {
-        // 下午：13:00-15:00
-        const minutesFromOpen = 120 + (currentTotalMinutes - marketNoonStart); // 上午 120 分钟 + 下午经过的分钟
-        currentIndex = Math.floor((minutesFromOpen / 240) * (this.data.length - 1));
-      }
+    if (currentTotalMinutes < marketOpen) {
+      // 还没开盘，不绘制
+      currentIndex = 0;
+    } else if (currentTotalMinutes <= marketNoonEnd) {
+      // 上午交易时间：9:30-11:30
+      const minutesFromOpen = currentTotalMinutes - marketOpen;
+      currentIndex = Math.floor((minutesFromOpen / 120) * 120);
+    } else if (currentTotalMinutes < marketAfternoonStart) {
+      // 午休时间：11:30-13:00，停留在上午收盘
+      currentIndex = 120;
+    } else if (currentTotalMinutes <= marketClose) {
+      // 下午交易时间：13:00-15:00
+      const afternoonMinutes = currentTotalMinutes - marketAfternoonStart;
+      currentIndex = 121 + Math.floor((afternoonMinutes / 120) * 120);
     }
     
     // 确保索引有效
     currentIndex = Math.max(0, Math.min(currentIndex, this.data.length - 1));
     
-    console.log('⏰ 当前时间:', currentHour + ':' + currentMinute);
+    console.log('⏰ 当前时间:', currentHour + ':' + currentMinute, '(' + currentTotalMinutes + '分钟)');
     console.log('⏰ 当前索引:', currentIndex, '时间:', this.data[currentIndex]?.time, '价格:', this.data[currentIndex]?.price);
 
     const prices = this.data.map(d => d.price);
