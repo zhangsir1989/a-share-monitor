@@ -203,10 +203,11 @@ function initSubSidebarCollapse() {
     console.log('✅ 二级侧边栏收缩按钮事件已绑定');
   }
   
-  // 确保二级侧边栏初始状态为展开（不折叠）
-  subSidebar.classList.remove('collapsed');
+  // 根据保存的状态设置初始状态（不强制展开）
+  // restoreSidebarState() 已经设置了正确的状态和类名
+  // 这里只需要更新按钮图标
   updateSubSidebarButton(subSidebar);
-  console.log('✅ 二级侧边栏初始状态：展开');
+  console.log('✅ 二级侧边栏初始状态：', sidebarState.subCollapsed ? '折叠' : '展开');
 }
 
 // 处理二级侧边栏折叠
