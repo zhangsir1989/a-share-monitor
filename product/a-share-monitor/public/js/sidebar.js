@@ -27,6 +27,9 @@ function initSidebar() {
     return;
   }
   
+  // 恢复之前保存的侧边栏状态
+  restoreSidebarState();
+  
   // 获取用户信息
   sidebarState.userRole = localStorage.getItem('userRole') || '0';
   sidebarState.currentPage = window.location.pathname;
