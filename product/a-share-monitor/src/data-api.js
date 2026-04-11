@@ -378,8 +378,9 @@ async function fetchStockDetail(query) {
         pb: (realtimeData.pb_ratio || 0).toFixed(2),
         totalMarketCap: (ssjyData.sz || instrumentData.tv || 0) / 100000000,  // 总市值（亿）
         floatMarketCap: (ssjyData.lt || instrumentData.fv || 0) / 100000000,  // 流通市值（亿）
-        totalShares: (ssjyData.sz || instrumentData.tv || 0),  // 总股本
-        floatShares: (ssjyData.lt || instrumentData.fv || 0),  // 流通股本
+        // 总股本和流通股本需要从市值和股价计算：股本 = 市值 / 股价
+        totalShares: (ssjyData.sz || instrumentData.tv || 0) / (price > 0 ? price : 1),  // 总股本（股）
+        floatShares: (ssjyData.lt || instrumentData.fv || 0) / (price > 0 ? price : 1),  // 流通股本（股）
         outerVol: '--',  // 外盘 - MyData API 暂无
         innerVol: '--',  // 内盘 - MyData API 暂无
         ytdChange: (ssjyData.zdfnc || 0).toFixed(2)  // 今年涨幅 - 从 ssjy 接口获取
