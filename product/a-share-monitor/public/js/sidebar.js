@@ -385,15 +385,30 @@ function restoreSidebarState() {
     }
     
     // 恢复二级侧边栏状态（仅当当前页面有二级侧边栏时）
+    // 优化：点击一级菜单进入有二级菜单的页面时，默认展开二级菜单
     if (subSidebar) {
-      if (subCollapsed) {
-        subSidebar.classList.add('collapsed');
-        sidebarState.subCollapsed = true;
+      // 检查是否是从其他页面跳转过来（不是刷新）
+      const isNavigation = document.referrer && document.referrer !== window.location.href;
+      
+      if (isNavigation) {
+        // 从其他页面跳转过来，默认展开二级菜单
+        subSidebar.classList.remove('collapsed');
+        sidebarState.subCollapsed = false;
         if (subCollapseBtn) {
-          subCollapseBtn.innerHTML = '》';
+          subCollapseBtn.innerHTML = '《';
         }
+        console.log('✅ 从其他页面跳转，二级侧边栏默认展开');
+      } else {
+        // 刷新页面，恢复用户之前的折叠偏好
+        if (subCollapsed) {
+          subSidebar.classList.add('collapsed');
+          sidebarState.subCollapsed = true;
+          if (subCollapseBtn) {
+            subCollapseBtn.innerHTML = '》';
+          }
+        }
+        console.log('✅ 刷新页面，恢复二级侧边栏状态:', subCollapsed ? '折叠' : '展开');
       }
-      console.log('✅ 二级侧边栏状态恢复:', subCollapsed ? '折叠' : '展开');
     } else {
       // 当前页面没有二级侧边栏，重置状态
       sidebarState.subCollapsed = false;
