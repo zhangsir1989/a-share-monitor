@@ -700,6 +700,7 @@ async function fetchIntradayHistory(code, market, date = null) {
       date = today.toISOString().slice(0, 10).replace(/-/g, '');
     }
     
+    // 使用 MyData API 5 分钟 K 线数据（48 条）作为分时图数据源
     const url = `https://api.mairuiapi.com/hsstock/history/${code}.${market.toUpperCase()}/5/n/${MYDATA_LICENCE}?st=${date}&et=${date}&lt=48`;
     
     console.log('📊 MyData 分时历史 API:', url);
@@ -715,6 +716,7 @@ async function fetchIntradayHistory(code, market, date = null) {
       return { success: false, message: '无分时数据' };
     }
     
+    // 将 5 分钟 K 线数据转换为分时图格式（每 5 分钟一个点，共 48 个点）
     const intradayData = data.map(item => {
       const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
       const time = timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '00:00';
@@ -730,6 +732,9 @@ async function fetchIntradayHistory(code, market, date = null) {
         prevClose: item.pc || 0
       };
     });
+    
+    // 按时间排序
+    intradayData.sort((a, b) => a.time.localeCompare(b.time));
     
     return {
       success: true,
