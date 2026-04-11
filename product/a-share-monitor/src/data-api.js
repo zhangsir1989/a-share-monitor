@@ -38,7 +38,7 @@ const txApi = axios.create({
 let dataSourceStatus = { volume: 'mydata', turnover: 'mydata', limitUp: 'mydata', cashflow: 'unknown' };
 
 /**
- * 获取沪深成交量数据（MyData API 优先）
+ * 获取沪深成交量数据（仅使用 MyData API）
  */
 async function fetchMarketVolume() {
   try {
@@ -74,45 +74,7 @@ async function fetchMarketVolume() {
     };
   } catch (e) {
     console.error('获取沪深成交量失败 (MyData):', e.message);
-    
-    // 回退到腾讯 API
-    try {
-      const resp = await txApi.get('http://qt.gtimg.cn/q=sh000001,sz399001');
-      const text = iconv.decode(resp.data, 'gbk');
-      const shMatch = text.match(/v_sh000001="([^"]+)"/);
-      const szMatch = text.match(/v_sz399001="([^"]+)"/);
-      
-      if (!shMatch || !szMatch) return null;
-      
-      const shParts = shMatch[1].split('~');
-      const szParts = szMatch[1].split('~');
-      
-      const shVolume = parseFloat(shParts[6]) || 0;
-      const szVolume = parseFloat(szParts[6]) || 0;
-      const shAmountWan = parseFloat(shParts[37]) || 0;
-      const szAmountWan = parseFloat(szParts[37]) || 0;
-      
-      const shAmount = shAmountWan / 10000;
-      const szAmount = szAmountWan / 10000;
-      const totalAmount = shAmount + szAmount;
-      const totalVolume = (shVolume + szVolume) / 10000;
-      
-      dataSourceStatus.volume = 'tencent';
-      
-      return {
-        totalVolume: Math.round(totalVolume),
-        totalAmount: Math.round(totalAmount * 100) / 100,
-        shVolume: Math.round(shVolume / 10000),
-        szVolume: Math.round(szVolume / 10000),
-        shAmount: Math.round(shAmount * 100) / 100,
-        szAmount: Math.round(szAmount * 100) / 100,
-        shRatio: totalAmount > 0 ? ((shAmount / totalAmount) * 100).toFixed(2) : '0',
-        szRatio: totalAmount > 0 ? ((szAmount / totalAmount) * 100).toFixed(2) : '0'
-      };
-    } catch (e2) {
-      console.error('获取成交量失败 (腾讯回退):', e2.message);
-      return null;
-    }
+    return null;
   }
 }
 
