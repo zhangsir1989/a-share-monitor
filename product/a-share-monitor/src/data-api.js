@@ -51,14 +51,16 @@ async function fetchMarketVolume() {
     const shData = shResp.data;
     const szData = szResp.data;
     
-    // MyData API 返回格式：{"t":"2026-04-11 10:00:00","o":3345.67,"h":3350.12,"l":3340.23,"c":3348.90,"v":123456789,"a":9876543210,"pc":3340.00,"sf":0}
-    // MyData API 返回格式：v=成交量（股），a=成交额（亿元）
+    // MyData API 返回格式：v=成交量（股），a=成交额（元）
     const shVolume = shData.v || 0;  // 成交量（股）
     const szVolume = szData.v || 0;
-    const shAmount = shData.a || 0;  // 成交额（亿元）
-    const szAmount = szData.a || 0;
+    const shAmountYuan = shData.a || 0;  // 成交额（元）
+    const szAmountYuan = szData.a || 0;  // 成交额（元）
     
-    const totalAmount = shAmount + szAmount;  // 亿元，直接相加
+    // 转换为亿元
+    const shAmount = shAmountYuan / 100000000;
+    const szAmount = szAmountYuan / 100000000;
+    const totalAmount = shAmount + szAmount;  // 亿元
     const totalVolume = (shVolume + szVolume) / 100000000;  // 股转换为亿手
     
     dataSourceStatus.volume = 'mydata';
