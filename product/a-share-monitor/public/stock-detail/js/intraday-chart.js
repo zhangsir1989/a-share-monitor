@@ -87,7 +87,7 @@ const IntradayChart = {
     const height = this.canvas.height;
     
     // 布局：价格图 (285px) + 成交量 (135px) + 时间轴 (30px) = 450px
-    const padding = { top: 30, right: 10, bottom: 30, left: 55 };
+    const padding = { top: 30, right: 70, bottom: 30, left: 55 };  // 右侧增加空间显示涨跌幅%
     const chartWidth = width - padding.left - padding.right;
     const priceChartHeight = 285;
     const volumeHeight = 135;
@@ -201,10 +201,18 @@ const IntradayChart = {
       const price = priceMax - (i / lines) * (priceMax - priceMin);
       const isAbovePrevClose = price >= this.prevClose;
       
+      // 左侧价格标签
       this.ctx.fillStyle = isAbovePrevClose ? '#ff4d4f' : '#52c41a';
       this.ctx.font = '11px Arial';
       this.ctx.textAlign = 'right';
       this.ctx.fillText(price.toFixed(2), padding.left - 5, y + 4);
+      
+      // 右侧涨跌幅%标签
+      const changePercent = ((price - this.prevClose) / this.prevClose) * 100;
+      const sign = changePercent >= 0 ? '+' : '';
+      this.ctx.fillStyle = changePercent >= 0 ? '#ff4d4f' : '#52c41a';
+      this.ctx.textAlign = 'left';
+      this.ctx.fillText(sign + changePercent.toFixed(2) + '%', padding.left + chartWidth + 5, y + 4);
     }
 
     // 竖线（时间）

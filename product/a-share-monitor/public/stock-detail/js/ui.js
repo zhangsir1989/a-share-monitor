@@ -212,6 +212,17 @@ const UI = {
         ytdChangeEl.textContent = '--';
       }
     }
+    
+    // 净利润（亿元）
+    const lastYearProfitEl = document.getElementById('basic-last-year-profit');
+    if (lastYearProfitEl) {
+      lastYearProfitEl.textContent = data.lastYearNetProfit ? data.lastYearNetProfit + '亿' : '--';
+    }
+    
+    const currentYearProfitEl = document.getElementById('basic-current-year-profit');
+    if (currentYearProfitEl) {
+      currentYearProfitEl.textContent = data.currentYearNetProfit ? data.currentYearNetProfit + '亿' : '--';
+    }
   },
   
   /**

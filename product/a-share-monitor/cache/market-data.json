@@ -1,6 +1,6 @@
 {
-  "date": "Fri Apr 10 2026",
-  "timestamp": 1775804340890,
+  "date": "Sat Apr 11 2026",
+  "timestamp": 1775890740185,
   "data": {
     "volume": {
       "totalVolume": 119980,
@@ -848,6 +848,8 @@
         "mainNetInflowRatio": "8.64%"
       }
     ],
-    "lastUpdate": "2026-04-10T06:58:25.846Z"
+    "lastUpdate": "2026-04-10T06:58:25.846Z",
+    "isCached": true,
+    "cachedDate": "Fri Apr 10 2026"
   }
 }
