@@ -127,12 +127,32 @@
   .sidebar.collapsed ~ .sub-sidebar {
     left: 60px !important;
   }
+  
+  /* 二级侧边栏折叠时，隐藏但保持位置 */
+  .sub-sidebar.collapsed {
+    width: 0 !important;
+    overflow: hidden !important;
+    left: 240px !important;
+  }
+  
+  /* 主侧边栏折叠 + 二级侧边栏折叠 */
+  .sidebar.collapsed .sub-sidebar.collapsed,
+  .sidebar.collapsed + .sub-sidebar.collapsed {
+    left: 60px !important;
+  }
 }
 
 /* 二级侧边栏折叠状态 */
 .sub-sidebar.collapsed {
   width: 0;
-  transform: translateX(-200px);
+  overflow: hidden;
+  transform: none;
+  left: 240px;
+}
+
+/* 主侧边栏折叠时，二级侧边栏折叠状态 */
+.sidebar.collapsed .sub-sidebar.collapsed {
+  left: 60px;
 }
 
 /* 主侧边栏折叠时，二级侧边栏位置调整 */
