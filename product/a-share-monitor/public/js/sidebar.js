@@ -374,6 +374,7 @@ function restoreSidebarState() {
     const collapseBtn = document.getElementById('sidebar-collapse-btn');
     const subCollapseBtn = document.getElementById('sub-sidebar-collapse-btn');
     
+    // 恢复主侧边栏状态
     if (sidebar && mainCollapsed) {
       sidebar.classList.add('collapsed');
       sidebarState.mainCollapsed = true;
@@ -382,12 +383,20 @@ function restoreSidebarState() {
       }
     }
     
-    if (subSidebar && subCollapsed) {
-      subSidebar.classList.add('collapsed');
-      sidebarState.subCollapsed = true;
-      if (subCollapseBtn) {
-        subCollapseBtn.innerHTML = '》';
+    // 恢复二级侧边栏状态（仅当当前页面有二级侧边栏时）
+    if (subSidebar) {
+      if (subCollapsed) {
+        subSidebar.classList.add('collapsed');
+        sidebarState.subCollapsed = true;
+        if (subCollapseBtn) {
+          subCollapseBtn.innerHTML = '》';
+        }
       }
+      console.log('✅ 二级侧边栏状态恢复:', subCollapsed ? '折叠' : '展开');
+    } else {
+      // 当前页面没有二级侧边栏，重置状态
+      sidebarState.subCollapsed = false;
+      console.log('ℹ️ 当前页面无二级侧边栏，重置状态');
     }
     
     updateLayoutClasses();
