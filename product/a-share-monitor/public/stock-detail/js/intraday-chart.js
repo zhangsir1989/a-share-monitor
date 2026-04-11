@@ -270,75 +270,22 @@ const IntradayChart = {
     this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
 
-    // 填充区域（只到当前时间）
-    for (let i = 0; i < currentIndex; i++) {
-      const price1 = this.data[i].price;
-      const price2 = this.data[i + 1].price;
-      const x1 = xScale(i);
-      const x2 = xScale(i + 1);
-      const y1 = yScale(price1);
-      const y2 = yScale(price2);
-
-      const isAbove1 = price1 >= this.prevClose;
-      const isAbove2 = price2 >= this.prevClose;
-
-      if (isAbove1 && isAbove2) {
-        this.ctx.beginPath();
-        this.ctx.moveTo(x1, prevCloseY);
-        this.ctx.lineTo(x1, y1);
-        this.ctx.lineTo(x2, y2);
-        this.ctx.lineTo(x2, prevCloseY);
-        this.ctx.closePath();
-        this.ctx.fillStyle = 'rgba(255, 77, 79, 0.15)';
-        this.ctx.fill();
-      } else if (!isAbove1 && !isAbove2) {
-        this.ctx.beginPath();
-        this.ctx.moveTo(x1, prevCloseY);
-        this.ctx.lineTo(x1, y1);
-        this.ctx.lineTo(x2, y2);
-        this.ctx.lineTo(x2, prevCloseY);
-        this.ctx.closePath();
-        this.ctx.fillStyle = 'rgba(82, 196, 26, 0.15)';
-        this.ctx.fill();
-      } else {
-        const intersectX = x1 + (x2 - x1) * (this.prevClose - price1) / (price2 - price1);
-        const intersectY = prevCloseY;
-
-        if (isAbove1) {
-          this.ctx.beginPath();
-          this.ctx.moveTo(x1, prevCloseY);
-          this.ctx.lineTo(x1, y1);
-          this.ctx.lineTo(intersectX, intersectY);
-          this.ctx.closePath();
-          this.ctx.fillStyle = 'rgba(255, 77, 79, 0.15)';
-          this.ctx.fill();
-
-          this.ctx.beginPath();
-          this.ctx.moveTo(intersectX, prevCloseY);
-          this.ctx.lineTo(x2, y2);
-          this.ctx.lineTo(x2, prevCloseY);
-          this.ctx.closePath();
-          this.ctx.fillStyle = 'rgba(82, 196, 26, 0.15)';
-          this.ctx.fill();
-        } else {
-          this.ctx.beginPath();
-          this.ctx.moveTo(x1, prevCloseY);
-          this.ctx.lineTo(x1, y1);
-          this.ctx.lineTo(intersectX, intersectY);
-          this.ctx.closePath();
-          this.ctx.fillStyle = 'rgba(82, 196, 26, 0.15)';
-          this.ctx.fill();
-
-          this.ctx.beginPath();
-          this.ctx.moveTo(intersectX, prevCloseY);
-          this.ctx.lineTo(x2, y2);
-          this.ctx.lineTo(x2, prevCloseY);
-          this.ctx.closePath();
-          this.ctx.fillStyle = 'rgba(255, 77, 79, 0.15)';
-          this.ctx.fill();
-        }
-      }
+    // 填充区域（只到当前时间）- 整体填充，根据整体涨跌决定颜色
+    this.ctx.beginPath();
+    this.ctx.moveTo(xScale(0), prevCloseY);
+    for (let i = 0; i <= currentIndex; i++) {
+      this.ctx.lineTo(xScale(i), yScale(this.data[i].price));
     }
+    this.ctx.lineTo(xScale(currentIndex), prevCloseY);
+    this.ctx.closePath();
+    
+    // 根据整体涨跌决定填充颜色
+    if (isUp) {
+      this.ctx.fillStyle = 'rgba(255, 77, 79, 0.3)';  // 红色填充，30% 不透明度
+    } else {
+      this.ctx.fillStyle = 'rgba(82, 196, 26, 0.3)';  // 绿色填充，30% 不透明度
+    }
+    this.ctx.fill();
   },
 
   drawAfterHoursData(xScale, yScale, closePrice) {
