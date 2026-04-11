@@ -147,6 +147,8 @@
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border-color);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .index-item {
@@ -718,4 +720,24 @@
 
 .flash-down {
   animation: flash-down 0.5s ease;
+}
+/* 内容区域铺满全屏 */
+.add-stock-section,
+.stock-list-section,
+.index-display {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 表格容器铺满全屏 */
+.table-container,
+.table-wrapper {
+  width: 100%;
+  max-width: none;
+}
+
+/* 确保表格铺满 */
+.stock-table {
+  width: 100%;
+  min-width: 100%;
 }

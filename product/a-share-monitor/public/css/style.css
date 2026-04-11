@@ -27,8 +27,8 @@ body {
 }
 
 .container {
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: 20px;
   padding-left: 460px; /* 240px 主侧边栏 + 200px 二级侧边栏 + 20px 间距 */
   transition: padding-left 0.3s ease;
@@ -67,6 +67,8 @@ body {
   background-color: var(--bg-secondary);
   border-radius: 12px;
   margin-bottom: 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .header-top {
