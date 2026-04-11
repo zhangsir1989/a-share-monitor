@@ -69,6 +69,7 @@ body {
   margin-bottom: 20px;
   width: 100%;
   box-sizing: border-box;
+  /* 与下方模块保持统一内边距，确保左右对齐 */
 }
 
 .header-top {

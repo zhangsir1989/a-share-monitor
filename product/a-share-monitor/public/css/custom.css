@@ -741,3 +741,23 @@
   width: 100%;
   min-width: 100%;
 }
+
+/* 统一模块内边距，确保左右对齐 */
+.add-stock-section,
+.stock-list-section,
+.index-display {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* 确保表格内容与模块对齐 */
+.table-container {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* 表格内边距与模块一致 */
+.stock-table th,
+.stock-table td {
+  padding: 12px 8px;
+}

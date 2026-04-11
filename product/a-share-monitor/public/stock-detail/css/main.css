@@ -972,3 +972,15 @@
 .basic-card.basic-data-slow-refresh .basic-value {
   color: var(--text-secondary);
 }
+
+/* 统一模块内边距，确保左右对齐 */
+.card {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* 确保表格内容与模块对齐 */
+.table-container {
+  padding-left: 0;
+  padding-right: 0;
+}
