@@ -52,13 +52,14 @@ async function fetchMarketVolume() {
     const szData = szResp.data;
     
     // MyData API 返回格式：{"t":"2026-04-11 10:00:00","o":3345.67,"h":3350.12,"l":3340.23,"c":3348.90,"v":123456789,"a":9876543210,"pc":3340.00,"sf":0}
+    // MyData API 返回格式：v=成交量（股），a=成交额（亿元）
     const shVolume = shData.v || 0;  // 成交量（股）
     const szVolume = szData.v || 0;
-    const shAmount = shData.a || 0;  // 成交额（元）
+    const shAmount = shData.a || 0;  // 成交额（亿元）
     const szAmount = szData.a || 0;
     
-    const totalAmount = (shAmount + szAmount) / 100000000;  // 转换为亿元
-    const totalVolume = (shVolume + szVolume) / 100000000;  // 转换为亿手
+    const totalAmount = shAmount + szAmount;  // 亿元，直接相加
+    const totalVolume = (shVolume + szVolume) / 100000000;  // 股转换为亿手
     
     dataSourceStatus.volume = 'mydata';
     
@@ -67,10 +68,10 @@ async function fetchMarketVolume() {
       totalAmount: Math.round(totalAmount * 100) / 100,  // 亿元，保留 2 位小数
       shVolume: Math.round(shVolume / 100000000 * 100) / 100,  // 亿手
       szVolume: Math.round(szVolume / 100000000 * 100) / 100,
-      shAmount: Math.round(shAmount / 100000000 * 100) / 100,  // 亿元
-      szAmount: Math.round(szAmount / 100000000 * 100) / 100,
-      shRatio: totalAmount > 0 ? ((shAmount / (shAmount + szAmount)) * 100).toFixed(2) : '0',
-      szRatio: totalAmount > 0 ? ((szAmount / (shAmount + szAmount)) * 100).toFixed(2) : '0'
+      shAmount: Math.round(shAmount * 100) / 100,  // 亿元
+      szAmount: Math.round(szAmount * 100) / 100,
+      shRatio: totalAmount > 0 ? ((shAmount / totalAmount) * 100).toFixed(2) : '0',
+      szRatio: totalAmount > 0 ? ((szAmount / totalAmount) * 100).toFixed(2) : '0'
     };
   } catch (e) {
     console.error('获取沪深成交量失败 (MyData):', e.message);
