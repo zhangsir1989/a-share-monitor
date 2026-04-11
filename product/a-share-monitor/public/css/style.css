@@ -371,7 +371,7 @@ body {
 
 /* 指标样式 */
 .metric {
-  text-align: center;
+  text-align: left;  /* 左对齐 */
   margin-bottom: 20px;
 }
 
@@ -402,7 +402,7 @@ body {
 }
 
 .split-item {
-  text-align: center;
+  text-align: left;  /* 左对齐 */
 }
 
 .split-label {

@@ -38,45 +38,81 @@ const txApi = axios.create({
 let dataSourceStatus = { volume: 'mydata', turnover: 'mydata', limitUp: 'mydata', cashflow: 'unknown' };
 
 /**
- * 获取全市场成交量数据
+ * 获取沪深成交量数据（MyData API 优先）
  */
 async function fetchMarketVolume() {
   try {
-    const resp = await txApi.get('http://qt.gtimg.cn/q=sh000001,sz399001');
-    const text = iconv.decode(resp.data, 'gbk');
-    const shMatch = text.match(/v_sh000001="([^"]+)"/);
-    const szMatch = text.match(/v_sz399001="([^"]+)"/);
+    // 使用 MyData API 获取上证指数和深证成指的最新数据
+    const [shResp, szResp] = await Promise.all([
+      axios.get(`https://api.mairuiapi.com/hsindex/latest/000001.SH/d/${MYDATA_LICENCE}`, { timeout: 10000 }),
+      axios.get(`https://api.mairuiapi.com/hsindex/latest/399001.SZ/d/${MYDATA_LICENCE}`, { timeout: 10000 })
+    ]);
     
-    if (!shMatch || !szMatch) return null;
+    const shData = shResp.data;
+    const szData = szResp.data;
     
-    const shParts = shMatch[1].split('~');
-    const szParts = szMatch[1].split('~');
+    // MyData API 返回格式：{"t":"2026-04-11 10:00:00","o":3345.67,"h":3350.12,"l":3340.23,"c":3348.90,"v":123456789,"a":9876543210,"pc":3340.00,"sf":0}
+    const shVolume = shData.v || 0;  // 成交量（股）
+    const szVolume = szData.v || 0;
+    const shAmount = shData.a || 0;  // 成交额（元）
+    const szAmount = szData.a || 0;
     
-    const shVolume = parseFloat(shParts[6]) || 0;
-    const szVolume = parseFloat(szParts[6]) || 0;
-    const shAmountWan = parseFloat(shParts[37]) || 0;
-    const szAmountWan = parseFloat(szParts[37]) || 0;
+    const totalAmount = (shAmount + szAmount) / 100000000;  // 转换为亿元
+    const totalVolume = (shVolume + szVolume) / 100000000;  // 转换为亿手
     
-    const shAmount = shAmountWan / 10000;
-    const szAmount = szAmountWan / 10000;
-    const totalAmount = shAmount + szAmount;
-    const totalVolume = (shVolume + szVolume) / 10000;
-    
-    dataSourceStatus.volume = 'tencent';
+    dataSourceStatus.volume = 'mydata';
     
     return {
-      totalVolume: Math.round(totalVolume),
-      totalAmount: Math.round(totalAmount * 100) / 100,
-      shVolume: Math.round(shVolume / 10000),
-      szVolume: Math.round(szVolume / 10000),
-      shAmount: Math.round(shAmount * 100) / 100,
-      szAmount: Math.round(szAmount * 100) / 100,
-      shRatio: totalAmount > 0 ? ((shAmount / totalAmount) * 100).toFixed(2) : '0',
-      szRatio: totalAmount > 0 ? ((szAmount / totalAmount) * 100).toFixed(2) : '0'
+      totalVolume: Math.round(totalVolume * 100) / 100,  // 亿手，保留 2 位小数
+      totalAmount: Math.round(totalAmount * 100) / 100,  // 亿元，保留 2 位小数
+      shVolume: Math.round(shVolume / 100000000 * 100) / 100,  // 亿手
+      szVolume: Math.round(szVolume / 100000000 * 100) / 100,
+      shAmount: Math.round(shAmount / 100000000 * 100) / 100,  // 亿元
+      szAmount: Math.round(szAmount / 100000000 * 100) / 100,
+      shRatio: totalAmount > 0 ? ((shAmount / (shAmount + szAmount)) * 100).toFixed(2) : '0',
+      szRatio: totalAmount > 0 ? ((szAmount / (shAmount + szAmount)) * 100).toFixed(2) : '0'
     };
   } catch (e) {
-    console.error('获取成交量失败:', e.message);
-    return null;
+    console.error('获取沪深成交量失败 (MyData):', e.message);
+    
+    // 回退到腾讯 API
+    try {
+      const resp = await txApi.get('http://qt.gtimg.cn/q=sh000001,sz399001');
+      const text = iconv.decode(resp.data, 'gbk');
+      const shMatch = text.match(/v_sh000001="([^"]+)"/);
+      const szMatch = text.match(/v_sz399001="([^"]+)"/);
+      
+      if (!shMatch || !szMatch) return null;
+      
+      const shParts = shMatch[1].split('~');
+      const szParts = szMatch[1].split('~');
+      
+      const shVolume = parseFloat(shParts[6]) || 0;
+      const szVolume = parseFloat(szParts[6]) || 0;
+      const shAmountWan = parseFloat(shParts[37]) || 0;
+      const szAmountWan = parseFloat(szParts[37]) || 0;
+      
+      const shAmount = shAmountWan / 10000;
+      const szAmount = szAmountWan / 10000;
+      const totalAmount = shAmount + szAmount;
+      const totalVolume = (shVolume + szVolume) / 10000;
+      
+      dataSourceStatus.volume = 'tencent';
+      
+      return {
+        totalVolume: Math.round(totalVolume),
+        totalAmount: Math.round(totalAmount * 100) / 100,
+        shVolume: Math.round(shVolume / 10000),
+        szVolume: Math.round(szVolume / 10000),
+        shAmount: Math.round(shAmount * 100) / 100,
+        szAmount: Math.round(szAmount * 100) / 100,
+        shRatio: totalAmount > 0 ? ((shAmount / totalAmount) * 100).toFixed(2) : '0',
+        szRatio: totalAmount > 0 ? ((szAmount / totalAmount) * 100).toFixed(2) : '0'
+      };
+    } catch (e2) {
+      console.error('获取成交量失败 (腾讯回退):', e2.message);
+      return null;
+    }
   }
 }
 
