@@ -134,7 +134,11 @@ const Utils = {
    */
   getMarketByCode(code) {
     if (!code) return 'sh';
-    const pureCode = code.replace(/^sh|^sz|^bj/, '');
+    // 移除市场前缀
+    const pureCode = code.replace(/^sh|^sz|^bj|^hk/, '');
+    // 港股：5 位数字
+    if (pureCode.length === 5 && /^\d{5}$/.test(pureCode)) return 'hk';
+    // A 股：6 位数字
     if (pureCode.startsWith('6') || pureCode.startsWith('9') || pureCode.startsWith('5')) return 'sh';
     if (pureCode.startsWith('8') || pureCode.startsWith('4')) return 'bj';
     return 'sz';

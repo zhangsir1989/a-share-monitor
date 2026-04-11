@@ -569,8 +569,8 @@ app.get('/api/stock/:query', async (req, res) => {
   let query = req.params.query.trim();
   const queryUpper = query.toUpperCase();
   
-  // 提取代码（支持 sh/sz 前缀）
-  const codeMatch = query.match(/(SH|SZ)?(\d{6})/i);
+  // 提取代码（支持 sh/sz/hk 前缀）
+  const codeMatch = query.match(/(SH|SZ|HK)?(\d{5,6})/i);
   if (codeMatch) {
     const code = codeMatch[1] ? codeMatch[0] : codeMatch[2];
     const result = await fetchStockDetail(code);
