@@ -87,9 +87,6 @@ async function loadAllData() {
     console.log('✅ 买卖盘口加载完成');
   }
   
-  // 加载成交明细
-  await loadTradeDetail();
-  
   // 加载资金流向（通过逐笔成交数据计算）
   console.log('💰 开始计算资金流向...');
   const capitalResult = await API.getCapitalFlow(StockState.code, StockState.market);
