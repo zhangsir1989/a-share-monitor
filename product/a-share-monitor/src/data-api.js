@@ -293,6 +293,29 @@ async function fetchStockDetail(query) {
     const realtimeData = realtimeResp.data;
     const ssjyData = ssjyResp.data;
     
+    // 获取财务数据（利润表）
+    let financialData = {};
+    try {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const lastYear = currentYear - 1;
+      const st = `${lastYear}0101`;
+      const et = `${currentYear}1231`;
+      
+      // 转换代码格式：sz000001 -> 000001.SZ
+      const codeForFinancial = code.toUpperCase() + '.' + market.toUpperCase();
+      const financialUrl = `https://api.mairuiapi.com/hsstock/financial/income/${codeForFinancial}/${MYDATA_LICENCE}?st=${st}&et=${et}`;
+      console.log(`💰 请求财务数据 URL: ${financialUrl}`);
+      
+      const financialResp = await axios.get(financialUrl, { timeout: 10000, headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (financialResp.data && Array.isArray(financialResp.data) && financialResp.data.length > 0) {
+        financialData = financialResp.data[0];
+        console.log(`💰 获取到 ${code} 财务数据，净利润：${financialData.jlr || '--'}`);
+      }
+    } catch (err) {
+      console.warn(`⚠️ 获取财务数据失败 (${code}):`, err.message);
+    }
+    
     if (!realtimeData || !realtimeData.p) {
       // 如果 MyData 失败，回退到腾讯 API
       return await fetchStockDetailFromTencent(codeWithMarket);
@@ -383,7 +406,10 @@ async function fetchStockDetail(query) {
         floatShares: (ssjyData.lt || instrumentData.fv || 0) / (price > 0 ? price : 1),  // 流通股本（股）
         outerVol: '--',  // 外盘 - MyData API 暂无
         innerVol: '--',  // 内盘 - MyData API 暂无
-        ytdChange: (ssjyData.zdfnc || 0).toFixed(2)  // 今年涨幅 - 从 ssjy 接口获取
+        ytdChange: (ssjyData.zdfnc || 0).toFixed(2),  // 今年涨幅 - 从 ssjy 接口获取
+        // 净利润数据（从财务数据获取，单位：亿元）
+        lastYearNetProfit: financialData.jlr ? (financialData.jlr / 100000000).toFixed(2) : '--',
+        currentYearNetProfit: '--'  // 本年净利润待年报公布
       }
     };
   } catch (e) {
