@@ -201,6 +201,34 @@
   color: var(--text-primary);
 }
 
+.card-header .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-diagnosis {
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-diagnosis:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-diagnosis:active {
+  transform: translateY(0);
+}
+
 .card-body {
   padding: 20px;
 }
@@ -440,8 +468,12 @@
   color: var(--down-color);  /* 流出用绿色 */
 }
 
-.capital-value.net {
-  color: var(--accent-color);
+.capital-value.net.inflow {
+  color: var(--up-color);  /* 净流入正数用红色 */
+}
+
+.capital-value.net.outflow {
+  color: var(--down-color);  /* 净流入负数用绿色 */
 }
 
 .capital-value.cost {

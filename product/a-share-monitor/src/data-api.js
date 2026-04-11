@@ -295,6 +295,8 @@ async function fetchStockDetail(query) {
     
     // 获取财务数据（利润表）
     let financialData = {};
+    let currentYearNetProfit = '--';
+    let lastYearNetProfit = '--';
     try {
       const now = new Date();
       const currentYear = now.getFullYear();
@@ -309,8 +311,28 @@ async function fetchStockDetail(query) {
       
       const financialResp = await axios.get(financialUrl, { timeout: 10000, headers: { 'User-Agent': 'Mozilla/5.0' } });
       if (financialResp.data && Array.isArray(financialResp.data) && financialResp.data.length > 0) {
+        // 获取最新一期数据（本年）
         financialData = financialResp.data[0];
-        console.log(`💰 获取到 ${code} 财务数据，净利润：${financialData.jlr || '--'}`);
+        currentYearNetProfit = financialData.jlr ? (financialData.jlr / 100000000).toFixed(2) : '--';
+        
+        // 如果有上年数据
+        if (financialResp.data.length > 1) {
+          lastYearNetProfit = financialResp.data[1].jlr ? (financialResp.data[1].jlr / 100000000).toFixed(2) : '--';
+        } else {
+          // 只有一条数据，尝试获取更早的数据
+          const lastYearSt = `${lastYear - 1}0101`;
+          const lastYearEt = `${lastYear}1231`;
+          const lastYearUrl = `https://api.mairuiapi.com/hsstock/financial/income/${codeForFinancial}/${MYDATA_LICENCE}?st=${lastYearSt}&et=${lastYearEt}`;
+          try {
+            const lastYearResp = await axios.get(lastYearUrl, { timeout: 10000, headers: { 'User-Agent': 'Mozilla/5.0' } });
+            if (lastYearResp.data && Array.isArray(lastYearResp.data) && lastYearResp.data.length > 0) {
+              lastYearNetProfit = lastYearResp.data[0].jlr ? (lastYearResp.data[0].jlr / 100000000).toFixed(2) : '--';
+            }
+          } catch (e) {
+            console.warn(`⚠️ 获取上年财务数据失败 (${code}):`, e.message);
+          }
+        }
+        console.log(`💰 获取到 ${code} 财务数据，本年净利润：${currentYearNetProfit}亿，上年净利润：${lastYearNetProfit}亿`);
       }
     } catch (err) {
       console.warn(`⚠️ 获取财务数据失败 (${code}):`, err.message);
@@ -408,8 +430,8 @@ async function fetchStockDetail(query) {
         innerVol: '--',  // 内盘 - MyData API 暂无
         ytdChange: (ssjyData.zdfnc || 0).toFixed(2),  // 今年涨幅 - 从 ssjy 接口获取
         // 净利润数据（从财务数据获取，单位：亿元）
-        lastYearNetProfit: financialData.jlr ? (financialData.jlr / 100000000).toFixed(2) : '--',
-        currentYearNetProfit: '--'  // 本年净利润待年报公布
+        lastYearNetProfit: lastYearNetProfit,
+        currentYearNetProfit: currentYearNetProfit
       }
     };
   } catch (e) {

@@ -2434,11 +2434,21 @@ app.get('/tick-trade', requireAuth, (req, res) => {
 app.get('/intraday-data', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
 });
+
+// 资金诊断页面
+app.get('/capital-diagnosis', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/stock-detail/capital-diagnosis.html'));
+});
   if (req.session?.userRole !== '1') {
 
 // 分时数据查询页面
 app.get('/intraday-data', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
+});
+
+// 资金诊断页面
+app.get('/capital-diagnosis', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/stock-detail/capital-diagnosis.html'));
 });
     return res.redirect('/');
 
@@ -2446,11 +2456,21 @@ app.get('/intraday-data', requireAuth, (req, res) => {
 app.get('/intraday-data', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
 });
+
+// 资金诊断页面
+app.get('/capital-diagnosis', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/stock-detail/capital-diagnosis.html'));
+});
   }
 
 // 分时数据查询页面
 app.get('/intraday-data', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
+});
+
+// 资金诊断页面
+app.get('/capital-diagnosis', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/stock-detail/capital-diagnosis.html'));
 });
   res.sendFile(path.join(__dirname, '../public/tick-trade.html'));
 
@@ -2458,11 +2478,21 @@ app.get('/intraday-data', requireAuth, (req, res) => {
 app.get('/intraday-data', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
 });
+
+// 资金诊断页面
+app.get('/capital-diagnosis', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/stock-detail/capital-diagnosis.html'));
+});
 });
 
 // 分时数据查询页面
 app.get('/intraday-data', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/intraday-data.html'));
+});
+
+// 资金诊断页面
+app.get('/capital-diagnosis', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/stock-detail/capital-diagnosis.html'));
 });
 
 // 证券行情页面（需要登录）

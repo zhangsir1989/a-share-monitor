@@ -183,7 +183,10 @@
           <div class="card capital-card">
             <div class="card-header">
               <h3>💰 资金分析</h3>
-              <span class="capital-help" title="数据单位：亿元">💡 单位：亿元</span>
+              <div class="header-actions">
+                <span class="capital-help" title="数据单位：亿元">💡 单位：亿元</span>
+                <button class="btn-diagnosis" onclick="window.location.href='/capital-diagnosis.html?code=' + new URLSearchParams(window.location.search).get('code')">🔍 资金诊断</button>
+              </div>
             </div>
             <div class="card-body" id="capital-flow-body">
               <div class="capital-flow">
@@ -345,8 +348,8 @@
   <script src="js/config.js?v=20260406"></script>
   <script src="js/utils.js?v=20260406"></script>
   <script src="js/api.js?v=20260410"></script>
-  <script src="js/intraday-chart.js?v=20260412"></script>
-  <script src="js/ui.js?v=20260412"></script>
-  <script src="js/main.js?v=20260412"></script>
+  <script src="js/intraday-chart.js?v=20260413"></script>
+  <script src="js/ui.js?v=20260413"></script>
+  <script src="js/main.js?v=20260413"></script>
 </body>
 </html>

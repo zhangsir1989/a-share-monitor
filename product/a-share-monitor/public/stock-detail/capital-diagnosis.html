@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>资金诊断 - A 股实时监控</title>
+  <link rel="stylesheet" href="../css/sidebar.css?v=20260406">
+  <link rel="stylesheet" href="../css/style.css?v=20260404">
+  <link rel="stylesheet" href="css/main.css?v=20260412">
+  <style>
+    .diagnosis-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      color: white;
+    }
+    .diagnosis-header h2 {
+      margin: 0 0 10px 0;
+      font-size: 24px;
+    }
+    .diagnosis-header p {
+      margin: 0;
+      opacity: 0.9;
+    }
+    .diagnosis-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .diagnosis-card {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .diagnosis-card h3 {
+      margin: 0 0 15px 0;
+      font-size: 16px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .diagnosis-score {
+      font-size: 48px;
+      font-weight: bold;
+      text-align: center;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+    .score-excellent { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+    .score-good { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; }
+    .score-normal { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; }
+    .score-poor { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; }
+    .diagnosis-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .diagnosis-item:last-child {
+      border-bottom: none;
+    }
+    .diagnosis-label {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    .diagnosis-value {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .diagnosis-value.up { color: var(--up-color); }
+    .diagnosis-value.down { color: var(--down-color); }
+    .capital-trend {
+      height: 200px;
+      position: relative;
+      margin-top: 10px;
+    }
+    .trend-chart {
+      width: 100%;
+      height: 100%;
+    }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 16px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .back-btn:hover {
+      background: var(--bg-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 侧边栏导航 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📊 系统导航</h2>
+        <button class="btn-close-sidebar" id="close-sidebar">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="sidebar-link"><span class="link-icon">🏠</span><span class="link-text">首页</span></a>
+        <a href="/stock" class="sidebar-link"><span class="link-icon">📈</span><span class="link-text">证券行情</span></a>
+        <a href="/custom" class="sidebar-link"><span class="link-icon">⭐</span><span class="link-text">自定义</span></a>
+        <a href="/data-manager" class="sidebar-link" data-requires-admin="true"><span class="link-icon">🗄️</span><span class="link-text">数据管理</span></a>
+        <a href="/system" class="sidebar-link" data-requires-admin="true"><span class="link-icon">⚙️</span><span class="link-text">系统管理</span></a>
+        <a href="/users" class="sidebar-link" data-requires-admin="true"><span class="link-icon">👥</span><span class="link-text">用户管理</span></a>
+        <a href="/change-password" class="sidebar-link" data-requires-user="true"><span class="link-icon">🔑</span><span class="link-text">修改密码</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <span class="user-avatar">👤</span>
+          <span class="user-display-name" id="sidebar-username">--</span>
+        </div>
+        <button class="btn-logout-sidebar" id="sidebar-logout-btn">🚪 退出登录</button>
+      </div>
+    </aside>
+
+    <!-- 顶部导航 -->
+    <header class="header">
+      <div class="header-left">
+        <button class="btn-menu-toggle" id="menu-toggle">☰</button>
+        <a href="javascript:history.back()" class="back-btn">◀ 返回</a>
+        <h1 id="page-title">💰 资金诊断</h1>
+        <div class="datetime-display">
+          <span id="current-date">--</span>
+          <span id="current-time">--:--:--</span>
+          <span class="timezone-label">北京时间</span>
+        </div>
+      </div>
+      <div class="header-controls">
+        <a href="/" class="btn">🏠 首页</a>
+      </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+      <!-- 诊断头部 -->
+      <div class="diagnosis-header">
+        <h2 id="diagnosis-stock-name">--</h2>
+        <p id="diagnosis-stock-code">--</p>
+      </div>
+
+      <!-- 诊断结果网格 -->
+      <div class="diagnosis-grid">
+        <!-- 综合评分 -->
+        <div class="diagnosis-card">
+          <h3>🎯 综合评分</h3>
+          <div class="diagnosis-score score-normal" id="total-score">--</div>
+          <p style="text-align: center; color: var(--text-secondary); font-size: 14px;">基于主力资金、北向资金、大单净量等维度</p>
+        </div>
+
+        <!-- 主力资金诊断 -->
+        <div class="diagnosis-card">
+          <h3>💰 主力资金</h3>
+          <div id="main-capital-diagnosis">
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">主力净流入</span>
+              <span class="diagnosis-value" id="diag-main-netflow">--</span>
+            </div>
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">主力流入</span>
+              <span class="diagnosis-value" id="diag-main-inflow">--</span>
+            </div>
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">主力流出</span>
+              <span class="diagnosis-value" id="diag-main-outflow">--</span>
+            </div>
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">主力强度</span>
+              <span class="diagnosis-value" id="diag-main-strength">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 特大单诊断 -->
+        <div class="diagnosis-card">
+          <h3>💎 特大单</h3>
+          <div id="super-large-diagnosis">
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">特大单净流入</span>
+              <span class="diagnosis-value" id="diag-super-net">--</span>
+            </div>
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">特大单流入</span>
+              <span class="diagnosis-value" id="diag-super-inflow">--</span>
+            </div>
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">特大单流出</span>
+              <span class="diagnosis-value" id="diag-super-outflow">--</span>
+            </div>
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">超大单强度</span>
+              <span class="diagnosis-value" id="diag-super-strength">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 大单诊断 -->
+        <div class="diagnosis-card">
+          <h3>📊 大单</h3>
+          <div id="large-diagnosis">
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">大单净流入</span>
+              <span class="diagnosis-value" id="diag-large-net">--</span>
+            </div>
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">大单流入</span>
+              <span class="diagnosis-value" id="diag-large-inflow">--</span>
+            </div>
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">大单流出</span>
+              <span class="diagnosis-value" id="diag-large-outflow">--</span>
+            </div>
+            <div class="diagnosis-item">
+              <span class="diagnosis-label">大单强度</span>
+              <span class="diagnosis-value" id="diag-large-strength">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 资金流向趋势 -->
+      <div class="diagnosis-card">
+        <h3>📈 资金流向趋势</h3>
+        <div class="capital-trend">
+          <canvas id="trend-canvas" class="trend-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- 诊断建议 -->
+      <div class="diagnosis-card">
+        <h3>💡 诊断建议</h3>
+        <div id="diagnosis-advice" style="padding: 15px 0; color: var(--text-secondary); line-height: 1.6;">
+          --
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/sidebar.js?v=20260406"></script>
+  <script src="../js/utils.js?v=20260406"></script>
+  <script>
+    // 获取股票代码
+    const urlParams = new URLSearchParams(window.location.search);
+    const stockCode = urlParams.get('code');
+    
+    if (!stockCode) {
+      alert('缺少股票代码参数');
+      history.back();
+    }
+
+    // 更新标题
+    document.getElementById('diagnosis-stock-code').textContent = '代码：' + stockCode;
+
+    // 加载资金数据
+    async function loadCapitalData() {
+      try {
+        const resp = await fetch(`/api/stock/${stockCode}/capital-flow`);
+        const result = await resp.json();
+        
+        if (result.success && result.data) {
+          updateDiagnosis(result.data);
+        } else {
+          document.getElementById('diagnosis-advice').textContent = '暂无资金数据';
+        }
+      } catch (err) {
+        console.error('加载资金数据失败:', err);
+        document.getElementById('diagnosis-advice').textContent = '加载失败';
+      }
+    }
+
+    // 更新诊断数据
+    function updateDiagnosis(data) {
+      const { Utils } = window;
+      
+      const mainInflow = data.mainInflow || 0;
+      const mainOutflow = data.mainOutflow || 0;
+      const mainNetflow = data.mainNetflow || 0;
+      
+      const superNet = data.superLarge.net || 0;
+      const largeNet = data.large.net || 0;
+      
+      // 更新主力资金诊断
+      document.getElementById('diag-main-netflow').textContent = (mainNetflow >= 0 ? '+' : '') + mainNetflow.toFixed(4) + '亿';
+      document.getElementById('diag-main-netflow').className = 'diagnosis-value ' + (mainNetflow >= 0 ? 'up' : 'down');
+      
+      document.getElementById('diag-main-inflow').textContent = mainInflow.toFixed(4) + '亿';
+      document.getElementById('diag-main-outflow').textContent = mainOutflow.toFixed(4) + '亿';
+      
+      // 计算主力强度（净流入 / 总成交额）
+      const totalAmount = (data.superLarge.inflow + data.superLarge.outflow + data.large.inflow + data.large.outflow + 
+                          data.medium.inflow + data.medium.outflow + data.small.inflow + data.small.outflow) || 1;
+      const mainStrength = (mainNetflow / totalAmount) * 100;
+      document.getElementById('diag-main-strength').textContent = mainStrength.toFixed(2) + '%';
+      document.getElementById('diag-main-strength').className = 'diagnosis-value ' + (mainStrength >= 0 ? 'up' : 'down');
+      
+      // 更新特大单诊断
+      document.getElementById('diag-super-net').textContent = (superNet >= 0 ? '+' : '') + superNet.toFixed(4) + '亿';
+      document.getElementById('diag-super-net').className = 'diagnosis-value ' + (superNet >= 0 ? 'up' : 'down');
+      document.getElementById('diag-super-inflow').textContent = data.superLarge.inflow.toFixed(4) + '亿';
+      document.getElementById('diag-super-outflow').textContent = data.superLarge.outflow.toFixed(4) + '亿';
+      
+      const superStrength = (superNet / totalAmount) * 100;
+      document.getElementById('diag-super-strength').textContent = superStrength.toFixed(2) + '%';
+      document.getElementById('diag-super-strength').className = 'diagnosis-value ' + (superStrength >= 0 ? 'up' : 'down');
+      
+      // 更新大单诊断
+      document.getElementById('diag-large-net').textContent = (largeNet >= 0 ? '+' : '') + largeNet.toFixed(4) + '亿';
+      document.getElementById('diag-large-net').className = 'diagnosis-value ' + (largeNet >= 0 ? 'up' : 'down');
+      document.getElementById('diag-large-inflow').textContent = data.large.inflow.toFixed(4) + '亿';
+      document.getElementById('diag-large-outflow').textContent = data.large.outflow.toFixed(4) + '亿';
+      
+      const largeStrength = (largeNet / totalAmount) * 100;
+      document.getElementById('diag-large-strength').textContent = largeStrength.toFixed(2) + '%';
+      document.getElementById('diag-large-strength').className = 'diagnosis-value ' + (largeStrength >= 0 ? 'up' : 'down');
+      
+      // 计算综合评分（0-100）
+      const score = calculateScore(mainNetflow, superNet, largeNet, totalAmount);
+      const scoreEl = document.getElementById('total-score');
+      scoreEl.textContent = score;
+      
+      // 根据分数设置样式
+      scoreEl.className = 'diagnosis-score';
+      if (score >= 80) {
+        scoreEl.classList.add('score-excellent');
+      } else if (score >= 60) {
+        scoreEl.classList.add('score-good');
+      } else if (score >= 40) {
+        scoreEl.classList.add('score-normal');
+      } else {
+        scoreEl.classList.add('score-poor');
+      }
+      
+      // 生成诊断建议
+      generateAdvice(mainNetflow, superNet, largeNet, score);
+      
+      // 绘制趋势图
+      drawTrendChart(data);
+    }
+
+    // 计算综合评分
+    function calculateScore(mainNetflow, superNet, largeNet, totalAmount) {
+      let score = 50; // 基础分
+      
+      // 主力净流入占比
+      const mainRatio = (mainNetflow / totalAmount) * 100;
+      if (mainRatio > 5) score += 20;
+      else if (mainRatio > 2) score += 10;
+      else if (mainRatio < -5) score -= 20;
+      else if (mainRatio < -2) score -= 10;
+      
+      // 特大单净流入
+      if (superNet > 0) score += 10;
+      else score -= 10;
+      
+      // 大单净流入
+      if (largeNet > 0) score += 10;
+      else score -= 10;
+      
+      return Math.max(0, Math.min(100, score));
+    }
+
+    // 生成诊断建议
+    function generateAdvice(mainNetflow, superNet, largeNet, score) {
+      const adviceEl = document.getElementById('diagnosis-advice');
+      let advice = [];
+      
+      if (score >= 80) {
+        advice.push('✅ <strong>资金面优秀</strong>：主力资金大幅净流入，特大单和大单均呈现净流入状态，建议关注。');
+      } else if (score >= 60) {
+        advice.push('👍 <strong>资金面良好</strong>：主力资金净流入，市场情绪偏积极，可适当关注。');
+      } else if (score >= 40) {
+        advice.push('⚠️ <strong>资金面一般</strong>：主力资金流向不明朗，建议观望。');
+      } else {
+        advice.push('❌ <strong>资金面较差</strong>：主力资金净流出，建议谨慎。');
+      }
+      
+      if (superNet > 0 && largeNet > 0) {
+        advice.push('💎 <strong>超大单积极</strong>：特大单和大单同时净流入，机构资金看好。');
+      } else if (superNet > 0 && largeNet < 0) {
+        advice.push('💎 <strong>超大单分歧</strong>：特大单流入但大单流出，机构意见不统一。');
+      } else if (superNet < 0 && largeNet > 0) {
+        advice.push('📊 <strong>大单支撑</strong>：特大单流出但大单流入，中等资金在承接。');
+      } else {
+        advice.push('📉 <strong>资金流出</strong>：特大单和大单均流出，注意风险。');
+      }
+      
+      adviceEl.innerHTML = advice.join('<br><br>');
+    }
+
+    // 绘制资金流向趋势图
+    function drawTrendChart(data) {
+      const canvas = document.getElementById('trend-canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // 设置 Canvas 尺寸
+      const container = canvas.parentElement;
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+      
+      const width = canvas.width;
+      const height = canvas.height;
+      const padding = { top: 20, right: 20, bottom: 30, left: 60 };
+      const chartWidth = width - padding.left - padding.right;
+      const chartHeight = height - padding.top - padding.bottom;
+      
+      // 清空画布
+      ctx.clearRect(0, 0, width, height);
+      
+      // 数据
+      const categories = ['特大单', '大单', '中单', '小单'];
+      const netflows = [
+        data.superLarge.net || 0,
+        data.large.net || 0,
+        data.medium.net || 0,
+        data.small.net || 0
+      ];
+      
+      // 计算 Y 轴范围
+      const maxVal = Math.max(...netflows.map(Math.abs));
+      const yScale = chartHeight / (maxVal * 2 || 1);
+      const zeroY = padding.top + chartHeight / 2;
+      
+      // 绘制 0 轴线
+      ctx.strokeStyle = '#8b949e';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(padding.left, zeroY);
+      ctx.lineTo(padding.left + chartWidth, zeroY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // 绘制柱状图
+      const barWidth = chartWidth / categories.length * 0.6;
+      const gap = chartWidth / categories.length;
+      
+      for (let i = 0; i < categories.length; i++) {
+        const x = padding.left + i * gap + gap / 2 - barWidth / 2;
+        const netflow = netflows[i];
+        const barHeight = Math.abs(netflow) * yScale;
+        const y = netflow >= 0 ? zeroY - barHeight : zeroY;
+        
+        // 颜色：正数红色，负数绿色
+        ctx.fillStyle = netflow >= 0 ? '#ff4d4f' : '#52c41a';
+        ctx.fillRect(x, y, barWidth, barHeight);
+        
+        // 绘制标签
+        ctx.fillStyle = '#8b949e';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(categories[i], x + barWidth / 2, height - 10);
+        
+        // 绘制数值
+        ctx.fillStyle = netflow >= 0 ? '#ff4d4f' : '#52c41a';
+        ctx.font = 'bold 11px Arial';
+        const valueText = (netflow >= 0 ? '+' : '') + netflow.toFixed(2);
+        ctx.fillText(valueText, x + barWidth / 2, netflow >= 0 ? y - 5 : y + barHeight + 12);
+      }
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      loadCapitalData();
+    });
+  </script>
+</body>
+</html>
