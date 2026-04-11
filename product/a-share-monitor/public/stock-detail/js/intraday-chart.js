@@ -324,19 +324,40 @@ const IntradayChart = {
     const color = isUp ? '#ff4d4f' : '#52c41a';
     const sign = isUp ? '+' : '';
 
-    this.ctx.font = '12px Arial';
+    this.ctx.font = '11px Arial';
     this.ctx.textAlign = 'left';
     
+    // 第一行：开、高、低、收
     this.ctx.fillStyle = '#8b949e';
     this.ctx.fillText(`开 ${this.stats.open.toFixed(2)}`, x, y - 10);
-    this.ctx.fillText(`高 ${this.stats.high.toFixed(2)}`, x + chartWidth / 2 - 30, y - 10);
-    this.ctx.fillText(`低 ${this.stats.low.toFixed(2)}`, x, y + 5);
-    this.ctx.fillText(`收 ${this.stats.close.toFixed(2)}`, x + chartWidth / 2 - 30, y + 5);
+    this.ctx.fillText(`高 ${this.stats.high.toFixed(2)}`, x + chartWidth / 4, y - 10);
+    this.ctx.fillText(`低 ${this.stats.low.toFixed(2)}`, x + chartWidth / 2, y - 10);
+    this.ctx.fillText(`收 ${this.stats.close.toFixed(2)}`, x + chartWidth * 3/4, y - 10);
     
+    // 第二行：涨跌、涨幅、成交量、成交额
     this.ctx.fillStyle = color;
-    this.ctx.font = 'bold 13px Arial';
+    this.ctx.font = 'bold 12px Arial';
+    this.ctx.fillText(`${sign}${change.toFixed(2)}`, x, y + 8);
+    this.ctx.fillText(`${sign}${changePercent.toFixed(2)}%`, x + chartWidth / 4, y + 8);
+    
+    // 计算成交量和成交额
+    const totalVolume = this.data.reduce((sum, d) => sum + (d.volume || 0), 0);
+    const totalAmount = this.data.reduce((sum, d) => sum + d.price * (d.volume || 0), 0);
+    const volumeText = totalVolume > 1e8 ? (totalVolume / 1e8).toFixed(2) + '亿手' : 
+                       totalVolume > 1e4 ? (totalVolume / 1e4).toFixed(2) + '万手' : totalVolume.toFixed(0) + '手';
+    const amountText = totalAmount > 1e8 ? (totalAmount / 1e8).toFixed(2) + '亿' : 
+                       totalAmount > 1e4 ? (totalAmount / 1e4).toFixed(2) + '万' : totalAmount.toFixed(0);
+    
+    this.ctx.fillStyle = '#8b949e';
+    this.ctx.font = '11px Arial';
+    this.ctx.fillText(`量 ${volumeText}`, x + chartWidth / 2, y + 8);
+    this.ctx.fillText(`额 ${amountText}`, x + chartWidth * 3/4, y + 8);
+    
+    // 右侧：振幅
+    const amplitude = ((this.stats.high - this.stats.low) / this.prevClose) * 100;
+    this.ctx.fillStyle = '#8b949e';
     this.ctx.textAlign = 'right';
-    this.ctx.fillText(`${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`, x + chartWidth, y - 10);
+    this.ctx.fillText(`振幅 ${amplitude.toFixed(2)}%`, x + chartWidth, y + 8);
   },
 
   drawVolumeBar(padding, chartWidth, volumeHeight, yBase) {
@@ -352,7 +373,8 @@ const IntradayChart = {
       const price = this.data[i].price;
       const isUp = price >= this.prevClose;
       
-      this.ctx.fillStyle = isUp ? 'rgba(255, 77, 79, 0.7)' : 'rgba(82, 196, 26, 0.7)';
+      // 成交量柱状图颜色：红涨绿跌，使用实心颜色
+      this.ctx.fillStyle = isUp ? '#ff4d4f' : '#52c41a';
       this.ctx.fillRect(x, y, barWidth, barHeight);
     }
 
