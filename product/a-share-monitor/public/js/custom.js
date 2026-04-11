@@ -34,6 +34,7 @@ async function init() {
     marketStatus: document.getElementById('market-status'),
     refreshSelect: document.getElementById('refresh-select'),
     refreshInterval: document.getElementById('refresh-interval'),
+    refreshStatus: document.getElementById('refresh-status'),
     pauseBtn: document.getElementById('pause-btn'),
     refreshBtn: document.getElementById('refresh-btn'),
     sortButtons: document.getElementById('sort-buttons')
@@ -901,6 +902,17 @@ function bindEvents() {
   elements.pauseBtn.addEventListener('click', () => {
     pageState.isPaused = !pageState.isPaused;
     elements.pauseBtn.textContent = pageState.isPaused ? '▶️ 继续' : '⏸️ 暂停';
+    
+    // 更新状态显示
+    if (elements.refreshStatus) {
+      if (pageState.isPaused) {
+        elements.refreshStatus.textContent = '已暂停';
+        elements.refreshStatus.classList.add('paused');
+      } else {
+        elements.refreshStatus.textContent = '运行中';
+        elements.refreshStatus.classList.remove('paused');
+      }
+    }
   });
   
   // 手动刷新

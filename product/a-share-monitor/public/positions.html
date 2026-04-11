@@ -6,7 +6,7 @@
   <title>持仓 - A 股实时监控</title>
   <link rel="stylesheet" href="css/sidebar.css?v=20260406">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/positions.css?v=20260406">
+  <link rel="stylesheet" href="css/positions.css?v=20260413">
 </head>
 <body>
   <div class="container">
@@ -79,27 +79,30 @@
     <header class="header">
       <div class="header-left">
         <button class="btn-menu-toggle" id="menu-toggle">☰</button>
-        <h1>⭐ 持仓</h1>
-        <div class="datetime-display">
-          <span id="current-date">--</span>
-          <span id="current-time">--:--:--</span>
-          <span class="timezone-label">北京时间</span>
+        <div class="page-title-group">
+          <h1>⭐ 持仓</h1>
+          <div class="datetime-display">
+            <span id="current-date">--</span>
+            <span id="current-time">--:--:--</span>
+            <span class="timezone-label">北京时间</span>
+          </div>
         </div>
       </div>
       <div class="header-controls">
-        <a href="/" class="btn">🏠 返回首页</a>
-        <div class="refresh-control">
-          <label>刷新：<span id="refresh-interval">3</span>秒</label>
-          <select id="refresh-select">
+        <div class="refresh-control-group">
+          <label class="refresh-label">刷新间隔:</label>
+          <select id="refresh-select" class="refresh-select">
             <option value="1">1 秒</option>
             <option value="2">2 秒</option>
             <option value="3" selected>3 秒</option>
             <option value="5">5 秒</option>
             <option value="10">10 秒</option>
           </select>
+          <span id="refresh-status" class="refresh-status">运行中</span>
         </div>
-        <button id="pause-btn" class="btn">⏸️ 暂停</button>
-        <button id="refresh-btn" class="btn">🔄 刷新</button>
+        <button id="pause-btn" class="btn btn-pause">⏸️ 暂停</button>
+        <button id="refresh-btn" class="btn btn-primary">🔄 立即刷新</button>
+        <a href="/" class="btn">🏠 首页</a>
       </div>
     </header>
 
@@ -190,6 +193,6 @@
   </div>
 
   <script src="js/sidebar.js?v=20260406"></script>
-  <script src="js/positions.js?v=20260406"></script>
+  <script src="js/positions.js?v=20260413"></script>
 </body>
 </html>

@@ -1,5 +1,130 @@
 /* 自选股页面样式 */
 
+/* Header 布局优化 */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.page-title-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.page-title-group h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.refresh-control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.refresh-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.refresh-select {
+  padding: 6px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 70px;
+}
+
+.refresh-select:hover {
+  border-color: var(--accent-color);
+}
+
+.refresh-status {
+  font-size: 12px;
+  color: var(--down-color);
+  font-weight: 500;
+}
+
+.refresh-status.paused {
+  color: var(--text-secondary);
+}
+
+.btn-pause {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+}
+
+.btn-pause:hover {
+  background: var(--bg-secondary);
+  border-color: var(--text-secondary);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+/* 响应式调整 */
+@media (max-width: 1024px) {
+  .page-title-group {
+    gap: 12px;
+  }
+  
+  .page-title-group h1 {
+    font-size: 18px;
+  }
+  
+  .datetime-display {
+    gap: 8px;
+    font-size: 12px;
+  }
+  
+  .refresh-label {
+    display: none;  /* 小屏幕隐藏标签 */
+  }
+}
+
+@media (max-width: 768px) {
+  .header-controls {
+    gap: 8px;
+  }
+  
+  .refresh-control-group {
+    padding: 6px 10px;
+  }
+  
+  .btn-pause, .btn-primary {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+
+
 /* 添加股票区域 */
 .add-stock-section {
   background: var(--bg-secondary);
