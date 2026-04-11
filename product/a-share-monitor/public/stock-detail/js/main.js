@@ -104,14 +104,6 @@ async function loadAllData() {
   await loadTickTrades();
 }
 
-async function loadTradeDetail() {
-  const result = await API.getTradeDetail(StockState.code, StockState.market);
-  if (result.success) {
-    UI.updateTradeDetail(result.data);
-    console.log('✅ 成交明细加载完成');
-  }
-}
-
 async function loadTickTrades() {
   const result = await API.getTickTrades(StockState.code, 10, StockState.tickTradeExpanded);
   if (result.success) {
@@ -167,8 +159,7 @@ function stopAutoRefresh() {
 async function loadBasicInfo() {
   const result = await API.getStockBasic(StockState.code, StockState.market);
   if (result.success) {
-    UI.updateBasicInfo(result.data);
-    UI.updateBasicData(result.data);
+    UI.updateBasicInfo(result.data);  // 更新股票名称、价格、涨幅
   }
   // 同时更新分时图
   const intradayResult = await API.getIntraday(StockState.code, StockState.market);
@@ -177,17 +168,18 @@ async function loadBasicInfo() {
   }
 }
 
+// 只更新基本数据模块（1 秒刷新）
+async function loadBasicDataOnly() {
+  const result = await API.getStockBasic(StockState.code, StockState.market);
+  if (result.success) {
+    UI.updateBasicData(result.data);  // 只更新基本数据表格
+  }
+}
+
 async function loadOrderBook() {
   const result = await API.getOrderBook(StockState.code, StockState.market);
   if (result.success) {
     UI.updateOrderBook(result.data);
-  }
-}
-
-async function loadCapitalFlow() {
-  const result = await API.getCapitalFlow(StockState.code, StockState.market);
-  if (result.success && result.data) {
-    UI.updateCapitalFlow(result.data);
   }
 }
 
@@ -221,6 +213,28 @@ function updateRefreshStatusUI() {
   
   if (intervalEl) {
     intervalEl.textContent = `${StockState.refreshInterval}ms`;
+  }
+}
+
+// 更新基本数据模块 UI（置灰显示 1 秒刷新）
+function updateBasicDataUI() {
+  const basicCard = document.querySelector('.basic-card');
+  if (basicCard) {
+    // 添加置灰样式类
+    basicCard.classList.add('basic-data-slow-refresh');
+    
+    // 添加提示文字
+    let hintEl = basicCard.querySelector('.refresh-hint');
+    if (!hintEl) {
+      hintEl = document.createElement('span');
+      hintEl.className = 'refresh-hint';
+      hintEl.textContent = '1 秒刷新';
+      hintEl.title = '基本数据模块固定 1 秒刷新一次';
+      const header = basicCard.querySelector('.card-header h3');
+      if (header) {
+        header.parentNode.appendChild(hintEl);
+      }
+    }
   }
 }
 

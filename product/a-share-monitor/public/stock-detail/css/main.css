@@ -915,3 +915,28 @@
 .tick-trade-table .direction-neutral {
   color: var(--text-secondary);
 }
+
+/* 基本数据模块置灰样式（1 秒刷新） */
+.basic-card.basic-data-slow-refresh {
+  opacity: 0.85;
+  background: var(--bg-secondary);
+}
+
+.basic-card.basic-data-slow-refresh .card-header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.basic-card.basic-data-slow-refresh .refresh-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: normal;
+}
+
+.basic-card.basic-data-slow-refresh .basic-value {
+  color: var(--text-secondary);
+}
