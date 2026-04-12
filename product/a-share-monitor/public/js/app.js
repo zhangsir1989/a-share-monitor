@@ -706,7 +706,7 @@ function updatePagination(tableType, currentPage, totalPages) {
 
 // 初始化分页事件
 function initPaginationEvents() {
-  ['limitUpStocks', 'limitDownStocks', 'strongStocks'].forEach(tableType => {
+  ['limitUpStocks', 'limitDownStocks', 'strongStocks', 'breakBoardStocks', 'newBaseStocks'].forEach(tableType => {
     // 转换驼峰命名为连字符命名
     let idPrefix;
     if (tableType === 'limitUpStocks') {
@@ -747,6 +747,10 @@ function initPaginationEvents() {
           updateLimitDownStocksTable(state.rawData.limitDownStocks);
         } else if (tableType === 'strongStocks') {
           updateStrongStocksTable(state.rawData.strongStocks);
+        } else if (tableType === 'breakBoardStocks') {
+          updateBreakBoardStocksTable(state.rawData.breakBoardStocks);
+        } else if (tableType === 'newBaseStocks') {
+          updateNewBaseStocksTable(state.rawData.newBaseStocks);
         }
       });
     });
@@ -769,6 +773,10 @@ function initPaginationEvents() {
           updateLimitDownStocksTable(state.rawData.limitDownStocks);
         } else if (tableType === 'strongStocks') {
           updateStrongStocksTable(state.rawData.strongStocks);
+        } else if (tableType === 'breakBoardStocks') {
+          updateBreakBoardStocksTable(state.rawData.breakBoardStocks);
+        } else if (tableType === 'newBaseStocks') {
+          updateNewBaseStocksTable(state.rawData.newBaseStocks);
         }
       });
     }
