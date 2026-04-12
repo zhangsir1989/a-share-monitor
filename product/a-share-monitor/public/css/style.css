@@ -356,23 +356,56 @@ body {
 .card-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   padding: 15px 20px;
   background-color: var(--bg-card);
   border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.card-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.date-picker {
+  padding: 4px 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.date-picker:hover {
+  border-color: var(--primary-color);
+}
+
+.data-date-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .card-icon {
   font-size: 20px;
 }
 
-.card-header h2 {
-  font-size: 16px;
-  font-weight: 600;
-}
+
 
 .card-content {
-  padding: 20px;
+  padding: 15px;
 }
 
 /* 指标样式 */
@@ -681,4 +714,101 @@ body {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+}
+
+/* 分页样式 */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 0;
+  margin-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+
+.pagination-btn {
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #fff;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* 表格优化 */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  padding: 10px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border-color);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.data-table th:hover {
+  color: var(--primary-color);
+}
+
+.data-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.data-table tbody tr:hover {
+  background: var(--bg-secondary);
+  cursor: pointer;
+}
+
+.data-table .code {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+}
+
+/* 滚动容器 */
+.table-container {
+  overflow-x: auto;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.table-container::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
 }

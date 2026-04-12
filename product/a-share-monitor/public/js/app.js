@@ -19,7 +19,13 @@ const state = {
     limitDownStocks: [],
     strongStocks: [],
     turnover: []
-  }
+  },
+  pagination: {
+    limitUpStocks: { currentPage: 1, pageSize: 10 },
+    limitDownStocks: { currentPage: 1, pageSize: 10 },
+    strongStocks: { currentPage: 1, pageSize: 10 }
+  },
+  tradeDate: ''
 };
 
 // DOM 元素（在 init 中初始化）
@@ -157,7 +163,7 @@ function updateCashflowTable(data) {
   updateSortIcons('cashflow');
 }
 
-// 更新涨停个股表格
+// 更新涨停个股表格（支持分页）
 function updateLimitUpStocksTable(data) {
   if (!data) return;
   
@@ -166,30 +172,36 @@ function updateLimitUpStocksTable(data) {
   const config = state.sortConfig.limitUpStocks;
   const sortedData = sortData(data, config.field, config.order);
   
-  if (sortedData.length === 0) {
-    elements.limitUpStocksTable.innerHTML = '<tr><td colspan="10" class="loading">暂无涨停个股</td></tr>';
+  // 分页
+  const pagination = state.pagination.limitUpStocks;
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / pagination.pageSize));
+  pagination.currentPage = Math.min(pagination.currentPage, totalPages);
+  const start = (pagination.currentPage - 1) * pagination.pageSize;
+  const end = start + pagination.pageSize;
+  const pageData = sortedData.slice(start, end);
+  
+  if (pageData.length === 0) {
+    elements.limitUpStocksTable.innerHTML = '<tr><td colspan="6" class="loading">暂无涨停个股</td></tr>';
+    updatePagination('limitUpStocks', 1, 1);
     return;
   }
   
-  elements.limitUpStocksTable.innerHTML = sortedData.map((item, index) => `
+  elements.limitUpStocksTable.innerHTML = pageData.map((item, index) => `
     <tr onclick="openStockDetail('${item.code}')">
       <td class="code">${item.code || '--'}</td>
       <td>${item.name || '--'}</td>
-      <td class="sortable" data-sort="price">${item.price || '0.00'}</td>
-      <td class="up sortable" data-sort="changePercent">${item.changePercent}%</td>
-      <td class="sortable" data-sort="cje">${item.cje || '0.00'}</td>
-      <td class="sortable" data-sort="hs">${item.hs || '0.00'}</td>
-      <td class="sortable" data-sort="zj">${item.zj || '0.00'}</td>
-      <td class="sortable" data-sort="fbt">${item.fbt || '--'}</td>
-      <td class="up sortable" data-sort="lbc">${item.lbc || 0}</td>
+      <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.price || '0.00'}</td>
+      <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.changePercent || '0.00'}%</td>
+      <td class="up">${item.lbc || 0}</td>
       <td>${item.hy || '--'}</td>
     </tr>
   `).join('');
   
   updateSortIcons('limitUpStocks');
+  updatePagination('limitUpStocks', pagination.currentPage, totalPages);
 }
 
-// 更新跌停个股表格
+// 更新跌停个股表格（支持分页）
 function updateLimitDownStocksTable(data) {
   if (!data) return;
   
@@ -198,30 +210,36 @@ function updateLimitDownStocksTable(data) {
   const config = state.sortConfig.limitDownStocks;
   const sortedData = sortData(data, config.field, config.order);
   
-  if (sortedData.length === 0) {
-    elements.limitDownStocksTable.innerHTML = '<tr><td colspan="10" class="loading">暂无跌停个股</td></tr>';
+  // 分页
+  const pagination = state.pagination.limitDownStocks;
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / pagination.pageSize));
+  pagination.currentPage = Math.min(pagination.currentPage, totalPages);
+  const start = (pagination.currentPage - 1) * pagination.pageSize;
+  const end = start + pagination.pageSize;
+  const pageData = sortedData.slice(start, end);
+  
+  if (pageData.length === 0) {
+    elements.limitDownStocksTable.innerHTML = '<tr><td colspan="6" class="loading">暂无跌停个股</td></tr>';
+    updatePagination('limitDownStocks', 1, 1);
     return;
   }
   
-  elements.limitDownStocksTable.innerHTML = sortedData.map((item, index) => `
+  elements.limitDownStocksTable.innerHTML = pageData.map((item, index) => `
     <tr onclick="openStockDetail('${item.code}')">
       <td class="code">${item.code || '--'}</td>
       <td>${item.name || '--'}</td>
-      <td class="sortable" data-sort="price">${item.price || '0.00'}</td>
-      <td class="down sortable" data-sort="changePercent">${item.changePercent}%</td>
-      <td class="sortable" data-sort="cje">${item.cje || '0.00'}</td>
-      <td class="sortable" data-sort="hs">${item.hs || '0.00'}</td>
-      <td class="sortable" data-sort="zj">${item.zj || '0.00'}</td>
-      <td class="down sortable" data-sort="lbc">${item.lbc || 0}</td>
-      <td class="down sortable" data-sort="zbc">${item.zbc || 0}</td>
+      <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.price || '0.00'}</td>
+      <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.changePercent || '0.00'}%</td>
+      <td class="down">${item.lbc || 0}</td>
       <td>${item.hy || '--'}</td>
     </tr>
   `).join('');
   
   updateSortIcons('limitDownStocks');
+  updatePagination('limitDownStocks', pagination.currentPage, totalPages);
 }
 
-// 更新强势个股表格
+// 更新强势个股表格（支持分页）
 function updateStrongStocksTable(data) {
   if (!data) return;
   
@@ -230,26 +248,33 @@ function updateStrongStocksTable(data) {
   const config = state.sortConfig.strongStocks;
   const sortedData = sortData(data, config.field, config.order);
   
-  if (sortedData.length === 0) {
-    elements.strongStocksTable.innerHTML = '<tr><td colspan="9" class="loading">暂无强势个股</td></tr>';
+  // 分页
+  const pagination = state.pagination.strongStocks;
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / pagination.pageSize));
+  pagination.currentPage = Math.min(pagination.currentPage, totalPages);
+  const start = (pagination.currentPage - 1) * pagination.pageSize;
+  const end = start + pagination.pageSize;
+  const pageData = sortedData.slice(start, end);
+  
+  if (pageData.length === 0) {
+    elements.strongStocksTable.innerHTML = '<tr><td colspan="6" class="loading">暂无强势个股</td></tr>';
+    updatePagination('strongStocks', 1, 1);
     return;
   }
   
-  elements.strongStocksTable.innerHTML = sortedData.map((item, index) => `
+  elements.strongStocksTable.innerHTML = pageData.map((item, index) => `
     <tr onclick="openStockDetail('${item.code}')">
       <td class="code">${item.code || '--'}</td>
       <td>${item.name || '--'}</td>
-      <td class="sortable" data-sort="price">${item.price || '0.00'}</td>
-      <td class="sortable" data-sort="ztp">${item.ztp || '0.00'}</td>
-      <td class="up sortable" data-sort="changePercent">${item.changePercent}%</td>
-      <td class="sortable" data-sort="cje">${item.cje || '0.00'}</td>
-      <td class="sortable" data-sort="hs">${item.hs || '0.00'}</td>
-      <td class="up sortable" data-sort="lb">${item.lb || '0.00'}</td>
-      <td class="up sortable" data-sort="tj">${item.tj || '--'}</td>
+      <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.price || '0.00'}</td>
+      <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.changePercent || '0.00'}%</td>
+      <td class="${item.hs >= 10 ? 'up' : ''}">${item.hs || '0.00'}</td>
+      <td class="up">${item.lb || '0.00'}</td>
     </tr>
   `).join('');
   
   updateSortIcons('strongStocks');
+  updatePagination('strongStocks', pagination.currentPage, totalPages);
 }
 
 // 更新换手率表格
@@ -426,13 +451,13 @@ function clearMarketData() {
   elements.szRatio.textContent = '--%';
   
   // 清空涨停个股表格
-  elements.limitUpStocksTable.innerHTML = '<tr><td colspan="10" class="loading">未开盘，暂无数据</td></tr>';
+  elements.limitUpStocksTable.innerHTML = '<tr><td colspan="6" class="loading">未开盘，暂无数据</td></tr>';
   
   // 清空跌停个股表格
-  elements.limitDownStocksTable.innerHTML = '<tr><td colspan="10" class="loading">未开盘，暂无数据</td></tr>';
+  elements.limitDownStocksTable.innerHTML = '<tr><td colspan="6" class="loading">未开盘，暂无数据</td></tr>';
   
   // 清空强势个股表格
-  elements.strongStocksTable.innerHTML = '<tr><td colspan="9" class="loading">未开盘，暂无数据</td></tr>';
+  elements.strongStocksTable.innerHTML = '<tr><td colspan="6" class="loading">未开盘，暂无数据</td></tr>';
   
   // 清空换手率表格
   elements.turnoverTable.innerHTML = '<tr onclick="openSectorModal(this.cells[1].textContent)"><td colspan="9" class="loading">未开盘，暂无数据</td></tr>';
@@ -516,6 +541,82 @@ function stopTimer() {
     clearInterval(state.timer);
     state.timer = null;
   }
+}
+
+// 更新分页控件
+function updatePagination(tableType, currentPage, totalPages) {
+  const currentEl = document.getElementById(`${tableType}-current-page`);
+  const totalEl = document.getElementById(`${tableType}-total-pages`);
+  
+  if (currentEl) currentEl.textContent = currentPage;
+  if (totalEl) totalEl.textContent = totalPages;
+  
+  // 更新按钮状态
+  const pagination = document.getElementById(`${tableType}-pagination`);
+  if (pagination) {
+    const prevBtn = pagination.querySelector('[data-page="prev"]');
+    const nextBtn = pagination.querySelector('[data-page="next"]');
+    
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+  }
+}
+
+// 初始化分页事件
+function initPaginationEvents() {
+  ['limitUpStocks', 'limitDownStocks', 'strongStocks'].forEach(tableType => {
+    const pagination = document.getElementById(`${tableType}-pagination`);
+    if (!pagination) return;
+    
+    pagination.querySelectorAll('.pagination-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const page = btn.dataset.page;
+        const paginationState = state.pagination[tableType];
+        const totalPages = Math.ceil(state.rawData[tableType].length / paginationState.pageSize);
+        
+        if (page === 'prev' && paginationState.currentPage > 1) {
+          paginationState.currentPage--;
+        } else if (page === 'next' && paginationState.currentPage < totalPages) {
+          paginationState.currentPage++;
+        }
+        
+        // 重新渲染表格
+        if (tableType === 'limitUpStocks') {
+          updateLimitUpStocksTable(state.rawData.limitUpStocks);
+        } else if (tableType === 'limitDownStocks') {
+          updateLimitDownStocksTable(state.rawData.limitDownStocks);
+        } else if (tableType === 'strongStocks') {
+          updateStrongStocksTable(state.rawData.strongStocks);
+        }
+      });
+    });
+  });
+}
+
+// 初始化日期选择器
+function initDatePickers() {
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0];
+  
+  ['limit-up', 'limit-down', 'strong'].forEach(prefix => {
+    const dateInput = document.getElementById(`${prefix}-date`);
+    const dateLabel = document.getElementById(`${prefix}-date-label`);
+    
+    if (dateInput) {
+      dateInput.value = dateStr;
+      dateInput.addEventListener('change', () => {
+        if (dateLabel) {
+          dateLabel.textContent = `数据日期：${dateInput.value}`;
+        }
+        // 重新获取数据
+        fetchData();
+      });
+    }
+    
+    if (dateLabel) {
+      dateLabel.textContent = `数据日期：${dateStr}`;
+    }
+  });
 }
 
 // 初始化排序事件
@@ -633,6 +734,8 @@ function init() {
   updateMarketStatus();
   
   initSortEvents();
+  initPaginationEvents();
+  initDatePickers();
   initEventListeners();
   fetchData();
   startTimer();
