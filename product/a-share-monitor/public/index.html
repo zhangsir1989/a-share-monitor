@@ -159,18 +159,31 @@
                     <th data-sort="price" class="sortable">最新价</th>
                     <th data-sort="changePercent" class="sortable">涨跌幅</th>
                     <th data-sort="lbc" class="sortable">连板数</th>
+                    <th data-sort="fbt" class="sortable">首次封板</th>
+                    <th data-sort="lbt" class="sortable">最后封板</th>
+                    <th data-sort="zj" class="sortable">封板资金</th>
+                    <th data-sort="zbc" class="sortable">炸板次数</th>
+                    <th data-sort="lt" class="sortable">流通市值</th>
                     <th data-sort="hy" class="sortable">行业</th>
                   </tr>
                 </thead>
                 <tbody id="limit-up-stocks-table">
-                  <tr><td colspan="6" class="loading">加载中...</td></tr>
+                  <tr><td colspan="11" class="loading">加载中...</td></tr>
                 </tbody>
               </table>
             </div>
             <div class="pagination" id="limit-up-pagination">
+              <button class="pagination-btn" data-page="first">« 首页</button>
               <button class="pagination-btn" data-page="prev">‹ 上一页</button>
               <span class="pagination-info">第 <span id="limit-up-current-page">1</span> 页 / 共 <span id="limit-up-total-pages">1</span> 页</span>
               <button class="pagination-btn" data-page="next">下一页 ›</button>
+              <button class="pagination-btn" data-page="last">末页 »</button>
+              <select class="page-size-select" id="limit-up-page-size">
+                <option value="10">10 条/页</option>
+                <option value="20">20 条/页</option>
+                <option value="50">50 条/页</option>
+                <option value="100">100 条/页</option>
+              </select>
             </div>
           </div>
         </div>
@@ -191,6 +204,11 @@
                     <th data-sort="price" class="sortable">最新价</th>
                     <th data-sort="changePercent" class="sortable">涨跌幅</th>
                     <th data-sort="lbc" class="sortable">连板数</th>
+                    <th data-sort="fbt" class="sortable">首次封板</th>
+                    <th data-sort="lbt" class="sortable">最后封板</th>
+                    <th data-sort="zj" class="sortable">封板资金</th>
+                    <th data-sort="zbc" class="sortable">炸板次数</th>
+                    <th data-sort="lt" class="sortable">流通市值</th>
                     <th data-sort="hy" class="sortable">行业</th>
                   </tr>
                 </thead>
@@ -200,9 +218,17 @@
               </table>
             </div>
             <div class="pagination" id="limit-down-pagination">
+              <button class="pagination-btn" data-page="first">« 首页</button>
               <button class="pagination-btn" data-page="prev">‹ 上一页</button>
               <span class="pagination-info">第 <span id="limit-down-current-page">1</span> 页 / 共 <span id="limit-down-total-pages">1</span> 页</span>
               <button class="pagination-btn" data-page="next">下一页 ›</button>
+              <button class="pagination-btn" data-page="last">末页 »</button>
+              <select class="page-size-select" id="limit-down-page-size">
+                <option value="10">10 条/页</option>
+                <option value="20">20 条/页</option>
+                <option value="50">50 条/页</option>
+                <option value="100">100 条/页</option>
+              </select>
             </div>
           </div>
         </div>
@@ -295,6 +321,6 @@
   </div>
 
   <script src="js/sidebar.js?v=20260422"></script>
-  <script src="js/app.js?v=20260449"></script>
+  <script src="js/app.js?v=20260450"></script>
 </body>
 </html>

@@ -180,7 +180,7 @@ function updateLimitUpStocksTable(data) {
   const pageData = sortedData.slice(start, end);
   
   if (pageData.length === 0) {
-    elements.limitUpStocksTable.innerHTML = '<tr><td colspan="6" class="loading">暂无涨停个股</td></tr>';
+    elements.limitUpStocksTable.innerHTML = '<tr><td colspan="10" class="loading">暂无涨停个股</td></tr>';
     updatePagination('limitUpStocks', 1, 1);
     return;
   }
@@ -192,6 +192,11 @@ function updateLimitUpStocksTable(data) {
       <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.price || '0.00'}</td>
       <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.changePercent || '0.00'}%</td>
       <td class="up">${item.lbc || 0}</td>
+      <td>${item.fbt || '--'}</td>
+      <td>${item.lbt || '--'}</td>
+      <td class="up">${item.zj || '--'}</td>
+      <td>${item.zbc || 0}</td>
+      <td>${item.lt || '--'}</td>
       <td>${item.hy || '--'}</td>
     </tr>
   `).join('');
@@ -222,7 +227,7 @@ function updateLimitDownStocksTable(data) {
   const pageData = sortedData.slice(start, end);
   
   if (pageData.length === 0) {
-    elements.limitDownStocksTable.innerHTML = '<tr><td colspan="6" class="loading">暂无跌停个股</td></tr>';
+    elements.limitDownStocksTable.innerHTML = '<tr><td colspan="9" class="loading">暂无跌停个股</td></tr>';
     updatePagination('limitDownStocks', 1, 1);
     return;
   }
@@ -234,6 +239,10 @@ function updateLimitDownStocksTable(data) {
       <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.price || '0.00'}</td>
       <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.changePercent || '0.00'}%</td>
       <td class="down">${item.lbc || 0}</td>
+      <td>${item.lbt || '--'}</td>
+      <td class="${item.fba >= 0 ? 'up' : 'down'}">${item.fba || '--'}</td>
+      <td>${item.zbc || 0}</td>
+      <td>${item.lt || '--'}</td>
       <td>${item.hy || '--'}</td>
     </tr>
   `).join('');
@@ -264,7 +273,7 @@ function updateStrongStocksTable(data) {
   const pageData = sortedData.slice(start, end);
   
   if (pageData.length === 0) {
-    elements.strongStocksTable.innerHTML = '<tr><td colspan="6" class="loading">暂无强势个股</td></tr>';
+    elements.strongStocksTable.innerHTML = '<tr><td colspan="8" class="loading">暂无强势个股</td></tr>';
     updatePagination('strongStocks', 1, 1);
     return;
   }
@@ -275,8 +284,11 @@ function updateStrongStocksTable(data) {
       <td>${item.name || '--'}</td>
       <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.price || '0.00'}</td>
       <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.changePercent || '0.00'}%</td>
-      <td class="${item.hs >= 10 ? 'up' : ''}">${item.hs || '0.00'}</td>
-      <td class="up">${item.lb || '0.00'}</td>
+      <td class="${parseFloat(item.lb) >= 1 ? 'up' : ''}">${item.lb || '0.00'}</td>
+      <td>${item.nh == 1 ? '<span class="up">✓ 新高</span>' : '-'}</td>
+      <td class="up">${item.tj || '--'}</td>
+      <td>${item.lt || '--'}</td>
+      <td>${item.hy || '--'}</td>
     </tr>
   `).join('');
   

@@ -248,7 +248,8 @@ async function fetchLimitUpStocks(tradeDate = null) {
       zbc: item.zbc || 0,
       tj: item.tj || '',
       lbc: item.lbc || 0,
-      hy: item.hy || ''
+      hy: item.hy || '',
+      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '--' // 流通市值（亿元）
     }));
     
     return limitUpStocks.slice(0, 50);
@@ -307,7 +308,8 @@ async function fetchLimitDownStocks(tradeDate = null) {
       fba: item.fba !== null ? (item.fba / 10000).toFixed(2) : '0.00', // 万元
       lbc: item.lbc || 0,
       zbc: item.zbc || 0,
-      hy: item.hy || ''
+      hy: item.hy || '',
+      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '--' // 流通市值（亿元）
     }));
     
     return limitDownStocks.slice(0, 50);
@@ -374,7 +376,9 @@ async function fetchStrongStocks() {
       hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
       lb: item.lb !== null ? item.lb.toFixed(2) : '0.00',
       tj: item.tj || '',
-      nh: item.nh || 0
+      nh: item.nh || 0,
+      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '--', // 流通市值（亿元）
+      hy: item.hy || '' // 板块（备用字段）
     }));
     
     return strongStocks.slice(0, 50);
