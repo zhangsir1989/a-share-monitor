@@ -556,7 +556,7 @@
 /* 统一模块内边距，确保左右对齐 */
 .positions-section,
 .index-display {
-  padding-left: 20px;
+  padding-left: 0;  /* 移除左侧空白，左对齐 */
   padding-right: 20px;
 }
 

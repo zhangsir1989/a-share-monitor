@@ -5,6 +5,7 @@
   display: flex;
   align-items: center;
   gap: 15px;
+  padding-left: 0;  /* 左对齐，移除左侧空白 */
 }
 
 .page-title-group {
@@ -746,7 +747,7 @@
 .add-stock-section,
 .stock-list-section,
 .index-display {
-  padding-left: 20px;
+  padding-left: 0;  /* 移除左侧空白，左对齐 */
   padding-right: 20px;
 }
 
