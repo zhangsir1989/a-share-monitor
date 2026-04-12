@@ -413,7 +413,7 @@
   border-radius: 12px;
   padding: 20px;
   min-height: 400px;
-  overflow-x: auto;
+  overflow-x: hidden;  /* 禁止横向滚动 */
 }
 
 .list-header {
@@ -456,7 +456,7 @@
 .stock-list {
   display: grid;
   gap: 12px;
-  min-width: fit-content;
+  min-width: 0;  /* 允许缩小，适应容器 */
 }
 
 /* 股票卡片 */
@@ -470,8 +470,8 @@
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: default;
   border: 1px solid transparent;
-  min-width: 600px;
-  flex-wrap: nowrap;
+  min-width: 0;  /* 允许缩小，适应容器 */
+  flex-wrap: wrap;  /* 小屏幕允许换行 */
 }
 
 .stock-card:hover {

@@ -164,7 +164,7 @@
 .sub-sidebar-collapse-btn {
   position: absolute;
   top: 80px;
-  right: -18px;
+  left: -18px;  /* 移到左侧 */
   width: 36px;
   height: 36px;
   background: #2f363d;
@@ -179,7 +179,7 @@
   font-weight: bold;
   transition: all 0.2s;
   z-index: 1000;
-  box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
+  box-shadow: -3px 3px 10px rgba(0,0,0,0.5);
 }
 
 .sub-sidebar-collapse-btn:hover {
@@ -190,7 +190,7 @@
 }
 
 .sub-sidebar.collapsed .sub-sidebar-collapse-btn {
-  right: -18px;
+  left: -18px;  /* 折叠时保持在左侧 */
 }
 
 /* ==================== 头部和内容区适配 ==================== */
