@@ -194,9 +194,9 @@ function updateLimitUpStocksTable(data) {
       <td class="up">${item.lbc || 0}</td>
       <td>${item.fbt || '--'}</td>
       <td>${item.lbt || '--'}</td>
-      <td class="up">${item.zj ? item.zj + '亿' : '--'}</td>
+      <td class="up">${item.zj || '--'}</td>
       <td>${item.zbc || 0}</td>
-      <td class="up">${item.lt ? item.lt + '亿' : '--'}</td>
+      <td class="up">${item.lt || '--'}</td>
       <td>${item.hy || '--'}</td>
     </tr>
   `).join('');
@@ -240,9 +240,9 @@ function updateLimitDownStocksTable(data) {
       <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.changePercent || '0.00'}%</td>
       <td class="down">${item.lbc || 0}</td>
       <td>${item.lbt || '--'}</td>
-      <td class="${item.fba >= 0 ? 'up' : 'down'}">${item.fba ? item.fba + '亿' : '--'}</td>
+      <td class="${item.fba >= 0 ? 'up' : 'down'}">${item.fba || '--'}</td>
       <td>${item.zbc || 0}</td>
-      <td class="up">${item.lt ? item.lt + '亿' : '--'}</td>
+      <td class="up">${item.lt || '--'}</td>
       <td>${item.hy || '--'}</td>
     </tr>
   `).join('');
@@ -287,7 +287,7 @@ function updateStrongStocksTable(data) {
       <td class="${parseFloat(item.lb) >= 1 ? 'up' : ''}">${item.lb || '0.00'}</td>
       <td>${item.nh == 1 ? '<span class="up">✓ 新高</span>' : '-'}</td>
       <td class="up">${item.tj || '--'}</td>
-      <td class="up">${item.lt ? item.lt + '亿' : '--'}</td>
+      <td class="up">${item.lt || '--'}</td>
       <td>${item.hy || '--'}</td>
     </tr>
   `).join('');

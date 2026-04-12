@@ -219,7 +219,7 @@ async function fetchLimitUpStocks(tradeDate = null) {
       dateStr = tradingDate.toISOString().split('T')[0];
     }
     
-    const url = `https://api.mairuiapi.com/hslt/ztgc/${dateStr}/LICENCE-66D8-9F96-0C7F0FBCD073`;
+    const url = `https://api.mairuiapi.com/hslt/ztgc/${dateStr}/${MYDATA_LICENCE}`;
     
     const resp = await axios.get(url, {
       timeout: 15000,
@@ -234,6 +234,16 @@ async function fetchLimitUpStocks(tradeDate = null) {
       return getMockLimitUpStocks();
     }
     
+    // 格式化时间 HH:MM:SS
+    const formatTime = (t) => {
+      if (!t) return '';
+      const str = String(t);
+      if (str.length === 6) {
+        return str.replace(/(\d{2})(\d{2})(\d{2})/, '$1:$2:$3');
+      }
+      return str;
+    };
+    
     // 映射字段
     const limitUpStocks = data.map(item => ({
       code: item.dm,
@@ -243,13 +253,13 @@ async function fetchLimitUpStocks(tradeDate = null) {
       cje: item.cje !== null ? (item.cje / 10000).toFixed(2) : '0.00', // 万元
       hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
       zj: item.zj !== null ? (item.zj / 100000000).toFixed(2) : '0.00', // 亿元
-      fbt: item.fbt || '',
-      lbt: item.lbt || '',
+      fbt: formatTime(item.fbt),
+      lbt: formatTime(item.lbt),
       zbc: item.zbc || 0,
       tj: item.tj || '',
       lbc: item.lbc || 0,
-      hy: '--', // MyData API 无行业字段
-      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '--' // 流通市值（亿元）
+      hy: item.hy || '', // 行业
+      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '' // 流通市值（亿元）
     }));
     
     return limitUpStocks.slice(0, 50);
@@ -280,7 +290,7 @@ async function fetchLimitDownStocks(tradeDate = null) {
       dateStr = tradingDate.toISOString().split('T')[0];
     }
     
-    const url = `https://api.mairuiapi.com/hslt/dtgc/${dateStr}/LICENCE-66D8-9F96-0C7F0FBCD073`;
+    const url = `https://api.mairuiapi.com/hslt/dtgc/${dateStr}/${MYDATA_LICENCE}`;
     
     const resp = await axios.get(url, {
       timeout: 15000,
@@ -295,6 +305,16 @@ async function fetchLimitDownStocks(tradeDate = null) {
       return getMockLimitDownStocks();
     }
     
+    // 格式化时间 HH:MM:SS
+    const formatTime = (t) => {
+      if (!t) return '';
+      const str = String(t);
+      if (str.length === 6) {
+        return str.replace(/(\d{2})(\d{2})(\d{2})/, '$1:$2:$3');
+      }
+      return str;
+    };
+    
     // 映射字段
     const limitDownStocks = data.map(item => ({
       code: item.dm,
@@ -304,12 +324,12 @@ async function fetchLimitDownStocks(tradeDate = null) {
       cje: item.cje !== null ? (item.cje / 10000).toFixed(2) : '0.00', // 万元
       hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
       zj: item.zj !== null ? (item.zj / 100000000).toFixed(2) : '0.00', // 亿元
-      lbt: item.lbt || '',
+      lbt: formatTime(item.lbt),
       fba: item.fba !== null ? (item.fba / 100000000).toFixed(2) : '0.00', // 亿元
       lbc: item.lbc || 0,
       zbc: item.zbc || 0,
-      hy: '--', // MyData API 无行业字段
-      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '--' // 流通市值（亿元）
+      hy: item.hy || '', // 行业
+      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '' // 流通市值（亿元）
     }));
     
     return limitDownStocks.slice(0, 50);
@@ -338,19 +358,25 @@ function getMockLimitDownStocks() {
 /**
  * 获取强势个股数据（MyData API）
  */
-async function fetchStrongStocks() {
+async function fetchStrongStocks(tradeDate = null) {
   try {
-    const today = new Date();
-    const weekday = today.getDay();
-    let tradingDate = new Date(today);
-    if (weekday === 0) { // 周日
-      tradingDate.setDate(today.getDate() - 2);
-    } else if (weekday === 6) { // 周六
-      tradingDate.setDate(today.getDate() - 1);
+    // 使用 MyData API 获取强势个股
+    let dateStr;
+    if (tradeDate) {
+      dateStr = tradeDate;
+    } else {
+      const today = new Date();
+      const weekday = today.getDay();
+      let tradingDate = new Date(today);
+      if (weekday === 0) { // 周日
+        tradingDate.setDate(today.getDate() - 2);
+      } else if (weekday === 6) { // 周六
+        tradingDate.setDate(today.getDate() - 1);
+      }
+      dateStr = tradingDate.toISOString().split('T')[0];
     }
-    const dateStr = tradingDate.toISOString().split('T')[0];
     
-    const url = `https://api.mairuiapi.com/hslt/qsgc/${dateStr}/LICENCE-66D8-9F96-0C7F0FBCD073`;
+    const url = `https://api.mairuiapi.com/hslt/qsgc/${dateStr}/${MYDATA_LICENCE}`;
     
     const resp = await axios.get(url, {
       timeout: 15000,
@@ -361,11 +387,11 @@ async function fetchStrongStocks() {
     
     const data = resp.data;
     if (!Array.isArray(data) || data.length === 0) {
-      console.error('MyData 强势个股数据格式错误');
+      console.error('MyData 强势股数据格式错误');
       return getMockStrongStocks();
     }
     
-    // 映射字段
+    // 映射字段 - nh 字段："是"=1, "否"=0
     const strongStocks = data.map(item => ({
       code: item.dm,
       name: item.mc || '',
@@ -376,9 +402,9 @@ async function fetchStrongStocks() {
       hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
       lb: item.lb !== null ? item.lb.toFixed(2) : '0.00',
       tj: item.tj || '',
-      nh: item.nh || 0,
-      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '--', // 流通市值（亿元）
-      hy: '--' // MyData API 无板块字段
+      nh: (item.nh === '是' || item.nh === 1) ? 1 : 0,
+      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '', // 流通市值（亿元）
+      hy: item.hy || '' // 行业/板块
     }));
     
     return strongStocks.slice(0, 50);
