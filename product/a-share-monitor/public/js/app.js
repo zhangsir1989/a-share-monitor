@@ -180,13 +180,14 @@ function updateLimitUpStocksTable(data) {
   const pageData = sortedData.slice(start, end);
   
   if (pageData.length === 0) {
-    elements.limitUpStocksTable.innerHTML = '<tr><td colspan="10" class="loading">暂无涨停个股</td></tr>';
+    elements.limitUpStocksTable.innerHTML = '<tr><td colspan="11" class="loading">暂无涨停个股</td></tr>';
     updatePagination('limitUpStocks', 1, 1);
     return;
   }
   
   elements.limitUpStocksTable.innerHTML = pageData.map((item, index) => `
     <tr onclick="openStockDetail('${item.code}')">
+      <td class="index">${start + index + 1}</td>
       <td class="code">${item.code || '--'}</td>
       <td>${item.name || '--'}</td>
       <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.price || '0.00'}</td>
@@ -227,13 +228,14 @@ function updateLimitDownStocksTable(data) {
   const pageData = sortedData.slice(start, end);
   
   if (pageData.length === 0) {
-    elements.limitDownStocksTable.innerHTML = '<tr><td colspan="10" class="loading">暂无跌停个股</td></tr>';
+    elements.limitDownStocksTable.innerHTML = '<tr><td colspan="11" class="loading">暂无跌停个股</td></tr>';
     updatePagination('limitDownStocks', 1, 1);
     return;
   }
   
   elements.limitDownStocksTable.innerHTML = pageData.map((item, index) => `
     <tr onclick="openStockDetail('${item.code}')">
+      <td class="index">${start + index + 1}</td>
       <td class="code">${item.code || '--'}</td>
       <td>${item.name || '--'}</td>
       <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.price || '0.00'}</td>
@@ -280,6 +282,7 @@ function updateStrongStocksTable(data) {
   
   elements.strongStocksTable.innerHTML = pageData.map((item, index) => `
     <tr onclick="openStockDetail('${item.code}')">
+      <td class="index">${start + index + 1}</td>
       <td class="code">${item.code || '--'}</td>
       <td>${item.name || '--'}</td>
       <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.price || '0.00'}</td>
