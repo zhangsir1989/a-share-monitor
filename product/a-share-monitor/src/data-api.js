@@ -262,7 +262,7 @@ async function fetchLimitUpStocks(tradeDate = null) {
       lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '' // 流通市值（亿元）
     }));
     
-    return limitUpStocks.slice(0, 50);
+    return limitUpStocks;
   } catch (e) {
     console.error('获取涨停个股失败:', e.message);
     return getMockLimitUpStocks();
@@ -332,7 +332,7 @@ async function fetchLimitDownStocks(tradeDate = null) {
       lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '' // 流通市值（亿元）
     }));
     
-    return limitDownStocks.slice(0, 50);
+    return limitDownStocks;
   } catch (e) {
     console.error('获取跌停个股失败:', e.message);
     return getMockLimitDownStocks();
@@ -407,7 +407,7 @@ async function fetchStrongStocks(tradeDate = null) {
       hy: item.hy || '' // 行业/板块
     }));
     
-    return strongStocks.slice(0, 50);
+    return strongStocks;
   } catch (e) {
     console.error('获取强势个股失败:', e.message);
     return getMockStrongStocks();
