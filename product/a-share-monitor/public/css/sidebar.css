@@ -69,34 +69,35 @@
 /* 主侧边栏折叠按钮（放在顶部） */
 .sidebar-collapse-btn {
   position: absolute;
-  top: 80px;  /* 与二级侧边栏按钮对齐 */
-  left: -18px;  /* 移到左侧，与二级侧边栏按钮一致 */
-  width: 36px;  /* 统一尺寸 */
-  height: 36px;  /* 统一尺寸 */
-  background: #2f363d;  /* 统一背景色 */
-  border: 2px solid #444c56;  /* 统一边框 */
+  top: 50%;  /* 垂直居中 */
+  transform: translateY(-50%);  /* 精确居中 */
+  right: -18px;  /* 在主侧边栏右侧边缘 */
+  width: 36px;
+  height: 36px;
+  background: #2f363d;
+  border: 2px solid #444c56;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f0f6fc;  /* 统一文字颜色 */
-  font-size: 20px;  /* 统一字体大小 */
+  color: #f0f6fc;
+  font-size: 20px;
   font-weight: bold;
   transition: all 0.2s;
-  z-index: 1000;  /* 统一层级 */
-  box-shadow: -3px 3px 10px rgba(0,0,0,0.5);
+  z-index: 1000;
+  box-shadow: 3px 3px 10px rgba(0,0,0,0.5);  /* 右侧阴影 */
 }
 
 .sidebar-collapse-btn:hover {
-  background: #1890ff;  /* 统一悬停色 */
+  background: #1890ff;
   color: #fff;
   border-color: #1890ff;
-  transform: scale(1.15);  /* 统一悬停效果 */
+  transform: translateY(-50%) scale(1.15);
 }
 
 .sidebar.collapsed .sidebar-collapse-btn {
-  left: -18px;  /* 折叠时保持在左侧 */
+  right: -18px;  /* 折叠时保持在右侧 */
 }
 
 /* ==================== 二级侧边栏 ==================== */
@@ -164,8 +165,9 @@
 /* 二级侧边栏折叠按钮（放在顶部，与主侧边栏按钮垂直分开） */
 .sub-sidebar-collapse-btn {
   position: absolute;
-  top: 130px;  /* 向下移动 50px，与主按钮错开间距 */
-  left: -18px;  /* 与主按钮对齐 */
+  top: 50%;  /* 垂直居中 */
+  transform: translateY(-50%);  /* 精确居中 */
+  left: -18px;  /* 在二级侧边栏左侧边缘 */
   width: 36px;
   height: 36px;
   background: #2f363d;
@@ -180,14 +182,14 @@
   font-weight: bold;
   transition: all 0.2s;
   z-index: 1000;
-  box-shadow: -3px 3px 10px rgba(0,0,0,0.5);
+  box-shadow: -3px 3px 10px rgba(0,0,0,0.5);  /* 左侧阴影 */
 }
 
 .sub-sidebar-collapse-btn:hover {
   background: #1890ff;
   color: #fff;
   border-color: #1890ff;
-  transform: scale(1.15);
+  transform: translateY(-50%) scale(1.15);
 }
 
 .sub-sidebar.collapsed .sub-sidebar-collapse-btn {
