@@ -177,6 +177,19 @@ function isCloseToClose() {
   return hour === 14 && minute >= 59;
 }
 
+// 获取最近交易日（处理周末）
+function getLatestTradeDate() {
+  const today = new Date();
+  const weekday = today.getDay();
+  let tradingDate = new Date(today);
+  if (weekday === 0) { // 周日
+    tradingDate.setDate(today.getDate() - 2);
+  } else if (weekday === 6) { // 周六
+    tradingDate.setDate(today.getDate() - 1);
+  }
+  return tradingDate.toISOString().split('T')[0];
+}
+
 // 获取全部数据
 async function fetchAllData(tradeDate = null) {
   console.log('📡 开始获取实时数据...', tradeDate ? `(日期：${tradeDate})` : '');
@@ -196,7 +209,7 @@ async function fetchAllData(tradeDate = null) {
     limitDownStocks,
     strongStocks,
     lastUpdate: new Date().toISOString(),
-    tradeDate: tradeDate || new Date().toISOString().split('T')[0]
+    tradeDate: tradeDate || getLatestTradeDate()
   };
   
   console.log('✓ 数据获取完成');

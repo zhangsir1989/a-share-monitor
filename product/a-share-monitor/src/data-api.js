@@ -242,13 +242,13 @@ async function fetchLimitUpStocks(tradeDate = null) {
       changePercent: item.zf !== null ? item.zf.toFixed(2) : '0.00',
       cje: item.cje !== null ? (item.cje / 10000).toFixed(2) : '0.00', // 万元
       hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
-      zj: item.zj !== null ? (item.zj / 10000).toFixed(2) : '0.00', // 万元
+      zj: item.zj !== null ? (item.zj / 100000000).toFixed(2) : '0.00', // 亿元
       fbt: item.fbt || '',
       lbt: item.lbt || '',
       zbc: item.zbc || 0,
       tj: item.tj || '',
       lbc: item.lbc || 0,
-      hy: item.hy || '',
+      hy: '--', // MyData API 无行业字段
       lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '--' // 流通市值（亿元）
     }));
     
@@ -303,12 +303,12 @@ async function fetchLimitDownStocks(tradeDate = null) {
       changePercent: item.zf !== null ? item.zf.toFixed(2) : '0.00',
       cje: item.cje !== null ? (item.cje / 10000).toFixed(2) : '0.00', // 万元
       hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
-      zj: item.zj !== null ? (item.zj / 10000).toFixed(2) : '0.00', // 万元
+      zj: item.zj !== null ? (item.zj / 100000000).toFixed(2) : '0.00', // 亿元
       lbt: item.lbt || '',
-      fba: item.fba !== null ? (item.fba / 10000).toFixed(2) : '0.00', // 万元
+      fba: item.fba !== null ? (item.fba / 100000000).toFixed(2) : '0.00', // 亿元
       lbc: item.lbc || 0,
       zbc: item.zbc || 0,
-      hy: item.hy || '',
+      hy: '--', // MyData API 无行业字段
       lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '--' // 流通市值（亿元）
     }));
     
@@ -378,7 +378,7 @@ async function fetchStrongStocks() {
       tj: item.tj || '',
       nh: item.nh || 0,
       lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '--', // 流通市值（亿元）
-      hy: item.hy || '' // 板块（备用字段）
+      hy: '--' // MyData API 无板块字段
     }));
     
     return strongStocks.slice(0, 50);
