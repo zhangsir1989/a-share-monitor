@@ -148,6 +148,32 @@ function initMainSidebarCollapse() {
   }
 }
 
+// 初始化二级侧边栏 header 折叠按钮
+function initSubSidebarHeaderCollapse() {
+  const subSidebar = document.getElementById('sub-sidebar');
+  if (!subSidebar) return;
+  
+  const header = subSidebar.querySelector('.sub-sidebar-header');
+  if (!header) return;
+  
+  let collapseBtn = document.getElementById('sub-sidebar-header-collapse-btn');
+  
+  if (!collapseBtn) {
+    // 创建折叠按钮
+    collapseBtn = document.createElement('button');
+    collapseBtn.id = 'sub-sidebar-header-collapse-btn';
+    collapseBtn.className = 'sub-sidebar-header-collapse-btn';
+    collapseBtn.innerHTML = '《';
+    collapseBtn.title = '折叠菜单';
+    header.appendChild(collapseBtn);
+    console.log('✅ 二级侧边栏 header 折叠按钮已创建');
+  }
+  
+  if (collapseBtn) {
+    collapseBtn.addEventListener('click', handleSubSidebarHeaderCollapse);
+  }
+}
+
 // 处理主侧边栏折叠
 function handleMainSidebarCollapse() {
   const sidebar = document.getElementById('sidebar');
