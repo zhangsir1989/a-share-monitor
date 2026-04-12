@@ -64,12 +64,12 @@ body {
   flex-direction: column;
   gap: 15px;
   padding: 20px;
+  padding-left: 0;  /* 移除左侧 padding，与下方模块对齐 */
   background-color: var(--bg-secondary);
   border-radius: 12px;
   margin-bottom: 20px;
   width: 100%;
   box-sizing: border-box;
-  /* 与下方模块保持统一内边距，确保左右对齐 */
 }
 
 .header-top {
