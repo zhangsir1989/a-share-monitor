@@ -405,8 +405,8 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  color: var(--text-secondary);
-  font-size: 18px;
+  color: #f0f6fc;  /* 与一级菜单按钮颜色一致 */
+  font-size: 20px;  /* 与一级菜单按钮大小一致 */
   font-weight: bold;
   padding: 4px 8px;
   border-radius: 4px;
@@ -418,8 +418,8 @@
 }
 
 .sub-sidebar-header-collapse-btn:hover {
-  background: var(--bg-primary);
-  color: var(--accent-color);
+  color: #1890ff;  /* 与一级菜单按钮悬停颜色一致 */
+  background: rgba(255, 255, 255, 0.1);  /* 与一级菜单按钮悬停背景一致 */
 }
 
 .sub-sidebar-nav {
