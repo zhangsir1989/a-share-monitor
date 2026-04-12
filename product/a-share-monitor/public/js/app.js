@@ -10,17 +10,23 @@ const state = {
   sortConfig: {
     limitUpStocks: { field: 'lbc', order: 'desc' },
     limitDownStocks: { field: 'zbc', order: 'desc' },
-    strongStocks: { field: 'lb', order: 'desc' }
+    strongStocks: { field: 'lb', order: 'desc' },
+    breakBoardStocks: { field: 'changePercent', order: 'desc' },
+    newBaseStocks: { field: 'changePercent', order: 'desc' }
   },
   rawData: {
     limitUpStocks: [],
     limitDownStocks: [],
-    strongStocks: []
+    strongStocks: [],
+    breakBoardStocks: [],
+    newBaseStocks: []
   },
   pagination: {
     limitUpStocks: { currentPage: 1, pageSize: 10 },
     limitDownStocks: { currentPage: 1, pageSize: 10 },
-    strongStocks: { currentPage: 1, pageSize: 10 }
+    strongStocks: { currentPage: 1, pageSize: 10 },
+    breakBoardStocks: { currentPage: 1, pageSize: 10 },
+    newBaseStocks: { currentPage: 1, pageSize: 10 }
   },
   tradeDate: ''
 };
