@@ -1,0 +1,244 @@
+/* 三个个股卡片模块 - 宽度最大化 + 列宽适配 */
+
+/* 涨停个股卡片 - 独占一行，宽度 100% */
+.card:has(#limit-up-stocks-table),
+.card:has(#limit-down-stocks-table),
+.card:has(#strong-stocks-table) {
+  width: 100%;
+}
+
+/* 第二行两个卡片平分宽度 */
+.cards-row .card {
+  width: 100%;
+  min-width: 0; /* 允许 flex/grid 子项缩小 */
+}
+
+/* 表格容器 - 移除横向滚动，让表格自然撑开 */
+.card .table-container {
+  overflow-x: visible;
+  width: 100%;
+}
+
+/* 数据表格 - 宽度 100%，表格布局自动 */
+.card .data-table {
+  width: 100%;
+  table-layout: auto; /* 自动列宽，根据内容调整 */
+  min-width: 1200px; /* 最小宽度，避免过度压缩 */
+}
+
+/* 列宽优化 - 涨停个股（11 列） */
+#limit-up-stocks-table th:nth-child(1),
+#limit-up-stocks-table td:nth-child(1) {
+  /* 代码列 - 紧凑 */
+  width: 100px;
+  min-width: 80px;
+}
+
+#limit-up-stocks-table th:nth-child(2),
+#limit-up-stocks-table td:nth-child(2) {
+  /* 名称列 - 加宽 */
+  width: 140px;
+  min-width: 100px;
+}
+
+#limit-up-stocks-table th:nth-child(3),
+#limit-up-stocks-table td:nth-child(3) {
+  /* 最新价 - 紧凑 */
+  width: 80px;
+  min-width: 70px;
+}
+
+#limit-up-stocks-table th:nth-child(4),
+#limit-up-stocks-table td:nth-child(4) {
+  /* 涨跌幅 - 紧凑 */
+  width: 90px;
+  min-width: 80px;
+}
+
+#limit-up-stocks-table th:nth-child(5),
+#limit-up-stocks-table td:nth-child(5) {
+  /* 连板数 - 紧凑 */
+  width: 70px;
+  min-width: 60px;
+}
+
+#limit-up-stocks-table th:nth-child(6),
+#limit-up-stocks-table td:nth-child(6) {
+  /* 首次封板 - 加宽 */
+  width: 100px;
+  min-width: 90px;
+}
+
+#limit-up-stocks-table th:nth-child(7),
+#limit-up-stocks-table td:nth-child(7) {
+  /* 最后封板 - 加宽 */
+  width: 100px;
+  min-width: 90px;
+}
+
+#limit-up-stocks-table th:nth-child(8),
+#limit-up-stocks-table td:nth-child(8) {
+  /* 封板资金 - 中等 */
+  width: 100px;
+  min-width: 85px;
+}
+
+#limit-up-stocks-table th:nth-child(9),
+#limit-up-stocks-table td:nth-child(9) {
+  /* 炸板次数 - 紧凑 */
+  width: 80px;
+  min-width: 70px;
+}
+
+#limit-up-stocks-table th:nth-child(10),
+#limit-up-stocks-table td:nth-child(10) {
+  /* 流通市值 - 中等 */
+  width: 100px;
+  min-width: 85px;
+}
+
+#limit-up-stocks-table th:nth-child(11),
+#limit-up-stocks-table td:nth-child(11) {
+  /* 行业 - 自适应 */
+  width: auto;
+  min-width: 80px;
+}
+
+/* 列宽优化 - 跌停个股（10 列） */
+#limit-down-stocks-table th:nth-child(1),
+#limit-down-stocks-table td:nth-child(1) {
+  width: 100px;
+  min-width: 80px;
+}
+
+#limit-down-stocks-table th:nth-child(2),
+#limit-down-stocks-table td:nth-child(2) {
+  width: 140px;
+  min-width: 100px;
+}
+
+#limit-down-stocks-table th:nth-child(3),
+#limit-down-stocks-table td:nth-child(3) {
+  width: 80px;
+  min-width: 70px;
+}
+
+#limit-down-stocks-table th:nth-child(4),
+#limit-down-stocks-table td:nth-child(4) {
+  width: 90px;
+  min-width: 80px;
+}
+
+#limit-down-stocks-table th:nth-child(5),
+#limit-down-stocks-table td:nth-child(5) {
+  width: 70px;
+  min-width: 60px;
+}
+
+#limit-down-stocks-table th:nth-child(6),
+#limit-down-stocks-table td:nth-child(6) {
+  width: 100px;
+  min-width: 90px;
+}
+
+#limit-down-stocks-table th:nth-child(7),
+#limit-down-stocks-table td:nth-child(7) {
+  width: 100px;
+  min-width: 85px;
+}
+
+#limit-down-stocks-table th:nth-child(8),
+#limit-down-stocks-table td:nth-child(8) {
+  width: 80px;
+  min-width: 70px;
+}
+
+#limit-down-stocks-table th:nth-child(9),
+#limit-down-stocks-table td:nth-child(9) {
+  width: 100px;
+  min-width: 85px;
+}
+
+#limit-down-stocks-table th:nth-child(10),
+#limit-down-stocks-table td:nth-child(10) {
+  width: auto;
+  min-width: 80px;
+}
+
+/* 列宽优化 - 强势个股（9 列） */
+#strong-stocks-table th:nth-child(1),
+#strong-stocks-table td:nth-child(1) {
+  width: 100px;
+  min-width: 80px;
+}
+
+#strong-stocks-table th:nth-child(2),
+#strong-stocks-table td:nth-child(2) {
+  width: 140px;
+  min-width: 100px;
+}
+
+#strong-stocks-table th:nth-child(3),
+#strong-stocks-table td:nth-child(3) {
+  width: 80px;
+  min-width: 70px;
+}
+
+#strong-stocks-table th:nth-child(4),
+#strong-stocks-table td:nth-child(4) {
+  width: 90px;
+  min-width: 80px;
+}
+
+#strong-stocks-table th:nth-child(5),
+#strong-stocks-table td:nth-child(5) {
+  width: 70px;
+  min-width: 60px;
+}
+
+#strong-stocks-table th:nth-child(6),
+#strong-stocks-table td:nth-child(6) {
+  width: 90px;
+  min-width: 80px;
+}
+
+#strong-stocks-table th:nth-child(7),
+#strong-stocks-table td:nth-child(7) {
+  width: 90px;
+  min-width: 80px;
+}
+
+#strong-stocks-table th:nth-child(8),
+#strong-stocks-table td:nth-child(8) {
+  width: 100px;
+  min-width: 85px;
+}
+
+#strong-stocks-table th:nth-child(9),
+#strong-stocks-table td:nth-child(9) {
+  width: auto;
+  min-width: 80px;
+}
+
+/* 响应式 - 小屏幕适配 */
+@media (max-width: 1400px) {
+  .card .data-table {
+    min-width: 1000px;
+  }
+  
+  #limit-up-stocks-table th:nth-child(2),
+  #limit-up-stocks-table td:nth-child(2),
+  #limit-down-stocks-table th:nth-child(2),
+  #limit-down-stocks-table td:nth-child(2),
+  #strong-stocks-table th:nth-child(2),
+  #strong-stocks-table td:nth-child(2) {
+    width: 120px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .card .data-table {
+    min-width: 900px;
+    table-layout: fixed; /* 小屏幕使用固定布局 */
+  }
+}

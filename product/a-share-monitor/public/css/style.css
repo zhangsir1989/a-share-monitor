@@ -338,7 +338,7 @@ body {
 
 .cards-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr); /* 第二行：跌停 + 强势，2 列平分 */
   gap: 20px;
 }
 
@@ -552,7 +552,13 @@ body {
 
 /* 表格样式 */
 .table-container {
-  overflow-x: auto;
+  overflow-x: visible; /* 让表格自然撑开宽度 */
+}
+
+/* 个股卡片模块的表格容器 - 特殊处理 */
+.card .table-container {
+  overflow-x: visible;
+  width: 100%;
 }
 
 .table-container.scrollable {
