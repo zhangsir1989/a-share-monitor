@@ -1,6 +1,6 @@
 {
   "date": "Sun Apr 12 2026",
-  "timestamp": 1776006469944,
+  "timestamp": 1776006967319,
   "data": {
     "volume": {
       "totalVolume": 12.15,
@@ -6234,7 +6234,7 @@
         "lt": "10.29"
       }
     ],
-    "lastUpdate": "2026-04-12T15:07:49.944Z",
+    "lastUpdate": "2026-04-12T15:16:07.319Z",
     "tradeDate": "2026-04-10"
   }
 }
