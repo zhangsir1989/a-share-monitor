@@ -2542,11 +2542,17 @@ async function startServer() {
     console.log('');
     
     loadCache();
-    // 只在交易时间获取实时数据，非交易时间使用缓存
+    // 交易时间获取实时数据，非交易时间也获取一次最新 API 数据
     if (isTradingTime()) {
       fetchAllData();
     } else {
-      console.log('⏰ 非交易时间，使用缓存数据');
+      console.log('⏰ 非交易时间，获取最新 API 数据...');
+      // 非交易时间也获取一次 API 数据，用于周末复盘查看
+      fetchAllData().then(() => {
+        saveCache(); // 保存最新数据到缓存
+      }).catch(e => {
+        console.error('获取 API 数据失败:', e.message);
+      });
     }
   });
 }

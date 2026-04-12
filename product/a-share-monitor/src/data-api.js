@@ -48,14 +48,15 @@ async function fetchMarketVolume() {
       axios.get(`https://api.mairuiapi.com/hsindex/latest/399001.SZ/d/${MYDATA_LICENCE}`, { timeout: 10000 })
     ]);
     
-    const shData = shResp.data;
-    const szData = szResp.data;
+    // MyData API 返回的是数组，取第一个元素
+    const shData = Array.isArray(shResp.data) ? shResp.data[0] : shResp.data;
+    const szData = Array.isArray(szResp.data) ? szResp.data[0] : szResp.data;
     
     // MyData API 返回格式：v=成交量（股），a=成交额（元）
-    const shVolume = shData.v || 0;  // 成交量（股）
-    const szVolume = szData.v || 0;
-    const shAmountYuan = shData.a || 0;  // 成交额（元）
-    const szAmountYuan = szData.a || 0;  // 成交额（元）
+    const shVolume = shData?.v || 0;  // 成交量（股）
+    const szVolume = szData?.v || 0;
+    const shAmountYuan = shData?.a || 0;  // 成交额（元）
+    const szAmountYuan = szData?.a || 0;  // 成交额（元）
     
     // 转换为亿元（保留原始精度，不四舍五入）
     const shAmount = shAmountYuan / 100000000;  // 沪市成交额（亿元）
