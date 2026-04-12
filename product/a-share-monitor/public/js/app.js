@@ -570,14 +570,28 @@ function stopTimer() {
 
 // 更新分页控件
 function updatePagination(tableType, currentPage, totalPages) {
-  const currentEl = document.getElementById(`${tableType}-current-page`);
-  const totalEl = document.getElementById(`${tableType}-total-pages`);
+  // 转换驼峰命名为连字符命名（limitUpStocks -> limit-up）
+  let idPrefix;
+  if (tableType === 'limitUpStocks') {
+    idPrefix = 'limit-up';
+  } else if (tableType === 'limitDownStocks') {
+    idPrefix = 'limit-down';
+  } else if (tableType === 'strongStocks') {
+    idPrefix = 'strong';
+  } else {
+    idPrefix = tableType;
+  }
+  
+  const currentEl = document.getElementById(`${idPrefix}-current-page`);
+  const totalEl = document.getElementById(`${idPrefix}-total-pages`);
+  
+  console.log(`分页更新：${tableType} 当前页 ${currentPage} / 总页数 ${totalPages}`);
   
   if (currentEl) currentEl.textContent = currentPage;
   if (totalEl) totalEl.textContent = totalPages;
   
   // 更新按钮状态
-  const pagination = document.getElementById(`${tableType}-pagination`);
+  const pagination = document.getElementById(`${idPrefix}-pagination`);
   if (pagination) {
     const prevBtn = pagination.querySelector('[data-page="prev"]');
     const nextBtn = pagination.querySelector('[data-page="next"]');
@@ -590,7 +604,19 @@ function updatePagination(tableType, currentPage, totalPages) {
 // 初始化分页事件
 function initPaginationEvents() {
   ['limitUpStocks', 'limitDownStocks', 'strongStocks'].forEach(tableType => {
-    const pagination = document.getElementById(`${tableType}-pagination`);
+    // 转换驼峰命名为连字符命名
+    let idPrefix;
+    if (tableType === 'limitUpStocks') {
+      idPrefix = 'limit-up';
+    } else if (tableType === 'limitDownStocks') {
+      idPrefix = 'limit-down';
+    } else if (tableType === 'strongStocks') {
+      idPrefix = 'strong';
+    } else {
+      idPrefix = tableType;
+    }
+    
+    const pagination = document.getElementById(`${idPrefix}-pagination`);
     if (!pagination) return;
     
     pagination.querySelectorAll('.pagination-btn').forEach(btn => {
