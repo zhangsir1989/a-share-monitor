@@ -164,11 +164,13 @@ function initSubSidebarHeaderCollapse() {
     collapseBtn = document.createElement('button');
     collapseBtn.id = 'sub-sidebar-header-collapse-btn';
     collapseBtn.className = 'sub-sidebar-header-collapse-btn';
-    collapseBtn.innerHTML = '《';
     collapseBtn.title = '折叠菜单';
     header.appendChild(collapseBtn);
     console.log('✅ 二级侧边栏 header 折叠按钮已创建');
   }
+  
+  // 根据当前状态设置正确的图标
+  updateSubSidebarHeaderButton(subSidebar);
   
   if (collapseBtn) {
     collapseBtn.addEventListener('click', handleSubSidebarHeaderCollapse);
