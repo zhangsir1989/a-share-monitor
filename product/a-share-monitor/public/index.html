@@ -114,6 +114,11 @@
           <div class="card-header">
             <span class="card-icon">📈</span>
             <h2>沪深成交量</h2>
+            <div class="date-control-group">
+              <label for="trade-date" class="date-label">数据日期：</label>
+              <input type="date" id="trade-date" class="date-picker">
+              <button id="query-btn" class="btn-query">查询</button>
+            </div>
           </div>
           <div class="card-content">
             <div class="metric center">
@@ -148,6 +153,7 @@
           <div class="card-header">
             <span class="card-icon">📈</span>
             <h2>涨停个股</h2>
+            <span class="data-date" id="limit-up-date">--</span>
           </div>
           <div class="card-content">
             <div class="table-container">
@@ -193,6 +199,7 @@
           <div class="card-header">
             <span class="card-icon">📉</span>
             <h2>跌停个股</h2>
+            <span class="data-date" id="limit-down-date">--</span>
           </div>
           <div class="card-content">
             <div class="table-container">
@@ -321,6 +328,6 @@
   </div>
 
   <script src="js/sidebar.js?v=20260422"></script>
-  <script src="js/app.js?v=20260450"></script>
+  <script src="js/app.js?v=20260451"></script>
 </body>
 </html>

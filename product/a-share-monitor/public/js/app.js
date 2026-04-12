@@ -498,6 +498,10 @@ async function fetchData() {
     updateLimitUpStocksTable(data.limitUpStocks);
     updateLimitDownStocksTable(data.limitDownStocks);
     updateStrongStocksTable(data.strongStocks);
+    // 更新三个卡片的日期显示（使用后端返回的交易日）
+    if (data.tradeDate) {
+      updateDateDisplays(data.tradeDate);
+    }
     updateDateTime();
     updateMarketStatus();
     
@@ -657,24 +661,20 @@ function initDatePickers() {
   const dateStr = today.toISOString().split('T')[0];
   
   const tradeDateInput = document.getElementById('trade-date');
-  const tradeDateLabel = document.getElementById('trade-date-label');
-  const queryBtn = document.getElementById('query-date-btn');
+  const queryBtn = document.getElementById('query-btn');
   
   if (tradeDateInput) {
     tradeDateInput.value = dateStr;
   }
   
-  if (tradeDateLabel) {
-    tradeDateLabel.textContent = `数据日期：${dateStr}`;
-  }
+  // 更新三个卡片的日期显示
+  updateDateDisplays(dateStr);
   
   // 查询按钮点击事件
   if (queryBtn) {
     queryBtn.addEventListener('click', () => {
       if (tradeDateInput && tradeDateInput.value) {
-        if (tradeDateLabel) {
-          tradeDateLabel.textContent = `数据日期：${tradeDateInput.value}`;
-        }
+        updateDateDisplays(tradeDateInput.value);
         fetchData();
       }
     });
@@ -683,12 +683,21 @@ function initDatePickers() {
   // 日期选择器变更事件（回车或改变时自动查询）
   if (tradeDateInput) {
     tradeDateInput.addEventListener('change', () => {
-      if (tradeDateLabel) {
-        tradeDateLabel.textContent = `数据日期：${tradeDateInput.value}`;
-      }
+      updateDateDisplays(tradeDateInput.value);
       fetchData();
     });
   }
+}
+
+// 更新三个卡片的日期显示
+function updateDateDisplays(dateStr) {
+  const limitUpDate = document.getElementById('limit-up-date');
+  const limitDownDate = document.getElementById('limit-down-date');
+  const strongDate = document.getElementById('strong-date');
+  
+  if (limitUpDate) limitUpDate.textContent = dateStr;
+  if (limitDownDate) limitDownDate.textContent = dateStr;
+  if (strongDate) strongDate.textContent = dateStr;
 }
 
 // 初始化排序事件
