@@ -392,6 +392,9 @@
 .sub-sidebar-header {
   padding: 20px 15px;
   border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   position: relative;
 }
 
@@ -400,6 +403,28 @@
   font-size: 14px;
   color: var(--text-primary);
   white-space: nowrap;
+}
+
+/* 二级侧边栏 header 折叠按钮 */
+.sub-sidebar-header-collapse-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 18px;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sub-sidebar-header-collapse-btn:hover {
+  background: var(--bg-primary);
+  color: var(--accent-color);
 }
 
 .sub-sidebar-nav {

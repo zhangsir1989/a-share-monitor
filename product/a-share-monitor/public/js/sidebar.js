@@ -53,6 +53,7 @@ function initSidebar() {
   // 初始化二级侧边栏折叠按钮
   if (subSidebar) {
     initSubSidebarCollapse();
+    initSubSidebarHeaderCollapse();  // ✅ 添加 header 折叠按钮
   }
   
   // 初始化移动端菜单
