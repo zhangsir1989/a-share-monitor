@@ -1,6 +1,6 @@
 {
-  "date": "Sat Apr 11 2026",
-  "timestamp": 1775890740185,
+  "date": "Sun Apr 12 2026",
+  "timestamp": 1775977140624,
   "data": {
     "volume": {
       "totalVolume": 119980,
@@ -850,6 +850,6 @@
     ],
     "lastUpdate": "2026-04-10T06:58:25.846Z",
     "isCached": true,
-    "cachedDate": "Fri Apr 10 2026"
+    "cachedDate": "Sat Apr 11 2026"
   }
 }

@@ -58,7 +58,9 @@ function updateVolumeData(data) {
     }
   }
   
-  elements.totalVolume.textContent = formatNumber(data.totalVolume);
+  // totalVolume 单位是亿手，转换为万手显示（1 亿手 = 10000 万手）
+  const totalVolumeWanShou = data.totalVolume * 10000;
+  elements.totalVolume.textContent = formatNumber(totalVolumeWanShou);
   // 沪市深市显示完整单位，避免混淆
   elements.shAmount.textContent = formatAmount(data.shAmount, true);
   elements.szAmount.textContent = formatAmount(data.szAmount, true);

@@ -34,6 +34,12 @@ body {
   transition: padding-left 0.3s ease;
 }
 
+/* 修复模块对齐问题 - card-content 左侧不额外加 padding */
+.card-content {
+  padding: 20px;
+  padding-left: 0;  /* 与 header 对齐，避免双重 padding */
+}
+
 /* 主侧边栏折叠时 */
 .container.sidebar-collapsed {
   padding-left: 280px; /* 60px 主侧边栏 + 200px 二级侧边栏 + 20px */
