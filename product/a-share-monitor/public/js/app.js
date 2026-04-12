@@ -327,7 +327,7 @@ function updateBreakBoardStocksTable(data) {
   const pageData = sortedData.slice(start, end);
   
   if (pageData.length === 0) {
-    elements.breakBoardStocksTable.innerHTML = '<tr><td colspan="11" class="loading">暂无炸板个股</td></tr>';
+    elements.breakBoardStocksTable.innerHTML = '<tr><td colspan="12" class="loading">暂无炸板个股</td></tr>';
     updatePagination('breakBoardStocks', 1, 1);
     return;
   }
@@ -343,6 +343,7 @@ function updateBreakBoardStocksTable(data) {
       <td>${item.fbt || '--'}</td>
       <td>${item.lbt || '--'}</td>
       <td class="up">${item.cje || '--'}</td>
+      <td>${item.zbc || 0}</td>
       <td class="up">${item.lt || '--'}</td>
       <td>${item.hy || '--'}</td>
     </tr>
@@ -374,7 +375,7 @@ function updateNewBaseStocksTable(data) {
   const pageData = sortedData.slice(start, end);
   
   if (pageData.length === 0) {
-    elements.newBaseStocksTable.innerHTML = '<tr><td colspan="10" class="loading">暂无次新个股</td></tr>';
+    elements.newBaseStocksTable.innerHTML = '<tr><td colspan="11" class="loading">暂无次新个股</td></tr>';
     updatePagination('newBaseStocks', 1, 1);
     return;
   }
@@ -562,10 +563,10 @@ function clearMarketData() {
   elements.strongStocksTable.innerHTML = '<tr><td colspan="6" class="loading">未开盘，暂无数据</td></tr>';
   
   // 清空炸板个股表格
-  elements.breakBoardStocksTable.innerHTML = '<tr><td colspan="11" class="loading">未开盘，暂无数据</td></tr>';
+  elements.breakBoardStocksTable.innerHTML = '<tr><td colspan="12" class="loading">未开盘，暂无数据</td></tr>';
   
   // 清空次新个股表格
-  elements.newBaseStocksTable.innerHTML = '<tr><td colspan="10" class="loading">未开盘，暂无数据</td></tr>';
+  elements.newBaseStocksTable.innerHTML = '<tr><td colspan="11" class="loading">未开盘，暂无数据</td></tr>';
   
   // 清空换手率表格
   elements.turnoverTable.innerHTML = '<tr onclick="openSectorModal(this.cells[1].textContent)"><td colspan="9" class="loading">未开盘，暂无数据</td></tr>';
