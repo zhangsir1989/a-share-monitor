@@ -153,6 +153,7 @@ function handleMainSidebarCollapse() {
   const sidebar = document.getElementById('sidebar');
   const subSidebar = document.getElementById('sub-sidebar');
   const collapseBtn = document.getElementById('sidebar-collapse-btn');
+  const subCollapseBtn = document.getElementById('sub-sidebar-collapse-btn');
   
   if (!sidebar || !collapseBtn) return;
   
@@ -160,13 +161,28 @@ function handleMainSidebarCollapse() {
   sidebarState.mainCollapsed = !sidebarState.mainCollapsed;
   
   if (sidebarState.mainCollapsed) {
+    // 折叠主侧边栏
     sidebar.classList.add('collapsed');
     collapseBtn.innerHTML = '》';
     collapseBtn.title = '展开菜单';
+    console.log('✅ 主侧边栏折叠');
   } else {
+    // 展开主侧边栏
     sidebar.classList.remove('collapsed');
     collapseBtn.innerHTML = '《';
     collapseBtn.title = '折叠菜单';
+    
+    // 优化：如果当前页面有二级侧边栏，自动展开二级侧边栏
+    if (subSidebar) {
+      subSidebar.classList.remove('collapsed');
+      sidebarState.subCollapsed = false;
+      if (subCollapseBtn) {
+        subCollapseBtn.innerHTML = '《';
+      }
+      console.log('✅ 主侧边栏展开，同时展开二级侧边栏');
+    } else {
+      console.log('✅ 主侧边栏展开');
+    }
   }
   
   updateLayoutClasses();
