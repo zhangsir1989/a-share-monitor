@@ -62,20 +62,16 @@ function updateVolumeData(data) {
   const totalVolumeWanShou = data.totalVolume * 10000;
   elements.totalVolume.textContent = formatNumber(totalVolumeWanShou);
   
-  // 沪市成交额显示
-  elements.shAmount.textContent = data.shAmount >= 10000 
-    ? (data.shAmount / 10000).toFixed(2) 
-    : data.shAmount.toFixed(2);
+  // 沪市成交额显示（单位：亿元，保留 2 位小数）
+  elements.shAmount.textContent = data.shAmount.toFixed(2);
   if (elements.shAmountUnit) {
-    elements.shAmountUnit.textContent = data.shAmount >= 10000 ? '万亿元' : '亿元';
+    elements.shAmountUnit.textContent = '亿元';
   }
   
-  // 深市成交额显示
-  elements.szAmount.textContent = data.szAmount >= 10000 
-    ? (data.szAmount / 10000).toFixed(2) 
-    : data.szAmount.toFixed(2);
+  // 深市成交额显示（单位：亿元，保留 2 位小数）
+  elements.szAmount.textContent = data.szAmount.toFixed(2);
   if (elements.szAmountUnit) {
-    elements.szAmountUnit.textContent = data.szAmount >= 10000 ? '万亿元' : '亿元';
+    elements.szAmountUnit.textContent = '亿元';
   }
   
   elements.shRatio.textContent = data.shRatio + '%';
