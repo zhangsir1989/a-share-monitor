@@ -420,6 +420,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-left: auto;  /* 推到右侧 */
 }
 
 .sub-sidebar-header-collapse-btn:hover {

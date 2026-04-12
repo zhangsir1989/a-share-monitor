@@ -267,10 +267,54 @@ function handleSubSidebarCollapse() {
   }
   
   updateSubSidebarButton(subSidebar);
+  updateSubSidebarHeaderButton(subSidebar);  // ✅ 同步更新 header 按钮
   updateLayoutClasses();
   saveSidebarState();
   
   console.log('✅ 二级侧边栏折叠状态:', sidebarState.subCollapsed ? '折叠' : '展开');
+}
+
+// 处理二级侧边栏 header 折叠按钮
+function handleSubSidebarHeaderCollapse() {
+  const subSidebar = document.getElementById('sub-sidebar');
+  const collapseBtn = document.getElementById('sub-sidebar-header-collapse-btn');
+  
+  if (!subSidebar || !collapseBtn) return;
+  
+  // 切换折叠状态
+  sidebarState.subCollapsed = !sidebarState.subCollapsed;
+  
+  if (sidebarState.subCollapsed) {
+    // 折叠二级侧边栏
+    subSidebar.classList.add('collapsed');
+    collapseBtn.innerHTML = '》';
+    collapseBtn.title = '展开菜单';
+    console.log('✅ 二级侧边栏 header 折叠');
+  } else {
+    // 展开二级侧边栏
+    subSidebar.classList.remove('collapsed');
+    collapseBtn.innerHTML = '《';
+    collapseBtn.title = '折叠菜单';
+    console.log('✅ 二级侧边栏 header 展开');
+  }
+  
+  updateSubSidebarButton(subSidebar);  // ✅ 同步更新侧面按钮
+  updateLayoutClasses();
+  saveSidebarState();
+}
+
+// 更新二级侧边栏 header 按钮
+function updateSubSidebarHeaderButton(subSidebar) {
+  const collapseBtn = document.getElementById('sub-sidebar-header-collapse-btn');
+  if (!collapseBtn) return;
+  
+  if (subSidebar.classList.contains('collapsed')) {
+    collapseBtn.innerHTML = '》';
+    collapseBtn.title = '展开菜单';
+  } else {
+    collapseBtn.innerHTML = '《';
+    collapseBtn.title = '折叠菜单';
+  }
 }
 
 // 更新二级侧边栏按钮
