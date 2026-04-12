@@ -205,7 +205,11 @@ function updateLimitUpStocksTable(data) {
 
 // 更新跌停个股表格（支持分页）
 function updateLimitDownStocksTable(data) {
-  if (!data) return;
+  console.log('跌停数据：总数', data ? data.length : 'null');
+  if (!data) {
+    console.error('跌停数据为 null 或 undefined');
+    return;
+  }
   
   state.rawData.limitDownStocks = data;
   
@@ -243,7 +247,11 @@ function updateLimitDownStocksTable(data) {
 
 // 更新强势个股表格（支持分页）
 function updateStrongStocksTable(data) {
-  if (!data) return;
+  console.log('强势数据：总数', data ? data.length : 'null');
+  if (!data) {
+    console.error('强势数据为 null 或 undefined');
+    return;
+  }
   
   state.rawData.strongStocks = data;
   
@@ -313,13 +321,22 @@ function updateTurnoverTable(data) {
 // 更新排序图标
 function updateSortIcons(tableType) {
   const config = state.sortConfig[tableType];
-  const tables = {
-    limitUp: elements.limitUpTable.closest('table'),
-    cashflow: elements.cashflowTable.closest('table'),
-    turnover: elements.turnoverTable.closest('table')
-  };
   
-  const table = tables[tableType];
+  // 获取对应的 table 元素
+  let tableElement = null;
+  if (tableType === 'limitUpStocks') {
+    tableElement = elements.limitUpStocksTable;
+  } else if (tableType === 'limitDownStocks') {
+    tableElement = elements.limitDownStocksTable;
+  } else if (tableType === 'strongStocks') {
+    tableElement = elements.strongStocksTable;
+  } else if (tableType === 'turnover') {
+    tableElement = elements.turnoverTable;
+  }
+  
+  if (!tableElement) return;
+  
+  const table = tableElement.closest('table');
   if (!table) return;
   
   // 清除所有图标
