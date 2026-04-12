@@ -227,7 +227,7 @@ function updateLimitDownStocksTable(data) {
   const pageData = sortedData.slice(start, end);
   
   if (pageData.length === 0) {
-    elements.limitDownStocksTable.innerHTML = '<tr><td colspan="9" class="loading">暂无跌停个股</td></tr>';
+    elements.limitDownStocksTable.innerHTML = '<tr><td colspan="10" class="loading">暂无跌停个股</td></tr>';
     updatePagination('limitDownStocks', 1, 1);
     return;
   }

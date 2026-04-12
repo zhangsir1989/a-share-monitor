@@ -219,7 +219,7 @@ async function fetchLimitUpStocks(tradeDate = null) {
       dateStr = tradingDate.toISOString().split('T')[0];
     }
     
-    const url = `https://api.mairuiapi.com/hslt/ztgc/${dateStr}/FB1A859B-6832-4F70-AAA2-38274F23FC90`;
+    const url = `https://api.mairuiapi.com/hslt/ztgc/${dateStr}/LICENCE-66D8-9F96-0C7F0FBCD073`;
     
     const resp = await axios.get(url, {
       timeout: 15000,
@@ -280,7 +280,7 @@ async function fetchLimitDownStocks(tradeDate = null) {
       dateStr = tradingDate.toISOString().split('T')[0];
     }
     
-    const url = `https://api.mairuiapi.com/hslt/dtgc/${dateStr}/FB1A859B-6832-4F70-AAA2-38274F23FC90`;
+    const url = `https://api.mairuiapi.com/hslt/dtgc/${dateStr}/LICENCE-66D8-9F96-0C7F0FBCD073`;
     
     const resp = await axios.get(url, {
       timeout: 15000,
@@ -321,17 +321,17 @@ async function fetchLimitDownStocks(tradeDate = null) {
 
 function getMockLimitUpStocks() {
   return [
-    { code: 'sz002560', name: '通达股份', price: '13.06', changePercent: '10.03' },
-    { code: 'sh603538', name: '美诺华', price: '42.32', changePercent: '10.01' },
-    { code: 'sz002361', name: '神剑股份', price: '17.29', changePercent: '10.00' }
+    { code: 'sz002560', name: '通达股份', price: '13.06', changePercent: '10.03', lbc: 1, fbt: '092500', lbt: '092500', zj: '3238.13', zbc: 0, lt: '25.68', hy: '物流' },
+    { code: 'sh603538', name: '美诺华', price: '42.32', changePercent: '10.01', lbc: 2, fbt: '093015', lbt: '143022', zj: '5621.45', zbc: 1, lt: '42.15', hy: '医药' },
+    { code: 'sz002361', name: '神剑股份', price: '17.29', changePercent: '10.00', lbc: 3, fbt: '092500', lbt: '145630', zj: '8932.67', zbc: 2, lt: '38.92', hy: '化工' }
   ];
 }
 
 function getMockLimitDownStocks() {
   return [
-    { code: 'sh605299', name: '舒华体育', price: '19.58', changePercent: '-10.02' },
-    { code: 'sh603588', name: '高能环境', price: '16.61', changePercent: '-9.97' },
-    { code: 'sh603182', name: '嘉华股份', price: '15.62', changePercent: '-9.97' }
+    { code: 'sh605299', name: '舒华体育', price: '19.58', changePercent: '-10.02', lbc: 1, lbt: '143022', fba: '1256.78', zbc: 3, lt: '18.45', hy: '体育' },
+    { code: 'sh603588', name: '高能环境', price: '16.61', changePercent: '-9.97', lbc: 2, lbt: '145015', fba: '2341.56', zbc: 1, lt: '32.67', hy: '环保' },
+    { code: 'sh603182', name: '嘉华股份', price: '15.62', changePercent: '-9.97', lbc: 1, lbt: '142530', fba: '987.34', zbc: 2, lt: '21.89', hy: '食品' }
   ];
 }
 
@@ -390,9 +390,9 @@ async function fetchStrongStocks() {
 
 function getMockStrongStocks() {
   return [
-    { code: 'sz301157', name: '华塑科技', price: '70.25', ztp: '70.25', changePercent: '20.00', hs: '60.51', lb: '2.64', tj: '3/3' },
-    { code: 'sz301187', name: '欧圣电气', price: '43.44', ztp: '43.44', changePercent: '20.00', hs: '23.74', lb: '2.25', tj: '1/1' },
-    { code: 'sz300807', name: '天迈科技', price: '43.64', ztp: '43.64', changePercent: '19.99', hs: '6.48', lb: '1.47', tj: '2/2' }
+    { code: 'sz301157', name: '华塑科技', price: '70.25', changePercent: '20.00', lb: '2.64', nh: 1, tj: '3/3', lt: '42.15', hy: '科技' },
+    { code: 'sz301187', name: '欧圣电气', price: '43.44', changePercent: '20.00', lb: '2.25', nh: 1, tj: '1/1', lt: '28.67', hy: '电气' },
+    { code: 'sz300807', name: '天迈科技', price: '43.64', changePercent: '19.99', lb: '1.47', nh: 0, tj: '2/2', lt: '35.92', hy: '科技' }
   ];
 }
 
