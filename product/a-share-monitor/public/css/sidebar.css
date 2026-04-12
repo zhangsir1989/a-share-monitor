@@ -71,28 +71,21 @@
   position: absolute;
   top: 20px;  /* 与二级菜单 header 折叠按钮同一行 */
   right: -18px;  /* 在主侧边栏右侧边缘 */
-  width: 36px;
-  height: 36px;
-  background: #2f363d;
-  border: 2px solid #444c56;
-  border-radius: 50%;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: #f0f6fc;
   font-size: 20px;
   font-weight: bold;
   transition: all 0.2s;
   z-index: 1000;
-  box-shadow: 3px 3px 10px rgba(0,0,0,0.5);  /* 右侧阴影 */
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 .sidebar-collapse-btn:hover {
-  background: #1890ff;
-  color: #fff;
-  border-color: #1890ff;
-  transform: scale(1.15);
+  color: #1890ff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .sidebar.collapsed .sidebar-collapse-btn {

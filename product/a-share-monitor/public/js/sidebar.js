@@ -50,10 +50,9 @@ function initSidebar() {
   // 初始化主侧边栏折叠按钮
   initMainSidebarCollapse();
   
-  // 初始化二级侧边栏折叠按钮
+  // 初始化二级侧边栏 header 折叠按钮
   if (subSidebar) {
-    initSubSidebarCollapse();
-    initSubSidebarHeaderCollapse();  // ✅ 添加 header 折叠按钮
+    initSubSidebarHeaderCollapse();  // 只保留 header 折叠按钮
   }
   
   // 初始化移动端菜单
@@ -164,13 +163,11 @@ function initSubSidebarHeaderCollapse() {
     collapseBtn = document.createElement('button');
     collapseBtn.id = 'sub-sidebar-header-collapse-btn';
     collapseBtn.className = 'sub-sidebar-header-collapse-btn';
+    collapseBtn.innerHTML = '《';
     collapseBtn.title = '折叠菜单';
     header.appendChild(collapseBtn);
     console.log('✅ 二级侧边栏 header 折叠按钮已创建');
   }
-  
-  // 根据当前状态设置正确的图标
-  updateSubSidebarHeaderButton(subSidebar);
   
   if (collapseBtn) {
     collapseBtn.addEventListener('click', handleSubSidebarHeaderCollapse);
@@ -220,61 +217,9 @@ function handleMainSidebarCollapse() {
   console.log('✅ 主侧边栏折叠状态:', sidebarState.mainCollapsed ? '折叠' : '展开');
 }
 
-// 初始化二级侧边栏折叠按钮
-function initSubSidebarCollapse() {
-  const subSidebar = document.getElementById('sub-sidebar');
-  if (!subSidebar) {
-    console.warn('⚠️ 二级侧边栏不存在');
-    return;
-  }
-  
-  console.log('✅ 二级侧边栏存在，初始化收缩按钮');
-  
-  let collapseBtn = document.getElementById('sub-sidebar-collapse-btn');
-  
-  if (!collapseBtn) {
-    // 创建折叠按钮
-    collapseBtn = document.createElement('button');
-    collapseBtn.id = 'sub-sidebar-collapse-btn';
-    collapseBtn.className = 'sub-sidebar-collapse-btn';
-    collapseBtn.innerHTML = '《';
-    collapseBtn.title = '折叠菜单';
-    subSidebar.appendChild(collapseBtn);
-    console.log('✅ 二级侧边栏收缩按钮已创建');
-  }
-  
-  if (collapseBtn) {
-    collapseBtn.addEventListener('click', handleSubSidebarCollapse);
-    console.log('✅ 二级侧边栏收缩按钮事件已绑定');
-  }
-  
-  // 根据保存的状态设置初始状态（不强制展开）
-  // restoreSidebarState() 已经设置了正确的状态和类名
-  // 这里只需要更新按钮图标
-  updateSubSidebarButton(subSidebar);
-  console.log('✅ 二级侧边栏初始状态：', sidebarState.subCollapsed ? '折叠' : '展开');
-}
 
-// 处理二级侧边栏折叠
-function handleSubSidebarCollapse() {
-  const subSidebar = document.getElementById('sub-sidebar');
-  if (!subSidebar) return;
-  
-  sidebarState.subCollapsed = !sidebarState.subCollapsed;
-  
-  if (sidebarState.subCollapsed) {
-    subSidebar.classList.add('collapsed');
-  } else {
-    subSidebar.classList.remove('collapsed');
-  }
-  
-  updateSubSidebarButton(subSidebar);
-  updateSubSidebarHeaderButton(subSidebar);  // ✅ 同步更新 header 按钮
-  updateLayoutClasses();
-  saveSidebarState();
-  
-  console.log('✅ 二级侧边栏折叠状态:', sidebarState.subCollapsed ? '折叠' : '展开');
-}
+
+
 
 // 处理二级侧边栏 header 折叠按钮
 function handleSubSidebarHeaderCollapse() {
@@ -300,38 +245,13 @@ function handleSubSidebarHeaderCollapse() {
     console.log('✅ 二级侧边栏 header 展开');
   }
   
-  updateSubSidebarButton(subSidebar);  // ✅ 同步更新侧面按钮
   updateLayoutClasses();
   saveSidebarState();
 }
 
-// 更新二级侧边栏 header 按钮
-function updateSubSidebarHeaderButton(subSidebar) {
-  const collapseBtn = document.getElementById('sub-sidebar-header-collapse-btn');
-  if (!collapseBtn) return;
-  
-  if (subSidebar.classList.contains('collapsed')) {
-    collapseBtn.innerHTML = '》';
-    collapseBtn.title = '展开菜单';
-  } else {
-    collapseBtn.innerHTML = '《';
-    collapseBtn.title = '折叠菜单';
-  }
-}
 
-// 更新二级侧边栏按钮
-function updateSubSidebarButton(subSidebar) {
-  const collapseBtn = document.getElementById('sub-sidebar-collapse-btn');
-  if (!collapseBtn) return;
-  
-  if (subSidebar.classList.contains('collapsed')) {
-    collapseBtn.innerHTML = '》';
-    collapseBtn.title = '展开菜单';
-  } else {
-    collapseBtn.innerHTML = '《';
-    collapseBtn.title = '折叠菜单';
-  }
-}
+
+
 
 // 更新布局类名
 function updateLayoutClasses() {
@@ -462,7 +382,7 @@ function restoreSidebarState() {
     const sidebar = document.getElementById('sidebar');
     const subSidebar = document.getElementById('sub-sidebar');
     const collapseBtn = document.getElementById('sidebar-collapse-btn');
-    const subCollapseBtn = document.getElementById('sub-sidebar-collapse-btn');
+    const headerCollapseBtn = document.getElementById('sub-sidebar-header-collapse-btn');
     
     // 恢复主侧边栏状态
     if (sidebar && mainCollapsed) {
@@ -483,8 +403,8 @@ function restoreSidebarState() {
         // 从其他页面跳转过来，默认展开二级菜单
         subSidebar.classList.remove('collapsed');
         sidebarState.subCollapsed = false;
-        if (subCollapseBtn) {
-          subCollapseBtn.innerHTML = '《';
+        if (headerCollapseBtn) {
+          headerCollapseBtn.innerHTML = '《';
         }
         console.log('✅ 从其他页面跳转，二级侧边栏默认展开');
       } else {
@@ -492,8 +412,8 @@ function restoreSidebarState() {
         if (subCollapsed) {
           subSidebar.classList.add('collapsed');
           sidebarState.subCollapsed = true;
-          if (subCollapseBtn) {
-            subCollapseBtn.innerHTML = '》';
+          if (headerCollapseBtn) {
+            headerCollapseBtn.innerHTML = '》';
           }
         }
         console.log('✅ 刷新页面，恢复二级侧边栏状态:', subCollapsed ? '折叠' : '展开');
