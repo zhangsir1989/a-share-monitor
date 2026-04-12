@@ -701,13 +701,6 @@ function initSortEvents() {
       handleSort('strongStocks', th.dataset.sort);
     });
   });
-  
-  // 换手率表格
-  elements.turnoverTable.closest('table').querySelectorAll('th[data-sort]').forEach(th => {
-    th.addEventListener('click', () => {
-      handleSort('turnover', th.dataset.sort);
-    });
-  });
 }
 
 // 事件监听（在 init 中调用）
