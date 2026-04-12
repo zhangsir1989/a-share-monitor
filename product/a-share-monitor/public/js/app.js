@@ -61,9 +61,23 @@ function updateVolumeData(data) {
   // totalVolume 单位是亿手，转换为万手显示（1 亿手 = 10000 万手）
   const totalVolumeWanShou = data.totalVolume * 10000;
   elements.totalVolume.textContent = formatNumber(totalVolumeWanShou);
-  // 沪市深市显示完整单位，避免混淆
-  elements.shAmount.textContent = formatAmount(data.shAmount, true);
-  elements.szAmount.textContent = formatAmount(data.szAmount, true);
+  
+  // 沪市成交额显示
+  elements.shAmount.textContent = data.shAmount >= 10000 
+    ? (data.shAmount / 10000).toFixed(2) 
+    : data.shAmount.toFixed(2);
+  if (elements.shAmountUnit) {
+    elements.shAmountUnit.textContent = data.shAmount >= 10000 ? '万亿元' : '亿元';
+  }
+  
+  // 深市成交额显示
+  elements.szAmount.textContent = data.szAmount >= 10000 
+    ? (data.szAmount / 10000).toFixed(2) 
+    : data.szAmount.toFixed(2);
+  if (elements.szAmountUnit) {
+    elements.szAmountUnit.textContent = data.szAmount >= 10000 ? '万亿元' : '亿元';
+  }
+  
   elements.shRatio.textContent = data.shRatio + '%';
   elements.szRatio.textContent = data.szRatio + '%';
 }
@@ -310,7 +324,9 @@ function clearMarketData() {
   if (elements.totalAmountUnit) elements.totalAmountUnit.textContent = '--';
   elements.totalVolume.textContent = '--';
   elements.shAmount.textContent = '--';
+  if (elements.shAmountUnit) elements.shAmountUnit.textContent = '--';
   elements.szAmount.textContent = '--';
+  if (elements.szAmountUnit) elements.szAmountUnit.textContent = '--';
   elements.shRatio.textContent = '--%';
   elements.szRatio.textContent = '--%';
   
@@ -483,7 +499,9 @@ function init() {
     totalAmountUnit: document.getElementById('total-amount-unit'),
     totalVolume: document.getElementById('total-volume'),
     shAmount: document.getElementById('sh-amount'),
+    shAmountUnit: document.getElementById('sh-amount-unit'),
     szAmount: document.getElementById('sz-amount'),
+    szAmountUnit: document.getElementById('sz-amount-unit'),
     shRatio: document.getElementById('sh-ratio'),
     szRatio: document.getElementById('sz-ratio'),
     limitUpTable: document.getElementById('limit-up-table'),
