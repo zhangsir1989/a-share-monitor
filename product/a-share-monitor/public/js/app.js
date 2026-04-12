@@ -6,19 +6,16 @@ const state = {
   timer: null,
   dataSources: {
     volume: 'unknown',
-    turnover: 'unknown'
   },
   sortConfig: {
     limitUpStocks: { field: 'lbc', order: 'desc' },
     limitDownStocks: { field: 'zbc', order: 'desc' },
-    strongStocks: { field: 'lb', order: 'desc' },
-    turnover: { field: 'turnoverRate', order: 'desc' }
+    strongStocks: { field: 'lb', order: 'desc' }
   },
   rawData: {
     limitUpStocks: [],
     limitDownStocks: [],
-    strongStocks: [],
-    turnover: []
+    strongStocks: []
   },
   pagination: {
     limitUpStocks: { currentPage: 1, pageSize: 10 },
@@ -287,37 +284,6 @@ function updateStrongStocksTable(data) {
   updatePagination('strongStocks', pagination.currentPage, totalPages);
 }
 
-// 更新换手率表格
-function updateTurnoverTable(data) {
-  if (!data) return;
-  
-  state.rawData.turnover = data;
-  
-  const config = state.sortConfig.turnover;
-  const sortedData = sortData(data, config.field, config.order);
-  
-  if (sortedData.length === 0) {
-    elements.turnoverTable.innerHTML = '<tr onclick="openSectorModal(this.cells[1].textContent)"><td colspan="9" class="loading">暂无数据</td></tr>';
-    return;
-  }
-  
-  elements.turnoverTable.innerHTML = sortedData.map((item, index) => `
-    <tr onclick="openSectorModal(this.cells[1].textContent)">
-      <td>${index + 1}</td>
-      <td>${item.code}</td>
-      <td>${item.name}</td>
-      <td class="${getChangeClass(item.changePercent)}">${item.price}</td>
-      <td class="${getChangeClass(item.changePercent)}">${item.changePercent}%</td>
-      <td class="up">${item.turnoverRate}%</td>
-      <td class="up">${item.actualTurnoverRate}%</td>
-      <td>${formatAmount(item.amount)}</td>
-      <td>${item.industry || '--'}</td>
-    </tr>
-  `).join('');
-  
-  updateSortIcons('turnover');
-}
-
 // 更新排序图标
 function updateSortIcons(tableType) {
   const config = state.sortConfig[tableType];
@@ -330,8 +296,6 @@ function updateSortIcons(tableType) {
     tableElement = elements.limitDownStocksTable;
   } else if (tableType === 'strongStocks') {
     tableElement = elements.strongStocksTable;
-  } else if (tableType === 'turnover') {
-    tableElement = elements.turnoverTable;
   }
   
   if (!tableElement) return;
@@ -518,7 +482,6 @@ async function fetchData() {
     updateLimitUpStocksTable(data.limitUpStocks);
     updateLimitDownStocksTable(data.limitDownStocks);
     updateStrongStocksTable(data.strongStocks);
-    updateTurnoverTable(data.highTurnover);
     updateDateTime();
     updateMarketStatus();
     
@@ -619,13 +582,19 @@ function initPaginationEvents() {
     const pagination = document.getElementById(`${idPrefix}-pagination`);
     if (!pagination) return;
     
+    // 分页按钮事件
     pagination.querySelectorAll('.pagination-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const page = btn.dataset.page;
         const paginationState = state.pagination[tableType];
-        const totalPages = Math.ceil(state.rawData[tableType].length / paginationState.pageSize);
+        const rawData = state.rawData[tableType] || [];
+        const totalPages = Math.max(1, Math.ceil(rawData.length / paginationState.pageSize));
         
-        if (page === 'prev' && paginationState.currentPage > 1) {
+        if (page === 'first') {
+          paginationState.currentPage = 1;
+        } else if (page === 'last') {
+          paginationState.currentPage = totalPages;
+        } else if (page === 'prev' && paginationState.currentPage > 1) {
           paginationState.currentPage--;
         } else if (page === 'next' && paginationState.currentPage < totalPages) {
           paginationState.currentPage++;
@@ -641,6 +610,28 @@ function initPaginationEvents() {
         }
       });
     });
+    
+    // 分页大小选择器事件
+    const pageSizeSelect = document.getElementById(`${idPrefix}-page-size`);
+    if (pageSizeSelect) {
+      // 设置默认值
+      pageSizeSelect.value = state.pagination[tableType].pageSize;
+      
+      pageSizeSelect.addEventListener('change', () => {
+        const newPageSize = parseInt(pageSizeSelect.value);
+        state.pagination[tableType].pageSize = newPageSize;
+        state.pagination[tableType].currentPage = 1; // 重置到第一页
+        
+        // 重新渲染表格
+        if (tableType === 'limitUpStocks') {
+          updateLimitUpStocksTable(state.rawData.limitUpStocks);
+        } else if (tableType === 'limitDownStocks') {
+          updateLimitDownStocksTable(state.rawData.limitDownStocks);
+        } else if (tableType === 'strongStocks') {
+          updateStrongStocksTable(state.rawData.strongStocks);
+        }
+      });
+    }
   });
 }
 
