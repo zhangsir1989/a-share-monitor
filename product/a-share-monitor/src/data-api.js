@@ -158,6 +158,7 @@ async function fetchHighTurnover() {
     });
     
     const data = resp.data;
+    console.log('📦 次新 API 返回数据条数:', Array.isArray(data) ? data.length : 'not array');
     if (!Array.isArray(data) || data.length === 0) {
       console.error('新浪高换手率数据格式错误');
       return getMockHighTurnover();
@@ -229,6 +230,7 @@ async function fetchLimitUpStocks(tradeDate = null) {
     });
     
     const data = resp.data;
+    console.log('📦 次新 API 返回数据条数:', Array.isArray(data) ? data.length : 'not array');
     if (!Array.isArray(data) || data.length === 0) {
       console.error('MyData 涨停数据格式错误');
       return getMockLimitUpStocks();
@@ -300,6 +302,7 @@ async function fetchLimitDownStocks(tradeDate = null) {
     });
     
     const data = resp.data;
+    console.log('📦 次新 API 返回数据条数:', Array.isArray(data) ? data.length : 'not array');
     if (!Array.isArray(data) || data.length === 0) {
       console.error('MyData 跌停数据格式错误');
       return getMockLimitDownStocks();
@@ -386,6 +389,7 @@ async function fetchStrongStocks(tradeDate = null) {
     });
     
     const data = resp.data;
+    console.log('📦 次新 API 返回数据条数:', Array.isArray(data) ? data.length : 'not array');
     if (!Array.isArray(data) || data.length === 0) {
       console.error('MyData 强势股数据格式错误');
       return getMockStrongStocks();
@@ -420,6 +424,139 @@ function getMockStrongStocks() {
     { code: 'sz301187', name: '欧圣电气', price: '43.44', changePercent: '20.00', lb: '2.25', nh: 1, tj: '1/1', lt: '28.67', hy: '电气' },
     { code: 'sz300807', name: '天迈科技', price: '43.64', changePercent: '19.99', lb: '1.47', nh: 0, tj: '2/2', lt: '35.92', hy: '科技' }
   ];
+}
+
+/**
+ * 获取炸板个股数据
+ */
+async function fetchBreakBoardStocks(tradeDate = null) {
+  try {
+    let dateStr;
+    if (tradeDate) {
+      dateStr = tradeDate;
+    } else {
+      const today = new Date();
+      const weekday = today.getDay();
+      let tradingDate = new Date(today);
+      if (weekday === 0) {
+        tradingDate.setDate(today.getDate() - 2);
+      } else if (weekday === 6) {
+        tradingDate.setDate(today.getDate() - 1);
+      }
+      dateStr = tradingDate.toISOString().split('T')[0];
+    }
+    
+    const url = `https://api.mairuiapi.com/hslt/zbgc/${dateStr}/${MYDATA_LICENCE}`;
+    
+    const resp = await axios.get(url, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    const data = resp.data;
+    console.log('📦 次新 API 返回数据条数:', Array.isArray(data) ? data.length : 'not array');
+    if (!Array.isArray(data) || data.length === 0) {
+      console.error('MyData 炸板数据格式错误');
+      return [];
+    }
+    
+    const formatTime = (t) => {
+      if (!t) return '';
+      const str = String(t);
+      if (str.length === 6) {
+        return str.replace(/(\d{2})(\d{2})(\d{2})/, '$1:$2:$3');
+      }
+      return str;
+    };
+    
+    const breakBoardStocks = data.map(item => ({
+      code: item.dm,
+      name: item.mc || '',
+      price: item.p !== null ? item.p.toFixed(2) : '0.00',
+      changePercent: item.zf !== null ? item.zf.toFixed(2) : '0.00',
+      cje: item.cje !== null ? (item.cje / 10000).toFixed(2) : '0.00',
+      hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
+      zj: item.zj !== null ? (item.zj / 100000000).toFixed(2) : '0.00',
+      fbt: formatTime(item.fbt),
+      lbt: formatTime(item.lbt),
+      zbc: item.zbc || 0,
+      tj: item.tj || '',
+      lbc: item.lbc || 0,
+      hy: item.hy || '',
+      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : ''
+    }));
+    
+    return breakBoardStocks;
+  } catch (e) {
+    console.error('获取炸板个股失败:', e.message);
+    return [];
+  }
+}
+
+/**
+ * 获取次新个股数据
+ */
+async function fetchNewBaseStocks(tradeDate = null) {
+  console.log('========================================');
+  console.log('🔍 开始获取次新个股，tradeDate:', tradeDate);
+  console.log('========================================');
+  try {
+    let dateStr;
+    if (tradeDate) {
+      dateStr = tradeDate;
+    } else {
+      const today = new Date();
+      const weekday = today.getDay();
+      let tradingDate = new Date(today);
+      if (weekday === 0) {
+        tradingDate.setDate(today.getDate() - 2);
+      } else if (weekday === 6) {
+        tradingDate.setDate(today.getDate() - 1);
+      }
+      dateStr = tradingDate.toISOString().split('T')[0];
+    }
+    
+    const url = `https://api.mairuiapi.com/hslt/cxgc/${dateStr}/${MYDATA_LICENCE}`;
+    console.log('📡 次新 API URL:', url);
+    console.log('========================================');
+    
+    const resp = await axios.get(url, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    const data = resp.data;
+    console.log('📦 次新 API 返回数据条数:', Array.isArray(data) ? data.length : 'not array');
+    if (!Array.isArray(data) || data.length === 0) {
+      console.error('MyData 次新数据格式错误');
+      return [];
+    }
+    
+    const newBaseStocks = data.map(item => ({
+      code: item.dm,
+      name: item.mc || '',
+      price: item.p !== null ? item.p.toFixed(2) : '0.00',
+      changePercent: item.zf !== null ? item.zf.toFixed(2) : '0.00',
+      cje: item.cje !== null ? (item.cje / 10000).toFixed(2) : '0.00',
+      hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
+      lb: (item.lb !== null && item.lb !== undefined) ? item.lb.toFixed(2) : '0.00',
+      tj: item.tj || '',
+      nh: (item.nh === '是' || item.nh === 1) ? 1 : 0,
+      hy: item.hy || '',
+      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : ''
+    }));
+    
+    console.log('✅ 次新个股映射完成，返回', newBaseStocks.length, '条');
+    
+    return newBaseStocks;
+  } catch (e) {
+    console.error('获取次新个股失败:', e.message);
+    return [];
+  }
 }
 
 /**
@@ -957,6 +1094,8 @@ module.exports = {
   fetchLimitUpStocks,
   fetchLimitDownStocks,
   fetchStrongStocks,
+  fetchBreakBoardStocks,
+  fetchNewBaseStocks,
   fetchStockDetail,
   fetchIntradayData,
   fetchConvertiblesForStock,

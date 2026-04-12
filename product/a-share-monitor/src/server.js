@@ -12,6 +12,8 @@ const {
   fetchLimitUpStocks,
   fetchLimitDownStocks,
   fetchStrongStocks,
+  fetchBreakBoardStocks,
+  fetchNewBaseStocks,
   fetchStockDetail,
   fetchIntradayData,
   fetchConvertiblesForStock,
@@ -193,14 +195,21 @@ function getLatestTradeDate() {
 // 获取全部数据
 async function fetchAllData(tradeDate = null) {
   console.log('📡 开始获取实时数据...', tradeDate ? `(日期：${tradeDate})` : '');
+  console.log('🔍 开始获取炸板个股...');
+  console.log('🔍 开始获取次新个股...');
   
-  const [volume, highTurnover, limitUpStocks, limitDownStocks, strongStocks] = await Promise.all([
+  const [volume, highTurnover, limitUpStocks, limitDownStocks, strongStocks, breakBoardStocks, newBaseStocks] = await Promise.all([
     fetchMarketVolume(),
     fetchHighTurnover(),
     fetchLimitUpStocks(tradeDate),
     fetchLimitDownStocks(tradeDate),
-    fetchStrongStocks(tradeDate)
+    fetchStrongStocks(tradeDate),
+    fetchBreakBoardStocks(tradeDate),
+    fetchNewBaseStocks(tradeDate)
   ]);
+  
+  console.log('炸板个股结果:', breakBoardStocks ? breakBoardStocks.length : 'null');
+  console.log('次新个股结果:', newBaseStocks ? newBaseStocks.length : 'null');
   
   marketData = {
     volume,
@@ -208,6 +217,8 @@ async function fetchAllData(tradeDate = null) {
     limitUpStocks,
     limitDownStocks,
     strongStocks,
+    breakBoardStocks,
+    newBaseStocks,
     lastUpdate: new Date().toISOString(),
     tradeDate: tradeDate || getLatestTradeDate()
   };
@@ -224,6 +235,12 @@ async function fetchAllData(tradeDate = null) {
   }
   if (strongStocks && strongStocks.length > 0) {
     console.log(`  强势个股：${strongStocks.length} 只`);
+  }
+  if (breakBoardStocks && breakBoardStocks.length > 0) {
+    console.log(`  炸板个股：${breakBoardStocks.length} 只`);
+  }
+  if (newBaseStocks && newBaseStocks.length > 0) {
+    console.log(`  次新个股：${newBaseStocks.length} 只`);
   }
   if (highTurnover && highTurnover.length > 0) {
     console.log(`  高换手率：${highTurnover.length} 只`);

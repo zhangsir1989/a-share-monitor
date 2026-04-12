@@ -299,6 +299,100 @@ function updateStrongStocksTable(data) {
   updatePagination('strongStocks', pagination.currentPage, totalPages);
 }
 
+// 更新炸板个股表格
+function updateBreakBoardStocksTable(data) {
+  console.log('炸板数据：总数', data ? data.length : 'null');
+  if (!data) {
+    console.error('炸板数据为 null 或 undefined');
+    return;
+  }
+  
+  state.rawData.breakBoardStocks = data;
+  
+  const config = state.sortConfig.breakBoardStocks;
+  const sortedData = sortData(data, config.field, config.order);
+  
+  // 分页
+  const pagination = state.pagination.breakBoardStocks;
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / pagination.pageSize));
+  pagination.currentPage = Math.min(pagination.currentPage, totalPages);
+  const start = (pagination.currentPage - 1) * pagination.pageSize;
+  const end = start + pagination.pageSize;
+  const pageData = sortedData.slice(start, end);
+  
+  if (pageData.length === 0) {
+    elements.breakBoardStocksTable.innerHTML = '<tr><td colspan="11" class="loading">暂无炸板个股</td></tr>';
+    updatePagination('breakBoardStocks', 1, 1);
+    return;
+  }
+  
+  elements.breakBoardStocksTable.innerHTML = pageData.map((item, index) => `
+    <tr onclick="openStockDetail('${item.code}')">
+      <td class="index">${start + index + 1}</td>
+      <td class="code">${item.code || '--'}</td>
+      <td>${item.name || '--'}</td>
+      <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.price || '0.00'}</td>
+      <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.changePercent || '0.00'}%</td>
+      <td>${item.lbc || 0}</td>
+      <td>${item.fbt || '--'}</td>
+      <td>${item.lbt || '--'}</td>
+      <td class="up">${item.cje || '--'}</td>
+      <td class="up">${item.lt || '--'}</td>
+      <td>${item.hy || '--'}</td>
+    </tr>
+  `).join('');
+  
+  updateSortIcons('breakBoardStocks');
+  updatePagination('breakBoardStocks', pagination.currentPage, totalPages);
+}
+
+// 更新次新个股表格
+function updateNewBaseStocksTable(data) {
+  console.log('次新数据：总数', data ? data.length : 'null');
+  if (!data) {
+    console.error('次新数据为 null 或 undefined');
+    return;
+  }
+  
+  state.rawData.newBaseStocks = data;
+  
+  const config = state.sortConfig.newBaseStocks;
+  const sortedData = sortData(data, config.field, config.order);
+  
+  // 分页
+  const pagination = state.pagination.newBaseStocks;
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / pagination.pageSize));
+  pagination.currentPage = Math.min(pagination.currentPage, totalPages);
+  const start = (pagination.currentPage - 1) * pagination.pageSize;
+  const end = start + pagination.pageSize;
+  const pageData = sortedData.slice(start, end);
+  
+  if (pageData.length === 0) {
+    elements.newBaseStocksTable.innerHTML = '<tr><td colspan="10" class="loading">暂无次新个股</td></tr>';
+    updatePagination('newBaseStocks', 1, 1);
+    return;
+  }
+  
+  elements.newBaseStocksTable.innerHTML = pageData.map((item, index) => `
+    <tr onclick="openStockDetail('${item.code}')">
+      <td class="index">${start + index + 1}</td>
+      <td class="code">${item.code || '--'}</td>
+      <td>${item.name || '--'}</td>
+      <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.price || '0.00'}</td>
+      <td class="${item.changePercent >= 0 ? 'up' : 'down'}">${item.changePercent || '0.00'}%</td>
+      <td class="${parseFloat(item.lb) >= 1 ? 'up' : ''}">${item.lb || '0.00'}</td>
+      <td class="up">${item.cje || '--'}</td>
+      <td class="up">${item.hs || '--'}</td>
+      <td>${item.nh == 1 ? '<span class="up">✓ 新高</span>' : '-'}</td>
+      <td class="up">${item.lt || '--'}</td>
+      <td>${item.hy || '--'}</td>
+    </tr>
+  `).join('');
+  
+  updateSortIcons('newBaseStocks');
+  updatePagination('newBaseStocks', pagination.currentPage, totalPages);
+}
+
 // 更新排序图标
 function updateSortIcons(tableType) {
   const config = state.sortConfig[tableType];
@@ -311,6 +405,10 @@ function updateSortIcons(tableType) {
     tableElement = elements.limitDownStocksTable;
   } else if (tableType === 'strongStocks') {
     tableElement = elements.strongStocksTable;
+  } else if (tableType === 'breakBoardStocks') {
+    tableElement = elements.breakBoardStocksTable;
+  } else if (tableType === 'newBaseStocks') {
+    tableElement = elements.newBaseStocksTable;
   }
   
   if (!tableElement) return;
@@ -457,6 +555,12 @@ function clearMarketData() {
   // 清空强势个股表格
   elements.strongStocksTable.innerHTML = '<tr><td colspan="6" class="loading">未开盘，暂无数据</td></tr>';
   
+  // 清空炸板个股表格
+  elements.breakBoardStocksTable.innerHTML = '<tr><td colspan="11" class="loading">未开盘，暂无数据</td></tr>';
+  
+  // 清空次新个股表格
+  elements.newBaseStocksTable.innerHTML = '<tr><td colspan="10" class="loading">未开盘，暂无数据</td></tr>';
+  
   // 清空换手率表格
   elements.turnoverTable.innerHTML = '<tr onclick="openSectorModal(this.cells[1].textContent)"><td colspan="9" class="loading">未开盘，暂无数据</td></tr>';
 }
@@ -501,6 +605,8 @@ async function fetchData() {
     updateLimitUpStocksTable(data.limitUpStocks);
     updateLimitDownStocksTable(data.limitDownStocks);
     updateStrongStocksTable(data.strongStocks);
+    updateBreakBoardStocksTable(data.breakBoardStocks);
+    updateNewBaseStocksTable(data.newBaseStocks);
     // 更新三个卡片的日期显示（使用后端返回的交易日）
     if (data.tradeDate) {
       updateDateDisplays(data.tradeDate);
@@ -708,10 +814,14 @@ function updateDateDisplays(dateStr) {
   const limitUpDate = document.getElementById('limit-up-date');
   const limitDownDate = document.getElementById('limit-down-date');
   const strongDate = document.getElementById('strong-date');
+  const breakBoardDate = document.getElementById('break-board-date');
+  const newBaseDate = document.getElementById('new-base-date');
   
   if (limitUpDate) limitUpDate.textContent = dateStr;
   if (limitDownDate) limitDownDate.textContent = dateStr;
   if (strongDate) strongDate.textContent = dateStr;
+  if (breakBoardDate) breakBoardDate.textContent = dateStr;
+  if (newBaseDate) newBaseDate.textContent = dateStr;
 }
 
 // 初始化排序事件
@@ -802,6 +912,8 @@ function init() {
     limitUpStocksTable: document.getElementById('limit-up-stocks-table'),
     limitDownStocksTable: document.getElementById('limit-down-stocks-table'),
     strongStocksTable: document.getElementById('strong-stocks-table'),
+    breakBoardStocksTable: document.getElementById('break-board-stocks-table'),
+    newBaseStocksTable: document.getElementById('new-base-stocks-table'),
     turnoverTable: document.getElementById('turnover-table'),
     lastUpdate: document.getElementById('last-update'),
     marketStatus: document.getElementById('market-status')
