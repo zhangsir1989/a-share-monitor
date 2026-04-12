@@ -69,33 +69,34 @@
 /* 主侧边栏折叠按钮（放在顶部） */
 .sidebar-collapse-btn {
   position: absolute;
-  top: 60px;
-  right: -14px;
-  width: 28px;
-  height: 28px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  top: 80px;  /* 与二级侧边栏按钮对齐 */
+  left: -18px;  /* 移到左侧，与二级侧边栏按钮一致 */
+  width: 36px;  /* 统一尺寸 */
+  height: 36px;  /* 统一尺寸 */
+  background: #2f363d;  /* 统一背景色 */
+  border: 2px solid #444c56;  /* 统一边框 */
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
-  font-size: 14px;
+  color: #f0f6fc;  /* 统一文字颜色 */
+  font-size: 20px;  /* 统一字体大小 */
+  font-weight: bold;
   transition: all 0.2s;
-  z-index: 10;
-  box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+  z-index: 1000;  /* 统一层级 */
+  box-shadow: -3px 3px 10px rgba(0,0,0,0.5);
 }
 
 .sidebar-collapse-btn:hover {
-  background: var(--accent-color);
+  background: #1890ff;  /* 统一悬停色 */
   color: #fff;
-  border-color: var(--accent-color);
-  transform: scale(1.1);
+  border-color: #1890ff;
+  transform: scale(1.15);  /* 统一悬停效果 */
 }
 
 .sidebar.collapsed .sidebar-collapse-btn {
-  right: -14px;
+  left: -18px;  /* 折叠时保持在左侧 */
 }
 
 /* ==================== 二级侧边栏 ==================== */
@@ -163,8 +164,8 @@
 /* 二级侧边栏折叠按钮（放在顶部，与主侧边栏按钮垂直分开） */
 .sub-sidebar-collapse-btn {
   position: absolute;
-  top: 80px;
-  left: -18px;  /* 移到左侧 */
+  top: 130px;  /* 向下移动 50px，与主按钮错开间距 */
+  left: -18px;  /* 与主按钮对齐 */
   width: 36px;
   height: 36px;
   background: #2f363d;
