@@ -57,10 +57,10 @@ async function fetchMarketVolume() {
     const shAmountYuan = shData.a || 0;  // 成交额（元）
     const szAmountYuan = szData.a || 0;  // 成交额（元）
     
-    // 转换为亿元
-    const shAmount = shAmountYuan / 100000000;
-    const szAmount = szAmountYuan / 100000000;
-    const totalAmount = shAmount + szAmount;  // 亿元
+    // 转换为亿元（保留原始精度，不四舍五入）
+    const shAmount = shAmountYuan / 100000000;  // 沪市成交额（亿元）
+    const szAmount = szAmountYuan / 100000000;  // 深市成交额（亿元）
+    const totalAmount = shAmount + szAmount;  // 总计：亿元相加
     const totalVolume = (shVolume + szVolume) / 100000000;  // 股转换为亿手
     
     dataSourceStatus.volume = 'mydata';
