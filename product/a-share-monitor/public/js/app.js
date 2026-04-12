@@ -677,6 +677,10 @@ function updatePagination(tableType, currentPage, totalPages) {
     idPrefix = 'limit-down';
   } else if (tableType === 'strongStocks') {
     idPrefix = 'strong';
+  } else if (tableType === 'breakBoardStocks') {
+    idPrefix = 'break-board';
+  } else if (tableType === 'newBaseStocks') {
+    idPrefix = 'new-base';
   } else {
     idPrefix = tableType;
   }
