@@ -475,17 +475,15 @@ async function fetchBreakBoardStocks(tradeDate = null) {
       code: item.dm,
       name: item.mc || '',
       price: item.p !== null ? item.p.toFixed(2) : '0.00',
-      changePercent: item.zf !== null ? item.zf.toFixed(2) : '0.00',
-      cje: item.cje !== null ? (item.cje / 10000).toFixed(2) : '0.00',
+      changePercent: item.zf !== null ? item.zf.toFixed(2) : '0.00',  // API 字段是 zf（涨跌幅%）
+      cje: item.cje !== null ? (item.cje / 10000).toFixed(2) : '0.00',  // 元→万元
       hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
-      zj: item.zj !== null ? (item.zj / 100000000).toFixed(2) : '0.00',
-      fbt: formatTime(item.fbt),
-      lbt: formatTime(item.lbt),
+      fbt: formatTime(item.fbt),  // 092502 → 09:25:02
+      lbt: formatTime(item.lbt) || '--',  // 炸板无最后封板
       zbc: item.zbc || 0,
-      tj: item.tj || '',
-      lbc: item.lbc || 0,
-      hy: item.hy || '',
-      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : ''
+      lbc: (item.lbc !== null && item.lbc !== undefined) ? item.lbc : 0,  // 炸板连板数可能为 null
+      hy: item.hy || '--',
+      lt: item.lt !== null ? (item.lt / 100000000).toFixed(2) : '--'  // 元→亿元
     }));
     
     return breakBoardStocks;
