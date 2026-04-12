@@ -9,13 +9,15 @@ const state = {
     turnover: 'unknown'
   },
   sortConfig: {
-    limitUp: { field: 'limitUpCount', order: 'desc' },
-    cashflow: { field: 'mainNetInflow', order: 'desc' },
+    limitUpStocks: { field: 'lbc', order: 'desc' },
+    limitDownStocks: { field: 'zbc', order: 'desc' },
+    strongStocks: { field: 'lb', order: 'desc' },
     turnover: { field: 'turnoverRate', order: 'desc' }
   },
   rawData: {
-    limitUp: [],
-    cashflow: [],
+    limitUpStocks: [],
+    limitDownStocks: [],
+    strongStocks: [],
     turnover: []
   }
 };
@@ -165,7 +167,7 @@ function updateLimitUpStocksTable(data) {
   const sortedData = sortData(data, config.field, config.order);
   
   if (sortedData.length === 0) {
-    elements.limitUpStocksTable.innerHTML = '<tr><td colspan="4" class="loading">暂无涨停个股</td></tr>';
+    elements.limitUpStocksTable.innerHTML = '<tr><td colspan="10" class="loading">暂无涨停个股</td></tr>';
     return;
   }
   
@@ -175,6 +177,12 @@ function updateLimitUpStocksTable(data) {
       <td>${item.name || '--'}</td>
       <td class="sortable" data-sort="price">${item.price || '0.00'}</td>
       <td class="up sortable" data-sort="changePercent">${item.changePercent}%</td>
+      <td class="sortable" data-sort="cje">${item.cje || '0.00'}</td>
+      <td class="sortable" data-sort="hs">${item.hs || '0.00'}</td>
+      <td class="sortable" data-sort="zj">${item.zj || '0.00'}</td>
+      <td class="sortable" data-sort="fbt">${item.fbt || '--'}</td>
+      <td class="up sortable" data-sort="lbc">${item.lbc || 0}</td>
+      <td>${item.hy || '--'}</td>
     </tr>
   `).join('');
   
@@ -191,7 +199,7 @@ function updateLimitDownStocksTable(data) {
   const sortedData = sortData(data, config.field, config.order);
   
   if (sortedData.length === 0) {
-    elements.limitDownStocksTable.innerHTML = '<tr><td colspan="4" class="loading">暂无跌停个股</td></tr>';
+    elements.limitDownStocksTable.innerHTML = '<tr><td colspan="10" class="loading">暂无跌停个股</td></tr>';
     return;
   }
   
@@ -201,10 +209,47 @@ function updateLimitDownStocksTable(data) {
       <td>${item.name || '--'}</td>
       <td class="sortable" data-sort="price">${item.price || '0.00'}</td>
       <td class="down sortable" data-sort="changePercent">${item.changePercent}%</td>
+      <td class="sortable" data-sort="cje">${item.cje || '0.00'}</td>
+      <td class="sortable" data-sort="hs">${item.hs || '0.00'}</td>
+      <td class="sortable" data-sort="zj">${item.zj || '0.00'}</td>
+      <td class="down sortable" data-sort="lbc">${item.lbc || 0}</td>
+      <td class="down sortable" data-sort="zbc">${item.zbc || 0}</td>
+      <td>${item.hy || '--'}</td>
     </tr>
   `).join('');
   
   updateSortIcons('limitDownStocks');
+}
+
+// 更新强势个股表格
+function updateStrongStocksTable(data) {
+  if (!data) return;
+  
+  state.rawData.strongStocks = data;
+  
+  const config = state.sortConfig.strongStocks;
+  const sortedData = sortData(data, config.field, config.order);
+  
+  if (sortedData.length === 0) {
+    elements.strongStocksTable.innerHTML = '<tr><td colspan="9" class="loading">暂无强势个股</td></tr>';
+    return;
+  }
+  
+  elements.strongStocksTable.innerHTML = sortedData.map((item, index) => `
+    <tr onclick="openStockDetail('${item.code}')">
+      <td class="code">${item.code || '--'}</td>
+      <td>${item.name || '--'}</td>
+      <td class="sortable" data-sort="price">${item.price || '0.00'}</td>
+      <td class="sortable" data-sort="ztp">${item.ztp || '0.00'}</td>
+      <td class="up sortable" data-sort="changePercent">${item.changePercent}%</td>
+      <td class="sortable" data-sort="cje">${item.cje || '0.00'}</td>
+      <td class="sortable" data-sort="hs">${item.hs || '0.00'}</td>
+      <td class="up sortable" data-sort="lb">${item.lb || '0.00'}</td>
+      <td class="up sortable" data-sort="tj">${item.tj || '--'}</td>
+    </tr>
+  `).join('');
+  
+  updateSortIcons('strongStocks');
 }
 
 // 更新换手率表格
@@ -288,6 +333,8 @@ function handleSort(tableType, field) {
     updateLimitUpStocksTable(rawData);
   } else if (tableType === 'limitDownStocks') {
     updateLimitDownStocksTable(rawData);
+  } else if (tableType === 'strongStocks') {
+    updateStrongStocksTable(rawData);
   } else if (tableType === 'turnover') {
     updateTurnoverTable(rawData);
   }
@@ -379,10 +426,13 @@ function clearMarketData() {
   elements.szRatio.textContent = '--%';
   
   // 清空涨停个股表格
-  elements.limitUpStocksTable.innerHTML = '<tr><td colspan="4" class="loading">未开盘，暂无数据</td></tr>';
+  elements.limitUpStocksTable.innerHTML = '<tr><td colspan="10" class="loading">未开盘，暂无数据</td></tr>';
   
   // 清空跌停个股表格
-  elements.limitDownStocksTable.innerHTML = '<tr><td colspan="4" class="loading">未开盘，暂无数据</td></tr>';
+  elements.limitDownStocksTable.innerHTML = '<tr><td colspan="10" class="loading">未开盘，暂无数据</td></tr>';
+  
+  // 清空强势个股表格
+  elements.strongStocksTable.innerHTML = '<tr><td colspan="9" class="loading">未开盘，暂无数据</td></tr>';
   
   // 清空换手率表格
   elements.turnoverTable.innerHTML = '<tr onclick="openSectorModal(this.cells[1].textContent)"><td colspan="9" class="loading">未开盘，暂无数据</td></tr>';
@@ -417,6 +467,7 @@ async function fetchData() {
     updateVolumeData(data.volume);
     updateLimitUpStocksTable(data.limitUpStocks);
     updateLimitDownStocksTable(data.limitDownStocks);
+    updateStrongStocksTable(data.strongStocks);
     updateTurnoverTable(data.highTurnover);
     updateDateTime();
     updateMarketStatus();
@@ -480,6 +531,13 @@ function initSortEvents() {
   elements.limitDownStocksTable.closest('table').querySelectorAll('th[data-sort]').forEach(th => {
     th.addEventListener('click', () => {
       handleSort('limitDownStocks', th.dataset.sort);
+    });
+  });
+  
+  // 强势个股表格
+  elements.strongStocksTable.closest('table').querySelectorAll('th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      handleSort('strongStocks', th.dataset.sort);
     });
   });
   
@@ -554,6 +612,7 @@ function init() {
     szRatio: document.getElementById('sz-ratio'),
     limitUpStocksTable: document.getElementById('limit-up-stocks-table'),
     limitDownStocksTable: document.getElementById('limit-down-stocks-table'),
+    strongStocksTable: document.getElementById('strong-stocks-table'),
     turnoverTable: document.getElementById('turnover-table'),
     lastUpdate: document.getElementById('last-update'),
     marketStatus: document.getElementById('market-status')

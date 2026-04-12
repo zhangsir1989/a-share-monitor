@@ -11,6 +11,7 @@ const {
   fetchSectorCashflow,
   fetchLimitUpStocks,
   fetchLimitDownStocks,
+  fetchStrongStocks,
   fetchStockDetail,
   fetchIntradayData,
   fetchConvertiblesForStock,
@@ -180,11 +181,12 @@ function isCloseToClose() {
 async function fetchAllData() {
   console.log('📡 开始获取实时数据...');
   
-  const [volume, highTurnover, limitUpStocks, limitDownStocks] = await Promise.all([
+  const [volume, highTurnover, limitUpStocks, limitDownStocks, strongStocks] = await Promise.all([
     fetchMarketVolume(),
     fetchHighTurnover(),
     fetchLimitUpStocks(),
-    fetchLimitDownStocks()
+    fetchLimitDownStocks(),
+    fetchStrongStocks()
   ]);
   
   marketData = {
@@ -192,6 +194,7 @@ async function fetchAllData() {
     highTurnover,
     limitUpStocks,
     limitDownStocks,
+    strongStocks,
     lastUpdate: new Date().toISOString()
   };
   
@@ -204,6 +207,9 @@ async function fetchAllData() {
   }
   if (limitDownStocks && limitDownStocks.length > 0) {
     console.log(`  跌停个股：${limitDownStocks.length} 只`);
+  }
+  if (strongStocks && strongStocks.length > 0) {
+    console.log(`  强势个股：${strongStocks.length} 只`);
   }
   if (highTurnover && highTurnover.length > 0) {
     console.log(`  高换手率：${highTurnover.length} 只`);

@@ -203,32 +203,48 @@ function getMockHighTurnover() {
  */
 async function fetchLimitUpStocks() {
   try {
-    // 使用新浪财经 API 获取涨跌幅排名（降序）
-    const url = 'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?page=1&num=80&sort=changepercent&asc=0&node=hs_a';
+    // 使用 MyData API 获取涨停个股
+    const today = new Date();
+    const weekday = today.getDay();
+    let tradingDate = new Date(today);
+    if (weekday === 0) { // 周日
+      tradingDate.setDate(today.getDate() - 2);
+    } else if (weekday === 6) { // 周六
+      tradingDate.setDate(today.getDate() - 1);
+    }
+    const dateStr = tradingDate.toISOString().split('T')[0];
+    
+    const url = `https://api.mairuiapi.com/hslt/ztgc/${dateStr}/FB1A859B-6832-4F70-AAA2-38274F23FC90`;
     
     const resp = await axios.get(url, {
       timeout: 15000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://vip.stock.finance.sina.com.cn/'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
     
     const data = resp.data;
     if (!Array.isArray(data) || data.length === 0) {
-      console.error('新浪涨停数据格式错误');
+      console.error('MyData 涨停数据格式错误');
       return getMockLimitUpStocks();
     }
     
-    // 筛选涨停股（涨跌幅 >= 9.5%）
-    const limitUpStocks = data
-      .filter(item => parseFloat(item.changepercent) >= 9.5)
-      .map(item => ({
-        code: item.code.startsWith('6') ? 'sh' + item.code : 'sz' + item.code,
-        name: item.name || '',
-        price: parseFloat(item.trade || 0).toFixed(2),
-        changePercent: parseFloat(item.changepercent || 0).toFixed(2)
-      }));
+    // 映射字段
+    const limitUpStocks = data.map(item => ({
+      code: item.dm,
+      name: item.mc || '',
+      price: item.p !== null ? item.p.toFixed(2) : '0.00',
+      changePercent: item.zf !== null ? item.zf.toFixed(2) : '0.00',
+      cje: item.cje !== null ? (item.cje / 10000).toFixed(2) : '0.00', // 万元
+      hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
+      zj: item.zj !== null ? (item.zj / 10000).toFixed(2) : '0.00', // 万元
+      fbt: item.fbt || '',
+      lbt: item.lbt || '',
+      zbc: item.zbc || 0,
+      tj: item.tj || '',
+      lbc: item.lbc || 0,
+      hy: item.hy || ''
+    }));
     
     return limitUpStocks.slice(0, 50);
   } catch (e) {
@@ -242,32 +258,47 @@ async function fetchLimitUpStocks() {
  */
 async function fetchLimitDownStocks() {
   try {
-    // 使用新浪财经 API 获取涨跌幅排名（升序）
-    const url = 'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?page=1&num=80&sort=changepercent&asc=1&node=hs_a';
+    // 使用 MyData API 获取跌停个股
+    const today = new Date();
+    const weekday = today.getDay();
+    let tradingDate = new Date(today);
+    if (weekday === 0) { // 周日
+      tradingDate.setDate(today.getDate() - 2);
+    } else if (weekday === 6) { // 周六
+      tradingDate.setDate(today.getDate() - 1);
+    }
+    const dateStr = tradingDate.toISOString().split('T')[0];
+    
+    const url = `https://api.mairuiapi.com/hslt/dtgc/${dateStr}/FB1A859B-6832-4F70-AAA2-38274F23FC90`;
     
     const resp = await axios.get(url, {
       timeout: 15000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://vip.stock.finance.sina.com.cn/'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
     
     const data = resp.data;
     if (!Array.isArray(data) || data.length === 0) {
-      console.error('新浪跌停数据格式错误');
+      console.error('MyData 跌停数据格式错误');
       return getMockLimitDownStocks();
     }
     
-    // 筛选跌停股（涨跌幅 <= -9.5%）
-    const limitDownStocks = data
-      .filter(item => parseFloat(item.changepercent) <= -9.5)
-      .map(item => ({
-        code: item.code.startsWith('6') ? 'sh' + item.code : 'sz' + item.code,
-        name: item.name || '',
-        price: parseFloat(item.trade || 0).toFixed(2),
-        changePercent: parseFloat(item.changepercent || 0).toFixed(2)
-      }));
+    // 映射字段
+    const limitDownStocks = data.map(item => ({
+      code: item.dm,
+      name: item.mc || '',
+      price: item.p !== null ? item.p.toFixed(2) : '0.00',
+      changePercent: item.zf !== null ? item.zf.toFixed(2) : '0.00',
+      cje: item.cje !== null ? (item.cje / 10000).toFixed(2) : '0.00', // 万元
+      hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
+      zj: item.zj !== null ? (item.zj / 10000).toFixed(2) : '0.00', // 万元
+      lbt: item.lbt || '',
+      fba: item.fba !== null ? (item.fba / 10000).toFixed(2) : '0.00', // 万元
+      lbc: item.lbc || 0,
+      zbc: item.zbc || 0,
+      hy: item.hy || ''
+    }));
     
     return limitDownStocks.slice(0, 50);
   } catch (e) {
@@ -289,6 +320,65 @@ function getMockLimitDownStocks() {
     { code: 'sh605299', name: '舒华体育', price: '19.58', changePercent: '-10.02' },
     { code: 'sh603588', name: '高能环境', price: '16.61', changePercent: '-9.97' },
     { code: 'sh603182', name: '嘉华股份', price: '15.62', changePercent: '-9.97' }
+  ];
+}
+
+/**
+ * 获取强势个股数据（MyData API）
+ */
+async function fetchStrongStocks() {
+  try {
+    const today = new Date();
+    const weekday = today.getDay();
+    let tradingDate = new Date(today);
+    if (weekday === 0) { // 周日
+      tradingDate.setDate(today.getDate() - 2);
+    } else if (weekday === 6) { // 周六
+      tradingDate.setDate(today.getDate() - 1);
+    }
+    const dateStr = tradingDate.toISOString().split('T')[0];
+    
+    const url = `https://api.mairuiapi.com/hslt/qsgc/${dateStr}/LICENCE-66D8-9F96-0C7F0FBCD073`;
+    
+    const resp = await axios.get(url, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    const data = resp.data;
+    if (!Array.isArray(data) || data.length === 0) {
+      console.error('MyData 强势个股数据格式错误');
+      return getMockStrongStocks();
+    }
+    
+    // 映射字段
+    const strongStocks = data.map(item => ({
+      code: item.dm,
+      name: item.mc || '',
+      price: item.p !== null ? item.p.toFixed(2) : '0.00',
+      ztp: item.ztp !== null ? item.ztp.toFixed(2) : '0.00',
+      changePercent: item.zf !== null ? item.zf.toFixed(2) : '0.00',
+      cje: item.cje !== null ? (item.cje / 10000).toFixed(2) : '0.00', // 万元
+      hs: item.hs !== null ? item.hs.toFixed(2) : '0.00',
+      lb: item.lb !== null ? item.lb.toFixed(2) : '0.00',
+      tj: item.tj || '',
+      nh: item.nh || 0
+    }));
+    
+    return strongStocks.slice(0, 50);
+  } catch (e) {
+    console.error('获取强势个股失败:', e.message);
+    return getMockStrongStocks();
+  }
+}
+
+function getMockStrongStocks() {
+  return [
+    { code: 'sz301157', name: '华塑科技', price: '70.25', ztp: '70.25', changePercent: '20.00', hs: '60.51', lb: '2.64', tj: '3/3' },
+    { code: 'sz301187', name: '欧圣电气', price: '43.44', ztp: '43.44', changePercent: '20.00', hs: '23.74', lb: '2.25', tj: '1/1' },
+    { code: 'sz300807', name: '天迈科技', price: '43.64', ztp: '43.64', changePercent: '19.99', hs: '6.48', lb: '1.47', tj: '2/2' }
   ];
 }
 
@@ -826,12 +916,15 @@ module.exports = {
   fetchSectorCashflow,
   fetchLimitUpStocks,
   fetchLimitDownStocks,
+  fetchStrongStocks,
   fetchStockDetail,
   fetchIntradayData,
   fetchConvertiblesForStock,
   fetchSectorStocks,
   fetchMainIndices,
-  getDataSourceStatus
+  getDataSourceStatus,
+  fetchIntradayHistory,
+  fetchStockLatest
 };
 
 /**
@@ -896,22 +989,6 @@ async function fetchIntradayHistory(code, market, date = null) {
 }
 
 // 更新导出
-module.exports = {
-  fetchMarketVolume,
-  fetchLimitUpSectors,
-  fetchHighTurnover,
-  fetchSectorCashflow,
-  fetchLimitUpStocks,
-  fetchLimitDownStocks,
-  fetchStockDetail,
-  fetchIntradayData,
-  fetchConvertiblesForStock,
-  fetchSectorStocks,
-  fetchMainIndices,
-  getDataSourceStatus,
-  fetchIntradayHistory
-};
-
 /**
  * 获取最新实时数据（MyData API，1 分钟）
  * @param {string} code 股票代码（6 位数字）
@@ -956,19 +1033,4 @@ async function fetchStockLatest(code, market) {
 }
 
 // 更新导出
-module.exports = {
-  fetchMarketVolume,
-  fetchLimitUpSectors,
-  fetchHighTurnover,
-  fetchSectorCashflow,
-  fetchLimitUpStocks,
-  fetchLimitDownStocks,
-  fetchStockDetail,
-  fetchIntradayData,
-  fetchConvertiblesForStock,
-  fetchSectorStocks,
-  fetchMainIndices,
-  getDataSourceStatus,
-  fetchIntradayHistory,
-  fetchStockLatest
-};
+
