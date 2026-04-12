@@ -178,15 +178,15 @@ function isCloseToClose() {
 }
 
 // 获取全部数据
-async function fetchAllData() {
-  console.log('📡 开始获取实时数据...');
+async function fetchAllData(tradeDate = null) {
+  console.log('📡 开始获取实时数据...', tradeDate ? `(日期：${tradeDate})` : '');
   
   const [volume, highTurnover, limitUpStocks, limitDownStocks, strongStocks] = await Promise.all([
     fetchMarketVolume(),
     fetchHighTurnover(),
-    fetchLimitUpStocks(),
-    fetchLimitDownStocks(),
-    fetchStrongStocks()
+    fetchLimitUpStocks(tradeDate),
+    fetchLimitDownStocks(tradeDate),
+    fetchStrongStocks(tradeDate)
   ]);
   
   marketData = {
@@ -195,7 +195,8 @@ async function fetchAllData() {
     limitUpStocks,
     limitDownStocks,
     strongStocks,
-    lastUpdate: new Date().toISOString()
+    lastUpdate: new Date().toISOString(),
+    tradeDate: tradeDate || new Date().toISOString().split('T')[0]
   };
   
   console.log('✓ 数据获取完成');
@@ -360,8 +361,10 @@ app.get('/api/sector-cashflow', async (req, res) => {
 });
 
 app.get('/api/all', async (req, res) => {
-  if (isTradingTime()) {
-    await fetchAllData();
+  const tradeDate = req.query.tradeDate || null;
+  
+  if (isTradingTime() || tradeDate) {
+    await fetchAllData(tradeDate);
   }
   res.json(marketData);
 });

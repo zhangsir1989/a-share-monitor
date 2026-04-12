@@ -172,6 +172,8 @@ function updateLimitUpStocksTable(data) {
   const config = state.sortConfig.limitUpStocks;
   const sortedData = sortData(data, config.field, config.order);
   
+  console.log('涨停数据：总数', data.length, '排序后', sortedData.length, '分页大小', state.pagination.limitUpStocks.pageSize);
+  
   // 分页
   const pagination = state.pagination.limitUpStocks;
   const totalPages = Math.max(1, Math.ceil(sortedData.length / pagination.pageSize));
@@ -468,8 +470,14 @@ async function fetchData() {
   if (state.isPaused) return;
   
   try {
+    // 获取用户选择的日期
+    const tradeDateInput = document.getElementById('trade-date');
+    const tradeDate = tradeDateInput ? tradeDateInput.value : null;
+    
+    const url = tradeDate ? `/api/all?tradeDate=${tradeDate}` : '/api/all';
+    
     const [dataResponse, sourceResponse] = await Promise.all([
-      fetch("/api/all", {cache: "no-cache"}),
+      fetch(url, {cache: "no-cache"}),
       fetch("/api/data-sources", {cache: "no-cache"})
     ]);
     
@@ -598,25 +606,39 @@ function initDatePickers() {
   const today = new Date();
   const dateStr = today.toISOString().split('T')[0];
   
-  ['limit-up', 'limit-down', 'strong'].forEach(prefix => {
-    const dateInput = document.getElementById(`${prefix}-date`);
-    const dateLabel = document.getElementById(`${prefix}-date-label`);
-    
-    if (dateInput) {
-      dateInput.value = dateStr;
-      dateInput.addEventListener('change', () => {
-        if (dateLabel) {
-          dateLabel.textContent = `数据日期：${dateInput.value}`;
+  const tradeDateInput = document.getElementById('trade-date');
+  const tradeDateLabel = document.getElementById('trade-date-label');
+  const queryBtn = document.getElementById('query-date-btn');
+  
+  if (tradeDateInput) {
+    tradeDateInput.value = dateStr;
+  }
+  
+  if (tradeDateLabel) {
+    tradeDateLabel.textContent = `数据日期：${dateStr}`;
+  }
+  
+  // 查询按钮点击事件
+  if (queryBtn) {
+    queryBtn.addEventListener('click', () => {
+      if (tradeDateInput && tradeDateInput.value) {
+        if (tradeDateLabel) {
+          tradeDateLabel.textContent = `数据日期：${tradeDateInput.value}`;
         }
-        // 重新获取数据
         fetchData();
-      });
-    }
-    
-    if (dateLabel) {
-      dateLabel.textContent = `数据日期：${dateStr}`;
-    }
-  });
+      }
+    });
+  }
+  
+  // 日期选择器变更事件（回车或改变时自动查询）
+  if (tradeDateInput) {
+    tradeDateInput.addEventListener('change', () => {
+      if (tradeDateLabel) {
+        tradeDateLabel.textContent = `数据日期：${tradeDateInput.value}`;
+      }
+      fetchData();
+    });
+  }
 }
 
 // 初始化排序事件

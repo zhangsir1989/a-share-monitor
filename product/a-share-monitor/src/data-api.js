@@ -201,18 +201,23 @@ function getMockHighTurnover() {
 /**
  * 获取涨停个股数据
  */
-async function fetchLimitUpStocks() {
+async function fetchLimitUpStocks(tradeDate = null) {
   try {
     // 使用 MyData API 获取涨停个股
-    const today = new Date();
-    const weekday = today.getDay();
-    let tradingDate = new Date(today);
-    if (weekday === 0) { // 周日
-      tradingDate.setDate(today.getDate() - 2);
-    } else if (weekday === 6) { // 周六
-      tradingDate.setDate(today.getDate() - 1);
+    let dateStr;
+    if (tradeDate) {
+      dateStr = tradeDate;
+    } else {
+      const today = new Date();
+      const weekday = today.getDay();
+      let tradingDate = new Date(today);
+      if (weekday === 0) { // 周日
+        tradingDate.setDate(today.getDate() - 2);
+      } else if (weekday === 6) { // 周六
+        tradingDate.setDate(today.getDate() - 1);
+      }
+      dateStr = tradingDate.toISOString().split('T')[0];
     }
-    const dateStr = tradingDate.toISOString().split('T')[0];
     
     const url = `https://api.mairuiapi.com/hslt/ztgc/${dateStr}/FB1A859B-6832-4F70-AAA2-38274F23FC90`;
     
@@ -256,18 +261,23 @@ async function fetchLimitUpStocks() {
 /**
  * 获取跌停个股数据
  */
-async function fetchLimitDownStocks() {
+async function fetchLimitDownStocks(tradeDate = null) {
   try {
     // 使用 MyData API 获取跌停个股
-    const today = new Date();
-    const weekday = today.getDay();
-    let tradingDate = new Date(today);
-    if (weekday === 0) { // 周日
-      tradingDate.setDate(today.getDate() - 2);
-    } else if (weekday === 6) { // 周六
-      tradingDate.setDate(today.getDate() - 1);
+    let dateStr;
+    if (tradeDate) {
+      dateStr = tradeDate;
+    } else {
+      const today = new Date();
+      const weekday = today.getDay();
+      let tradingDate = new Date(today);
+      if (weekday === 0) { // 周日
+        tradingDate.setDate(today.getDate() - 2);
+      } else if (weekday === 6) { // 周六
+        tradingDate.setDate(today.getDate() - 1);
+      }
+      dateStr = tradingDate.toISOString().split('T')[0];
     }
-    const dateStr = tradingDate.toISOString().split('T')[0];
     
     const url = `https://api.mairuiapi.com/hslt/dtgc/${dateStr}/FB1A859B-6832-4F70-AAA2-38274F23FC90`;
     
