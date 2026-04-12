@@ -656,9 +656,20 @@ function initPaginationEvents() {
 }
 
 // 初始化日期选择器
-function initDatePickers() {
+function getLatestTradeDate() {
   const today = new Date();
-  const dateStr = today.toISOString().split('T')[0];
+  const weekday = today.getDay();
+  let tradingDate = new Date(today);
+  if (weekday === 0) { // 周日
+    tradingDate.setDate(today.getDate() - 2);
+  } else if (weekday === 6) { // 周六
+    tradingDate.setDate(today.getDate() - 1);
+  }
+  return tradingDate.toISOString().split('T')[0];
+}
+
+function initDatePickers() {
+  const dateStr = getLatestTradeDate();
   
   const tradeDateInput = document.getElementById('trade-date');
   const queryBtn = document.getElementById('query-btn');
