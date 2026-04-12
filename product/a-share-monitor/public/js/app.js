@@ -465,6 +465,10 @@ async function fetchData() {
     const data = await dataResponse.json();
     const sources = await sourceResponse.json();
     
+    console.log("=== 数据获取成功 ===");
+    console.log("涨停数据:", data.limitUpStocks ? data.limitUpStocks.length : 'null');
+    console.log("跌停数据:", data.limitDownStocks ? data.limitDownStocks.length : 'null');
+    console.log("强势数据:", data.strongStocks ? data.strongStocks.length : 'null');
     console.log("数据源状态:", sources, "缓存标记:", data.isCached);
     
     state.dataSources.volume = sources.volume || "unknown";

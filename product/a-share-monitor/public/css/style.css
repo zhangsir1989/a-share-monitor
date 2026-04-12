@@ -356,7 +356,7 @@ body {
 .card-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
   padding: 15px 20px;
   background-color: var(--bg-card);
@@ -444,6 +444,11 @@ body {
   margin-bottom: 20px;
 }
 
+/* 沪深成交总额和总量居中显示 */
+.metric.center {
+  text-align: center;
+}
+
 .metric-label {
   font-size: 14px;
   color: var(--text-secondary);
@@ -471,7 +476,12 @@ body {
 }
 
 .split-item {
-  text-align: left;  /* 左对齐 */
+  text-align: left;  /* 左对齐 - 沪市/深市 */
+}
+
+/* 沪深成交总额和总量居中显示 */
+.split-item.center {
+  text-align: center;
 }
 
 .split-label {
