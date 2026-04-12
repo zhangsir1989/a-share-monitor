@@ -155,6 +155,58 @@ function updateCashflowTable(data) {
   updateSortIcons('cashflow');
 }
 
+// 更新涨停个股表格
+function updateLimitUpStocksTable(data) {
+  if (!data) return;
+  
+  state.rawData.limitUpStocks = data;
+  
+  const config = state.sortConfig.limitUpStocks;
+  const sortedData = sortData(data, config.field, config.order);
+  
+  if (sortedData.length === 0) {
+    elements.limitUpStocksTable.innerHTML = '<tr><td colspan="4" class="loading">暂无涨停个股</td></tr>';
+    return;
+  }
+  
+  elements.limitUpStocksTable.innerHTML = sortedData.map((item, index) => `
+    <tr onclick="openStockDetail('${item.code}')">
+      <td class="code">${item.code || '--'}</td>
+      <td>${item.name || '--'}</td>
+      <td class="sortable" data-sort="price">${item.price || '0.00'}</td>
+      <td class="up sortable" data-sort="changePercent">${item.changePercent}%</td>
+    </tr>
+  `).join('');
+  
+  updateSortIcons('limitUpStocks');
+}
+
+// 更新跌停个股表格
+function updateLimitDownStocksTable(data) {
+  if (!data) return;
+  
+  state.rawData.limitDownStocks = data;
+  
+  const config = state.sortConfig.limitDownStocks;
+  const sortedData = sortData(data, config.field, config.order);
+  
+  if (sortedData.length === 0) {
+    elements.limitDownStocksTable.innerHTML = '<tr><td colspan="4" class="loading">暂无跌停个股</td></tr>';
+    return;
+  }
+  
+  elements.limitDownStocksTable.innerHTML = sortedData.map((item, index) => `
+    <tr onclick="openStockDetail('${item.code}')">
+      <td class="code">${item.code || '--'}</td>
+      <td>${item.name || '--'}</td>
+      <td class="sortable" data-sort="price">${item.price || '0.00'}</td>
+      <td class="down sortable" data-sort="changePercent">${item.changePercent}%</td>
+    </tr>
+  `).join('');
+  
+  updateSortIcons('limitDownStocks');
+}
+
 // 更新换手率表格
 function updateTurnoverTable(data) {
   if (!data) return;
@@ -232,10 +284,10 @@ function handleSort(tableType, field) {
   
   // 重新渲染表格
   const rawData = state.rawData[tableType];
-  if (tableType === 'limitUp') {
-    updateLimitUpTable(rawData);
-  } else if (tableType === 'cashflow') {
-    updateCashflowTable(rawData);
+  if (tableType === 'limitUpStocks') {
+    updateLimitUpStocksTable(rawData);
+  } else if (tableType === 'limitDownStocks') {
+    updateLimitDownStocksTable(rawData);
   } else if (tableType === 'turnover') {
     updateTurnoverTable(rawData);
   }
@@ -326,11 +378,11 @@ function clearMarketData() {
   elements.shRatio.textContent = '--%';
   elements.szRatio.textContent = '--%';
   
-  // 清空涨停板块表格
-  elements.limitUpTable.innerHTML = '<tr onclick="openSectorModal(this.cells[1].textContent)"><td colspan="3" class="loading">未开盘，暂无数据</td></tr>';
+  // 清空涨停个股表格
+  elements.limitUpStocksTable.innerHTML = '<tr><td colspan="4" class="loading">未开盘，暂无数据</td></tr>';
   
-  // 清空资金流表格
-  elements.cashflowTable.innerHTML = '<tr onclick="openSectorModal(this.cells[1].textContent)"><td colspan="3" class="loading">未开盘，暂无数据</td></tr>';
+  // 清空跌停个股表格
+  elements.limitDownStocksTable.innerHTML = '<tr><td colspan="4" class="loading">未开盘，暂无数据</td></tr>';
   
   // 清空换手率表格
   elements.turnoverTable.innerHTML = '<tr onclick="openSectorModal(this.cells[1].textContent)"><td colspan="9" class="loading">未开盘，暂无数据</td></tr>';
@@ -363,8 +415,8 @@ async function fetchData() {
     
     updateDataSources();
     updateVolumeData(data.volume);
-    updateLimitUpTable(data.limitUpSectors);
-    updateCashflowTable(data.sectorCashflow);
+    updateLimitUpStocksTable(data.limitUpStocks);
+    updateLimitDownStocksTable(data.limitDownStocks);
     updateTurnoverTable(data.highTurnover);
     updateDateTime();
     updateMarketStatus();
@@ -417,17 +469,17 @@ function stopTimer() {
 
 // 初始化排序事件
 function initSortEvents() {
-  // 涨停板块表格
-  elements.limitUpTable.closest('table').querySelectorAll('th[data-sort]').forEach(th => {
+  // 涨停个股表格
+  elements.limitUpStocksTable.closest('table').querySelectorAll('th[data-sort]').forEach(th => {
     th.addEventListener('click', () => {
-      handleSort('limitUp', th.dataset.sort);
+      handleSort('limitUpStocks', th.dataset.sort);
     });
   });
   
-  // 资金流表格
-  elements.cashflowTable.closest('table').querySelectorAll('th[data-sort]').forEach(th => {
+  // 跌停个股表格
+  elements.limitDownStocksTable.closest('table').querySelectorAll('th[data-sort]').forEach(th => {
     th.addEventListener('click', () => {
-      handleSort('cashflow', th.dataset.sort);
+      handleSort('limitDownStocks', th.dataset.sort);
     });
   });
   
@@ -500,8 +552,8 @@ function init() {
     szAmountUnit: document.getElementById('sz-amount-unit'),
     shRatio: document.getElementById('sh-ratio'),
     szRatio: document.getElementById('sz-ratio'),
-    limitUpTable: document.getElementById('limit-up-table'),
-    cashflowTable: document.getElementById('cashflow-table'),
+    limitUpStocksTable: document.getElementById('limit-up-stocks-table'),
+    limitDownStocksTable: document.getElementById('limit-down-stocks-table'),
     turnoverTable: document.getElementById('turnover-table'),
     lastUpdate: document.getElementById('last-update'),
     marketStatus: document.getElementById('market-status')

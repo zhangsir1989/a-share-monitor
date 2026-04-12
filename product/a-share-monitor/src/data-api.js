@@ -195,6 +195,101 @@ function getMockHighTurnover() {
     { code: 'sh603538', name: '美诺华', price: '42.32', changePercent: '6.36', turnoverRate: '43.80', actualTurnover: '39.05', volume: 9470, amount: '39.05', industry: '' },
     { code: 'sz002361', name: '神剑股份', price: '17.29', changePercent: '1.71', turnoverRate: '42.44', actualTurnover: '59.78', volume: 34338, amount: '59.78', industry: '' }
   ];
+
+}
+
+/**
+ * 获取涨停个股数据
+ */
+async function fetchLimitUpStocks() {
+  try {
+    // 使用新浪财经 API 获取涨跌幅排名（降序）
+    const url = 'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?page=1&num=80&sort=changepercent&asc=0&node=hs_a';
+    
+    const resp = await axios.get(url, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://vip.stock.finance.sina.com.cn/'
+      }
+    });
+    
+    const data = resp.data;
+    if (!Array.isArray(data) || data.length === 0) {
+      console.error('新浪涨停数据格式错误');
+      return getMockLimitUpStocks();
+    }
+    
+    // 筛选涨停股（涨跌幅 >= 9.5%）
+    const limitUpStocks = data
+      .filter(item => parseFloat(item.changepercent) >= 9.5)
+      .map(item => ({
+        code: item.code.startsWith('6') ? 'sh' + item.code : 'sz' + item.code,
+        name: item.name || '',
+        price: parseFloat(item.trade || 0).toFixed(2),
+        changePercent: parseFloat(item.changepercent || 0).toFixed(2)
+      }));
+    
+    return limitUpStocks.slice(0, 50);
+  } catch (e) {
+    console.error('获取涨停个股失败:', e.message);
+    return getMockLimitUpStocks();
+  }
+}
+
+/**
+ * 获取跌停个股数据
+ */
+async function fetchLimitDownStocks() {
+  try {
+    // 使用新浪财经 API 获取涨跌幅排名（升序）
+    const url = 'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?page=1&num=80&sort=changepercent&asc=1&node=hs_a';
+    
+    const resp = await axios.get(url, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://vip.stock.finance.sina.com.cn/'
+      }
+    });
+    
+    const data = resp.data;
+    if (!Array.isArray(data) || data.length === 0) {
+      console.error('新浪跌停数据格式错误');
+      return getMockLimitDownStocks();
+    }
+    
+    // 筛选跌停股（涨跌幅 <= -9.5%）
+    const limitDownStocks = data
+      .filter(item => parseFloat(item.changepercent) <= -9.5)
+      .map(item => ({
+        code: item.code.startsWith('6') ? 'sh' + item.code : 'sz' + item.code,
+        name: item.name || '',
+        price: parseFloat(item.trade || 0).toFixed(2),
+        changePercent: parseFloat(item.changepercent || 0).toFixed(2)
+      }));
+    
+    return limitDownStocks.slice(0, 50);
+  } catch (e) {
+    console.error('获取跌停个股失败:', e.message);
+    return getMockLimitDownStocks();
+  }
+}
+
+function getMockLimitUpStocks() {
+  return [
+    { code: 'sz002560', name: '通达股份', price: '13.06', changePercent: '10.03' },
+    { code: 'sh603538', name: '美诺华', price: '42.32', changePercent: '10.01' },
+    { code: 'sz002361', name: '神剑股份', price: '17.29', changePercent: '10.00' }
+  ];
+}
+
+function getMockLimitDownStocks() {
+  return [
+    { code: 'sh605299', name: '舒华体育', price: '19.58', changePercent: '-10.02' },
+    { code: 'sh603588', name: '高能环境', price: '16.61', changePercent: '-9.97' },
+    { code: 'sh603182', name: '嘉华股份', price: '15.62', changePercent: '-9.97' }
+  ];
 }
 
 /**
@@ -729,6 +824,8 @@ module.exports = {
   fetchLimitUpSectors,
   fetchHighTurnover,
   fetchSectorCashflow,
+  fetchLimitUpStocks,
+  fetchLimitDownStocks,
   fetchStockDetail,
   fetchIntradayData,
   fetchConvertiblesForStock,
@@ -804,6 +901,8 @@ module.exports = {
   fetchLimitUpSectors,
   fetchHighTurnover,
   fetchSectorCashflow,
+  fetchLimitUpStocks,
+  fetchLimitDownStocks,
   fetchStockDetail,
   fetchIntradayData,
   fetchConvertiblesForStock,
@@ -862,6 +961,8 @@ module.exports = {
   fetchLimitUpSectors,
   fetchHighTurnover,
   fetchSectorCashflow,
+  fetchLimitUpStocks,
+  fetchLimitDownStocks,
   fetchStockDetail,
   fetchIntradayData,
   fetchConvertiblesForStock,

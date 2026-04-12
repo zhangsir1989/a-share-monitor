@@ -9,6 +9,8 @@ const {
   fetchLimitUpSectors,
   fetchHighTurnover,
   fetchSectorCashflow,
+  fetchLimitUpStocks,
+  fetchLimitDownStocks,
   fetchStockDetail,
   fetchIntradayData,
   fetchConvertiblesForStock,
@@ -178,18 +180,18 @@ function isCloseToClose() {
 async function fetchAllData() {
   console.log('📡 开始获取实时数据...');
   
-  const [volume, limitUpSectors, highTurnover, sectorCashflow] = await Promise.all([
+  const [volume, highTurnover, limitUpStocks, limitDownStocks] = await Promise.all([
     fetchMarketVolume(),
-    fetchLimitUpSectors(),
     fetchHighTurnover(),
-    fetchSectorCashflow()
+    fetchLimitUpStocks(),
+    fetchLimitDownStocks()
   ]);
   
   marketData = {
     volume,
-    limitUpSectors,
     highTurnover,
-    sectorCashflow,
+    limitUpStocks,
+    limitDownStocks,
     lastUpdate: new Date().toISOString()
   };
   
@@ -197,14 +199,14 @@ async function fetchAllData() {
   if (volume) {
     console.log(`  总成交额：${volume.totalAmount} 亿元`);
   }
-  if (limitUpSectors && limitUpSectors.length > 0) {
-    console.log(`  涨停板块：${limitUpSectors.length} 个`);
+  if (limitUpStocks && limitUpStocks.length > 0) {
+    console.log(`  涨停个股：${limitUpStocks.length} 只`);
+  }
+  if (limitDownStocks && limitDownStocks.length > 0) {
+    console.log(`  跌停个股：${limitDownStocks.length} 只`);
   }
   if (highTurnover && highTurnover.length > 0) {
     console.log(`  高换手率：${highTurnover.length} 只`);
-  }
-  if (sectorCashflow && sectorCashflow.length > 0) {
-    console.log(`  资金流：${sectorCashflow.length} 个板块`);
   }
   
   return marketData;
