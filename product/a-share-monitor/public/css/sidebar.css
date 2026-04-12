@@ -69,8 +69,7 @@
 /* 主侧边栏折叠按钮（放在顶部） */
 .sidebar-collapse-btn {
   position: absolute;
-  top: 50%;  /* 垂直居中 */
-  transform: translateY(-50%);  /* 精确居中 */
+  top: 20px;  /* 与二级菜单 header 折叠按钮同一行 */
   right: -18px;  /* 在主侧边栏右侧边缘 */
   width: 36px;
   height: 36px;
@@ -93,7 +92,7 @@
   background: #1890ff;
   color: #fff;
   border-color: #1890ff;
-  transform: translateY(-50%) scale(1.15);
+  transform: scale(1.15);
 }
 
 .sidebar.collapsed .sidebar-collapse-btn {
@@ -407,6 +406,9 @@
 
 /* 二级侧边栏 header 折叠按钮 */
 .sub-sidebar-header-collapse-btn {
+  position: absolute;
+  top: 20px;  /* 与一级菜单折叠按钮同一行 */
+  right: 15px;  /* 在二级侧边栏内部右侧 */
   background: transparent;
   border: none;
   cursor: pointer;
@@ -420,7 +422,6 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-left: auto;  /* 推到右侧 */
 }
 
 .sub-sidebar-header-collapse-btn:hover {
