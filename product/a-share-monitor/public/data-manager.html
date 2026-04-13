@@ -72,6 +72,10 @@
           <span class="link-icon">⭐</span>
           <span class="link-text">自选股数据</span>
         </a>
+        <a href="#" class="sub-sidebar-link" data-subtab="groups">
+          <span class="link-icon">📁</span>
+          <span class="link-text">分组查询</span>
+        </a>
         <a href="/securities" class="sub-sidebar-link">
           <span class="link-icon">📊</span>
           <span class="link-text">证券信息</span>
@@ -210,6 +214,59 @@
           </div>
         </div>
       </div>
+
+      <!-- 分组查询 -->
+      <div class="tab-content-wrapper" id="groups-tab" style="display: none;">
+        <div class="search-bar">
+          <div class="search-group">
+            <label>分组名称：</label>
+            <input type="text" id="group-name" class="search-input" placeholder="分组名称">
+          </div>
+          <button class="btn btn-search" id="btn-group-search">🔍 查询</button>
+          <button class="btn" id="btn-group-reset">🔄 重置</button>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th width="80">分组类型</th>
+                <th width="150">分组名称</th>
+                <th width="80">图标</th>
+                <th width="120">颜色</th>
+                <th width="100">用户编号</th>
+                <th width="180">创建时间</th>
+              </tr>
+            </thead>
+            <tbody id="groups-table-body">
+              <tr>
+                <td colspan="6" class="loading">加载中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 分页栏 -->
+        <div class="pagination-bar" id="groups-pagination">
+          <div class="pagination-info">
+            共 <span id="group-total">0</span> 条记录，
+            第 <span id="group-current-page">1</span> 页，
+            共 <span id="group-total-pages">0</span> 页
+          </div>
+          <div class="pagination-controls">
+            <button class="btn-page" id="group-btn-first" disabled>⏮️ 首页</button>
+            <button class="btn-page" id="group-btn-prev" disabled>◀️ 上页</button>
+            <select class="page-size-select" id="group-page-size">
+              <option value="10">10 条/页</option>
+              <option value="20" selected>20 条/页</option>
+              <option value="50">50 条/页</option>
+              <option value="100">100 条/页</option>
+            </select>
+            <button class="btn-page" id="group-btn-next">下页 ▶️</button>
+            <button class="btn-page" id="group-btn-last">末页 ⏭️</button>
+          </div>
+        </div>
+      </div>
     </main>
 
     <!-- 页脚 -->
@@ -224,6 +281,6 @@
   </div>
 
   <script src="js/sidebar.js?v=20260405"></script>
-  <script src="js/data-manager.js?v=2026041305"></script>
+  <script src="js/data-manager.js?v=2026041306"></script>
 </body>
 </html>

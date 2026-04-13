@@ -17,6 +17,12 @@ const pageState = {
     total: 0,
     userId: '',
     stockCode: ''
+  },
+  groups: {
+    page: 1,
+    pageSize: 20,
+    total: 0,
+    groupName: ''
   }
 };
 
@@ -27,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSubTabs();
   initUsersTab();
   initStocksTab();
+  initGroupsTab();
 });
 
 // ==================== 二级侧边栏子标签切换 ====================
@@ -48,6 +55,7 @@ function initSubTabs() {
         // 切换内容
         document.getElementById('users-tab').style.display = subtab === 'users' ? 'block' : 'none';
         document.getElementById('custom-stocks-tab').style.display = subtab === 'custom-stocks' ? 'block' : 'none';
+        document.getElementById('groups-tab').style.display = subtab === 'groups' ? 'block' : 'none';
         
         // 动态更新标题
         const titleMap = {
@@ -309,4 +317,113 @@ function updateStocksPagination() {
   document.getElementById('stock-btn-prev').disabled = page === 1;
   document.getElementById('stock-btn-next').disabled = page >= totalPages;
   document.getElementById('stock-btn-last').disabled = page >= totalPages;
+}
+
+// ==================== 分组查询标签页 ====================
+
+function initGroupsTab() {
+  // 查询按钮
+  document.getElementById('btn-group-search')?.addEventListener('click', () => {
+    pageState.groups.groupName = document.getElementById('group-name').value.trim();
+    pageState.groups.page = 1;
+    loadGroupsData();
+  });
+  
+  // 重置按钮
+  document.getElementById('btn-group-reset')?.addEventListener('click', () => {
+    document.getElementById('group-name').value = '';
+    pageState.groups.groupName = '';
+    pageState.groups.page = 1;
+    loadGroupsData();
+  });
+  
+  // 分页事件
+  document.getElementById('group-btn-first')?.addEventListener('click', () => {
+    pageState.groups.page = 1;
+    loadGroupsData();
+  });
+  
+  document.getElementById('group-btn-prev')?.addEventListener('click', () => {
+    if (pageState.groups.page > 1) {
+      pageState.groups.page--;
+      loadGroupsData();
+    }
+  });
+  
+  document.getElementById('group-btn-next')?.addEventListener('click', () => {
+    const totalPages = Math.ceil(pageState.groups.total / pageState.groups.pageSize);
+    if (pageState.groups.page < totalPages) {
+      pageState.groups.page++;
+      loadGroupsData();
+    }
+  });
+  
+  document.getElementById('group-btn-last')?.addEventListener('click', () => {
+    pageState.groups.page = Math.ceil(pageState.groups.total / pageState.groups.pageSize) || 1;
+    loadGroupsData();
+  });
+  
+  document.getElementById('group-page-size')?.addEventListener('change', (e) => {
+    pageState.groups.pageSize = parseInt(e.target.value);
+    pageState.groups.page = 1;
+    loadGroupsData();
+  });
+  
+  // 初始加载
+  loadGroupsData();
+}
+
+async function loadGroupsData() {
+  const { page, pageSize, groupName } = pageState.groups;
+  
+  try {
+    const response = await fetch(`/api/admin/custom-groups?page=${page}&pageSize=${pageSize}&groupName=${encodeURIComponent(groupName)}`);
+    const result = await response.json();
+    
+    if (!result.success) {
+      alert(result.message || '加载失败');
+      return;
+    }
+    
+    pageState.groups.total = result.total;
+    renderGroupsTable(result.data);
+    updateGroupsPagination();
+  } catch (error) {
+    console.error('加载分组数据失败:', error);
+    document.getElementById('groups-table-body').innerHTML = '<tr><td colspan="6" class="loading">加载失败</td></tr>';
+  }
+}
+
+function renderGroupsTable(groups) {
+  const tbody = document.getElementById('groups-table-body');
+  
+  if (groups.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="loading">暂无数据</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = groups.map(group => `
+    <tr>
+      <td><span style="font-weight: bold; color: ${group.color || '#4a9eff'}">${group.type}</span></td>
+      <td>${group.icon || '📁'} ${group.name}</td>
+      <td>${group.icon || '📁'}</td>
+      <td><span style="display: inline-block; width: 20px; height: 20px; background: ${group.color || '#4a9eff'}; border-radius: 3px; vertical-align: middle;"></span> ${group.color || '#4a9eff'}</td>
+      <td>${group.user_id || '--'}</td>
+      <td>${group.created_at || '--'}</td>
+    </tr>
+  `).join('');
+}
+
+function updateGroupsPagination() {
+  const { page, pageSize, total } = pageState.groups;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  
+  document.getElementById('group-total').textContent = total;
+  document.getElementById('group-current-page').textContent = page;
+  document.getElementById('group-total-pages').textContent = totalPages;
+  
+  document.getElementById('group-btn-first').disabled = page === 1;
+  document.getElementById('group-btn-prev').disabled = page === 1;
+  document.getElementById('group-btn-next').disabled = page >= totalPages;
+  document.getElementById('group-btn-last').disabled = page >= totalPages;
 }

@@ -1,8 +1,17 @@
 {
   "date": "Mon Apr 13 2026",
-  "timestamp": 1776087073224,
+  "timestamp": 1776088484248,
   "data": {
-    "volume": null,
+    "volume": {
+      "totalVolume": 11.69,
+      "totalAmount": 21503.68,
+      "shVolume": 5.46,
+      "szVolume": 6.24,
+      "shAmount": 9194.36,
+      "szAmount": 12309.32,
+      "shRatio": "42.76",
+      "szRatio": "57.24"
+    },
     "highTurnover": [
       {
         "code": "sz920012",
@@ -5927,7 +5936,7 @@
         "lt": "9.53"
       }
     ],
-    "lastUpdate": "2026-04-13T13:31:13.224Z",
+    "lastUpdate": "2026-04-13T13:54:44.248Z",
     "tradeDate": "2026-04-13"
   }
 }

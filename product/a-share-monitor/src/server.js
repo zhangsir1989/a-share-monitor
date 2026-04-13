@@ -1906,6 +1906,51 @@ app.get('/api/admin/custom-stocks', (req, res) => {
   }
 });
 
+// 获取所有分组列表（管理员）
+app.get('/api/admin/custom-groups', (req, res) => {
+  try {
+    // 检查是否是管理员
+    if (req.session?.userRole !== '1') {
+      return res.status(403).json({ success: false, message: '无权访问' });
+    }
+    
+    const { page = 1, pageSize = 20, groupName = '' } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(pageSize);
+    const limit = parseInt(pageSize);
+    
+    let whereClause = 'WHERE 1=1';
+    if (groupName) {
+      whereClause += ` AND name LIKE '%${groupName}%'`;
+    }
+    
+    // 查询总数
+    const countResult = db.exec(`SELECT COUNT(*) FROM custom_groups ${whereClause}`);
+    const total = countResult[0]?.values[0]?.[0] || 0;
+    
+    // 查询数据
+    const results = db.exec(`SELECT id, user_id, name, type, icon, color, created_at FROM custom_groups ${whereClause} ORDER BY type ASC LIMIT ${limit} OFFSET ${offset}`);
+    
+    if (results.length === 0) {
+      return res.json({ success: true, data: [], total: 0, page: parseInt(page), pageSize: parseInt(pageSize) });
+    }
+    
+    const groups = results[0].values.map(row => ({
+      id: row[0],
+      user_id: row[1],
+      name: row[2],
+      type: row[3],
+      icon: row[4],
+      color: row[5],
+      created_at: row[6]
+    }));
+    
+    res.json({ success: true, data: groups, total, page: parseInt(page), pageSize: parseInt(pageSize) });
+  } catch (error) {
+    console.error('获取分组数据失败:', error.message);
+    res.status(500).json({ success: false, message: '获取分组数据失败' });
+  }
+});
+
 // ==================== 自选股 API ====================
 
 // 获取用户的自选股列表
