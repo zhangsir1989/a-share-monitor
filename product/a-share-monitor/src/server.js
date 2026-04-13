@@ -39,9 +39,29 @@ const DB_PATH = path.join(__dirname, '../data/users.db');
 // 初始化数据库连接
 async function initDatabase() {
   const SQL = await initSqlJs();
-  const fileBuffer = fs.readFileSync(DB_PATH);
-  db = new SQL.Database(fileBuffer);
-  console.log('✓ 数据库连接成功:', DB_PATH);
+  
+  // 如果数据库文件不存在，自动创建
+  if (!fs.existsSync(DB_PATH)) {
+    console.log('⚠️  数据库文件不存在，自动创建:', DB_PATH);
+    db = new SQL.Database();
+    // 创建 users 表
+    db.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    // 插入默认管理员账户
+    db.run(`INSERT INTO users (username, password) VALUES ('admin', 'admin123')`);
+    saveDatabase();
+    console.log('✅ 数据库创建成功，默认用户：admin / admin123');
+  } else {
+    const fileBuffer = fs.readFileSync(DB_PATH);
+    db = new SQL.Database(fileBuffer);
+    console.log('✓ 数据库连接成功:', DB_PATH);
+  }
   
   // 初始化证券同步函数
   // 使用 MyData API 同步模块
@@ -181,15 +201,35 @@ function isCloseToClose() {
 
 // 获取最近交易日（处理周末）
 function getLatestTradeDate() {
-  const today = new Date();
-  const weekday = today.getDay();
-  let tradingDate = new Date(today);
+  // 使用北京时间（UTC+8）计算
+  const now = new Date();
+  const utcTime = now.getTime();
+  const beijingTime = new Date(utcTime + (8 * 3600000)); // 转换为北京时间
+  
+  const weekday = beijingTime.getDay();
+  let daysBack = 0;
+  
+  // 计算初始回退天数
   if (weekday === 0) { // 周日
-    tradingDate.setDate(today.getDate() - 2);
+    daysBack = 2;
   } else if (weekday === 6) { // 周六
-    tradingDate.setDate(today.getDate() - 1);
+    daysBack = 1;
   }
-  return tradingDate.toISOString().split('T')[0];
+  
+  // 向前查找，跳过周末
+  for (let i = 0; i < 5; i++) {
+    const tradingDate = new Date(beijingTime);
+    tradingDate.setDate(beijingTime.getDate() - daysBack - i);
+    const checkWeekday = tradingDate.getDay();
+    if (checkWeekday !== 0 && checkWeekday !== 6) {
+      return tradingDate.toISOString().split('T')[0];
+    }
+  }
+  
+  // 默认返回 5 天前
+  const fallback = new Date(beijingTime);
+  fallback.setDate(beijingTime.getDate() - 5);
+  return fallback.toISOString().split('T')[0];
 }
 
 // 获取全部数据
@@ -198,14 +238,32 @@ async function fetchAllData(tradeDate = null) {
   console.log('🔍 开始获取炸板个股...');
   console.log('🔍 开始获取次新个股...');
   
+  // 如果指定日期 API 返回 404，自动回退到最近交易日
+  let effectiveDate = tradeDate;
+  if (tradeDate) {
+    try {
+      const testUrl = `https://api.mairuiapi.com/hslt/ztgc/${tradeDate.replace(/-/g, '')}/FB1A859B-6832-4F70-AAA2-38274F23FC90`;
+      const axios = require('axios');
+      const resp = await axios.get(testUrl, { timeout: 5000 });
+      if (resp.status === 404 || (resp.data && typeof resp.data === 'string' && resp.data.includes('404'))) {
+        console.log('⚠️  API 返回 404，自动回退到最近交易日');
+        effectiveDate = null; // 使用 getLatestTradeDate() 计算
+      }
+    } catch (e) {
+      // API 调用失败，使用回退逻辑
+      console.log('⚠️  API 测试失败，使用回退逻辑');
+      effectiveDate = null;
+    }
+  }
+  
   const [volume, highTurnover, limitUpStocks, limitDownStocks, strongStocks, breakBoardStocks, newBaseStocks] = await Promise.all([
     fetchMarketVolume(),
     fetchHighTurnover(),
-    fetchLimitUpStocks(tradeDate),
-    fetchLimitDownStocks(tradeDate),
-    fetchStrongStocks(tradeDate),
-    fetchBreakBoardStocks(tradeDate),
-    fetchNewBaseStocks(tradeDate)
+    fetchLimitUpStocks(effectiveDate),
+    fetchLimitDownStocks(effectiveDate),
+    fetchStrongStocks(effectiveDate),
+    fetchBreakBoardStocks(effectiveDate),
+    fetchNewBaseStocks(effectiveDate)
   ]);
   
   console.log('炸板个股结果:', breakBoardStocks ? breakBoardStocks.length : 'null');
@@ -220,7 +278,7 @@ async function fetchAllData(tradeDate = null) {
     breakBoardStocks,
     newBaseStocks,
     lastUpdate: new Date().toISOString(),
-    tradeDate: tradeDate || getLatestTradeDate()
+    tradeDate: tradeDate || await getLatestTradeDate()
   };
   
   console.log('✓ 数据获取完成');

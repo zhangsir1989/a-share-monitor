@@ -205,20 +205,7 @@ function getMockHighTurnover() {
 async function fetchLimitUpStocks(tradeDate = null) {
   try {
     // 使用 MyData API 获取涨停个股
-    let dateStr;
-    if (tradeDate) {
-      dateStr = tradeDate;
-    } else {
-      const today = new Date();
-      const weekday = today.getDay();
-      let tradingDate = new Date(today);
-      if (weekday === 0) { // 周日
-        tradingDate.setDate(today.getDate() - 2);
-      } else if (weekday === 6) { // 周六
-        tradingDate.setDate(today.getDate() - 1);
-      }
-      dateStr = tradingDate.toISOString().split('T')[0];
-    }
+    const dateStr = tradeDate || getLatestTradeDate();
     
     const url = `https://api.mairuiapi.com/hslt/ztgc/${dateStr}/${MYDATA_LICENCE}`;
     
@@ -277,20 +264,7 @@ async function fetchLimitUpStocks(tradeDate = null) {
 async function fetchLimitDownStocks(tradeDate = null) {
   try {
     // 使用 MyData API 获取跌停个股
-    let dateStr;
-    if (tradeDate) {
-      dateStr = tradeDate;
-    } else {
-      const today = new Date();
-      const weekday = today.getDay();
-      let tradingDate = new Date(today);
-      if (weekday === 0) { // 周日
-        tradingDate.setDate(today.getDate() - 2);
-      } else if (weekday === 6) { // 周六
-        tradingDate.setDate(today.getDate() - 1);
-      }
-      dateStr = tradingDate.toISOString().split('T')[0];
-    }
+    const dateStr = tradeDate || getLatestTradeDate();
     
     const url = `https://api.mairuiapi.com/hslt/dtgc/${dateStr}/${MYDATA_LICENCE}`;
     
@@ -364,20 +338,7 @@ function getMockLimitDownStocks() {
 async function fetchStrongStocks(tradeDate = null) {
   try {
     // 使用 MyData API 获取强势个股
-    let dateStr;
-    if (tradeDate) {
-      dateStr = tradeDate;
-    } else {
-      const today = new Date();
-      const weekday = today.getDay();
-      let tradingDate = new Date(today);
-      if (weekday === 0) { // 周日
-        tradingDate.setDate(today.getDate() - 2);
-      } else if (weekday === 6) { // 周六
-        tradingDate.setDate(today.getDate() - 1);
-      }
-      dateStr = tradingDate.toISOString().split('T')[0];
-    }
+    const dateStr = tradeDate || getLatestTradeDate();
     
     const url = `https://api.mairuiapi.com/hslt/qsgc/${dateStr}/${MYDATA_LICENCE}`;
     
@@ -431,20 +392,7 @@ function getMockStrongStocks() {
  */
 async function fetchBreakBoardStocks(tradeDate = null) {
   try {
-    let dateStr;
-    if (tradeDate) {
-      dateStr = tradeDate;
-    } else {
-      const today = new Date();
-      const weekday = today.getDay();
-      let tradingDate = new Date(today);
-      if (weekday === 0) {
-        tradingDate.setDate(today.getDate() - 2);
-      } else if (weekday === 6) {
-        tradingDate.setDate(today.getDate() - 1);
-      }
-      dateStr = tradingDate.toISOString().split('T')[0];
-    }
+    const dateStr = tradeDate || getLatestTradeDate();
     
     const url = `https://api.mairuiapi.com/hslt/zbgc/${dateStr}/${MYDATA_LICENCE}`;
     
@@ -501,20 +449,7 @@ async function fetchNewBaseStocks(tradeDate = null) {
   console.log('🔍 开始获取次新个股，tradeDate:', tradeDate);
   console.log('========================================');
   try {
-    let dateStr;
-    if (tradeDate) {
-      dateStr = tradeDate;
-    } else {
-      const today = new Date();
-      const weekday = today.getDay();
-      let tradingDate = new Date(today);
-      if (weekday === 0) {
-        tradingDate.setDate(today.getDate() - 2);
-      } else if (weekday === 6) {
-        tradingDate.setDate(today.getDate() - 1);
-      }
-      dateStr = tradingDate.toISOString().split('T')[0];
-    }
+    const dateStr = tradeDate || getLatestTradeDate();
     
     const url = `https://api.mairuiapi.com/hslt/cxgc/${dateStr}/${MYDATA_LICENCE}`;
     console.log('📡 次新 API URL:', url);
@@ -1082,6 +1017,47 @@ async function fetchMainIndices() {
     console.error('获取指数数据失败:', e.message);
     return { success: false, message: '获取失败', data: {} };
   }
+}
+
+
+/**
+ * 获取最近交易日（最多向前查找 5 天，跳过周末）
+ */
+function getLatestTradeDate() {
+  // 返回最近一个有数据的交易日
+  // 系统时间已是 CST (UTC+8)，不需要转换
+  const beijingTime = new Date();
+  const weekday = beijingTime.getDay();
+  const hour = beijingTime.getHours();
+  
+  // 周一且 15:00 前，使用上周五（今天数据还没生成）
+  if (weekday === 1 && hour < 15) {
+    const lastFriday = new Date(beijingTime);
+    lastFriday.setDate(beijingTime.getDate() - 3);
+    console.log("📅 周一早盘，使用上周五:", lastFriday.toISOString().split('T')[0]);
+    return lastFriday.toISOString().split('T')[0];
+  }
+  
+  // 周日，使用周五
+  if (weekday === 0) {
+    const friday = new Date(beijingTime);
+    friday.setDate(beijingTime.getDate() - 2);
+    console.log("📅 周日，使用周五:", friday.toISOString().split('T')[0]);
+    return friday.toISOString().split('T')[0];
+  }
+  
+  // 周六，使用周五
+  if (weekday === 6) {
+    const friday = new Date(beijingTime);
+    friday.setDate(beijingTime.getDate() - 1);
+    console.log("📅 周六，使用周五:", friday.toISOString().split('T')[0]);
+    return friday.toISOString().split('T')[0];
+  }
+  
+  // 其他情况使用今天
+  const today = beijingTime.toISOString().split('T')[0];
+  console.log("📅 使用今天:", today);
+  return today;
 }
 
 module.exports = {
