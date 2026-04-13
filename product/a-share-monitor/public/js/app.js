@@ -1,7 +1,7 @@
 console.log("🚀 app.js 开始加载");
 // 应用状态
 const state = {
-  refreshInterval: 3,
+  refreshInterval: 1, // 默认 1 秒刷新
   isPaused: false,
   timer: null,
   dataSources: {
@@ -814,9 +814,25 @@ function initDatePickers() {
   console.log('✅ 首页初始化完成，交易时间自动刷新');
 }
 
-// 更新日期显示 - 保留函数但不再使用（卡片右上角自动显示）
+// 更新日期显示 - 在各模块右上角显示数据日期
 function updateDateDisplays(dateStr) {
-  // 不再需要手动更新日期，各模块右上角自动显示
+  if (!dateStr) return;
+  
+  const limitUpDate = document.getElementById('limit-up-date');
+  const limitDownDate = document.getElementById('limit-down-date');
+  const strongDate = document.getElementById('strong-date');
+  const breakBoardDate = document.getElementById('break-board-date');
+  const newBaseDate = document.getElementById('new-base-date');
+  
+  // 格式化日期显示（YYYY-MM-DD → YYYY 年 MM 月 DD 日）
+  const [year, month, day] = dateStr.split('-');
+  const formattedDate = `${year}年${month}月${day}日`;
+  
+  if (limitUpDate) limitUpDate.textContent = formattedDate;
+  if (limitDownDate) limitDownDate.textContent = formattedDate;
+  if (strongDate) strongDate.textContent = formattedDate;
+  if (breakBoardDate) breakBoardDate.textContent = formattedDate;
+  if (newBaseDate) newBaseDate.textContent = formattedDate;
 }
 
 // 初始化排序事件
