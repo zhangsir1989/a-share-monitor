@@ -357,12 +357,30 @@ function bindGroupEvents() {
   // 分组管理按钮点击
   GroupManager.elements.groupManagerBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
-    GroupManager.elements.groupDropdown.classList.toggle('show');
+    const dropdown = GroupManager.elements.groupDropdown;
+    const overlay = document.getElementById('group-overlay');
+    
+    if (dropdown.classList.contains('show')) {
+      // 关闭
+      dropdown.classList.remove('show');
+      overlay?.classList.remove('show');
+    } else {
+      // 打开
+      dropdown.classList.add('show');
+      overlay?.classList.add('show');
+    }
+  });
+  
+  // 点击遮罩层关闭下拉菜单
+  document.getElementById('group-overlay')?.addEventListener('click', () => {
+    GroupManager.elements.groupDropdown?.classList.remove('show');
+    document.getElementById('group-overlay')?.classList.remove('show');
   });
   
   // 点击其他地方关闭下拉菜单
   document.addEventListener('click', () => {
     GroupManager.elements.groupDropdown?.classList.remove('show');
+    document.getElementById('group-overlay')?.classList.remove('show');
   });
   
   // 筛选下拉框变化
