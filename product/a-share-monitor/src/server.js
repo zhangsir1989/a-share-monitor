@@ -2030,7 +2030,7 @@ app.post('/api/custom-stocks/delete', (req, res) => {
     }
     
     const { stock_code, stock_market, type } = req.body;
-    const stockType = type || 1;  // 默认为自选股
+    const stockType = (type !== undefined && type !== null) ? parseInt(type) : 1;  // 默认为自选股（type=1），支持 type=0（持仓）
     
     if (!stock_code || !stock_market) {
       return res.status(400).json({ success: false, message: '缺少股票代码或市场' });
