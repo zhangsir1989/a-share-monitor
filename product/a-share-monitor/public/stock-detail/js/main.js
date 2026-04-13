@@ -166,7 +166,8 @@ async function loadBasicInfo() {
   // 同时更新分时图
   const intradayResult = await API.getIntraday(StockState.code, StockState.market);
   if (intradayResult.success) {
-    IntradayChart.render(intradayResult.data);
+    // 传递完整的结果对象（包含 data 和 prevClose）
+    IntradayChart.render(intradayResult);
   }
 }
 
@@ -174,7 +175,8 @@ async function loadBasicInfo() {
 async function loadIntraday() {
   const result = await API.getIntraday(StockState.code, StockState.market);
   if (result.success) {
-    IntradayChart.render(result.data);
+    // 传递完整的结果对象（包含 data 和 prevClose）
+    IntradayChart.render(result);
   }
 }
 
