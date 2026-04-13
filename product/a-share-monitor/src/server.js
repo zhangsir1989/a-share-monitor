@@ -58,6 +58,20 @@ async function initDatabase() {
     `);
     // 插入默认管理员账户
     db.run(`INSERT INTO users (user_id, username, password, role, is_active) VALUES ('admin', 'admin', 'admin123', '1', 1)`);
+    
+    // 创建定时任务表
+    db.run(`
+      CREATE TABLE IF NOT EXISTS scheduled_tasks (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        cron TEXT NOT NULL,
+        status INTEGER DEFAULT 1,
+        last_run DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ 定时任务表已创建');
     saveDatabase();
     console.log('✅ 数据库创建成功，默认用户：admin / admin123');
   } else {
