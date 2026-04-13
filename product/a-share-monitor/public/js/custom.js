@@ -182,10 +182,10 @@ function stopAutoRefresh() {
 // ==================== 自选股管理 ====================
 
 // 从数据库加载用户的自选股
-async function loadStocks() {
+async function loadStocks(type = 1) {
   try {
-    console.log('📦 开始从数据库加载自选股...');
-    const response = await fetch('/api/custom-stocks/list?type=1');
+    console.log('📦 开始从数据库加载自选股 (type=' + type + ')...');
+    const response = await fetch(`/api/custom-stocks/list?type=${type}`);
     const result = await response.json();
     console.log('📦 数据库返回:', result);
     

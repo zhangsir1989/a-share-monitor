@@ -356,8 +356,9 @@ function bindGroupListEvents() {
 
 // ==================== 筛选功能 ====================
 
-function filterByGroup(type) {
-  GroupManager.currentFilter = type === 'all' ? 1 : parseInt(type);
+async function filterByGroup(type) {
+  const newType = type === 'all' ? 1 : parseInt(type);
+  GroupManager.currentFilter = newType;
   
   // 更新 URL 参数（可选，用于刷新后保持筛选状态）
   const url = new URL(window.location);
@@ -368,13 +369,19 @@ function filterByGroup(type) {
   }
   window.history.pushState({}, '', url);
   
-  // 重新渲染股票列表
-  if (typeof updateStockList === 'function') {
-    updateStockList();
-  }
-  
   const groupName = GroupManager.groups.find(g => g.type === GroupManager.currentFilter)?.name || '我的自选股';
   console.log('📁 筛选分组:', groupName, '(type=' + GroupManager.currentFilter + ')');
+  
+  // 重新从数据库加载该分组的股票
+  console.log('🔄 切换分组，重新加载股票数据...');
+  if (typeof loadStocks === 'function') {
+    await loadStocks(newType);
+  } else {
+    // 如果 loadStocks 不可用，回退到前端筛选
+    if (typeof updateStockList === 'function') {
+      updateStockList();
+    }
+  }
 }
 
 function getFilteredStocks() {
