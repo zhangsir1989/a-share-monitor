@@ -38,40 +38,112 @@ const txApi = axios.create({
 let dataSourceStatus = { volume: 'mydata', turnover: 'mydata', limitUp: 'mydata', cashflow: 'unknown' };
 
 /**
- * 获取沪深成交量数据（仅使用 MyData API）
+ * 判断当前是否在 A 股交易时间
+ * 交易时间：周一至周五 9:30-11:30, 13:00-15:00
+ */
+function isTradingTime() {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const weekday = now.getDay(); // 0=周日，6=周六
+  
+  // 周六日不是交易日
+  if (weekday === 0 || weekday === 6) {
+    return false;
+  }
+  
+  // 转换为分钟数便于比较
+  const currentMinutes = hour * 60 + minute;
+  const morningStart = 9 * 60 + 30;   // 9:30
+  const morningEnd = 11 * 60 + 30;    // 11:30
+  const afternoonStart = 13 * 60;     // 13:00
+  const afternoonEnd = 15 * 60;       // 15:00
+  
+  return (currentMinutes >= morningStart && currentMinutes < morningEnd) ||
+         (currentMinutes >= afternoonStart && currentMinutes < afternoonEnd);
+}
+
+/**
+ * 获取沪深成交量数据（交易时间使用腾讯实时数据，非交易时间使用 MyData）
  */
 async function fetchMarketVolume() {
+  // 交易时间优先使用腾讯财经实时数据
+  if (isTradingTime()) {
+    try {
+      const resp = await txApi.get('http://qt.gtimg.cn/q=sh000001,sz399001');
+      const text = iconv.decode(resp.data, 'gbk');
+      const lines = text.split('\n');
+      
+      let shVolume = 0, szVolume = 0, shAmount = 0, szAmount = 0;
+      
+      for (const line of lines) {
+        const match = line.match(/v_(sh000001|sz399001)="([^"]+)"/);
+        if (match) {
+          const parts = match[2].split('~');
+          // 字段 6: 成交量（股），字段 57: 成交额（万元）
+          const volume = parseInt(parts[6]) || 0;
+          const amountWanYuan = parseFloat(parts[57]) || 0;  // 万元
+          const amount = amountWanYuan * 10000;  // 转换为元
+          
+          if (match[1] === 'sh000001') {
+            shVolume = volume;
+            shAmount = amount;
+          } else {
+            szVolume = volume;
+            szAmount = amount;
+          }
+        }
+      }
+      
+      const totalVolume = (shVolume + szVolume) / 100000000;  // 股转换为亿手
+      const totalAmount = (shAmount + szAmount) / 100000000;  // 元转换为亿元
+      
+      dataSourceStatus.volume = 'tencent';
+      
+      return {
+        totalVolume: Math.round(totalVolume * 100) / 100,  // 亿手，保留 2 位小数
+        totalAmount: Math.round(totalAmount * 100) / 100,  // 亿元，保留 2 位小数
+        shVolume: Math.round(shVolume / 100000000 * 100) / 100,  // 亿手
+        szVolume: Math.round(szVolume / 100000000 * 100) / 100,
+        shAmount: Math.round(shAmount / 100000000 * 100) / 100,  // 亿元
+        szAmount: Math.round(szAmount / 100000000 * 100) / 100,
+        shRatio: totalAmount > 0 ? ((shAmount / totalAmount) * 100).toFixed(2) : '0',
+        szRatio: totalAmount > 0 ? ((szAmount / totalAmount) * 100).toFixed(2) : '0'
+      };
+    } catch (e) {
+      console.error('获取沪深成交量失败 (腾讯):', e.message);
+      // 腾讯失败，降级使用 MyData
+    }
+  }
+  
+  // 非交易时间或腾讯失败，使用 MyData API
   try {
-    // 使用 MyData API 获取上证指数和深证成指的最新数据
     const [shResp, szResp] = await Promise.all([
       axios.get(`https://api.mairuiapi.com/hsindex/latest/000001.SH/d/${MYDATA_LICENCE}`, { timeout: 10000 }),
       axios.get(`https://api.mairuiapi.com/hsindex/latest/399001.SZ/d/${MYDATA_LICENCE}`, { timeout: 10000 })
     ]);
     
-    // MyData API 返回的是数组，取第一个元素
     const shData = Array.isArray(shResp.data) ? shResp.data[0] : shResp.data;
     const szData = Array.isArray(szResp.data) ? szResp.data[0] : szResp.data;
     
-    // MyData API 返回格式：v=成交量（股），a=成交额（元）
-    const shVolume = shData?.v || 0;  // 成交量（股）
+    const shVolume = shData?.v || 0;
     const szVolume = szData?.v || 0;
-    const shAmountYuan = shData?.a || 0;  // 成交额（元）
-    const szAmountYuan = szData?.a || 0;  // 成交额（元）
+    const shAmountYuan = shData?.a || 0;
+    const szAmountYuan = szData?.a || 0;
     
-    // 转换为亿元（保留原始精度，不四舍五入）
-    const shAmount = shAmountYuan / 100000000;  // 沪市成交额（亿元）
-    const szAmount = szAmountYuan / 100000000;  // 深市成交额（亿元）
-    const totalAmount = shAmount + szAmount;  // 总计：亿元相加
-    const totalVolume = (shVolume + szVolume) / 100000000;  // 股转换为亿手
+    const shAmount = shAmountYuan / 100000000;
+    const szAmount = szAmountYuan / 100000000;
+    const totalAmount = shAmount + szAmount;
+    const totalVolume = (shVolume + szVolume) / 100000000;
     
     dataSourceStatus.volume = 'mydata';
     
     return {
-      totalVolume: Math.round(totalVolume * 100) / 100,  // 亿手，保留 2 位小数
-      totalAmount: Math.round(totalAmount * 100) / 100,  // 亿元，保留 2 位小数
-      shVolume: Math.round(shVolume / 100000000 * 100) / 100,  // 亿手
+      totalVolume: Math.round(totalVolume * 100) / 100,
+      totalAmount: Math.round(totalAmount * 100) / 100,
+      shVolume: Math.round(shVolume / 100000000 * 100) / 100,
       szVolume: Math.round(szVolume / 100000000 * 100) / 100,
-      shAmount: Math.round(shAmount * 100) / 100,  // 亿元
+      shAmount: Math.round(shAmount * 100) / 100,
       szAmount: Math.round(szAmount * 100) / 100,
       shRatio: totalAmount > 0 ? ((shAmount / totalAmount) * 100).toFixed(2) : '0',
       szRatio: totalAmount > 0 ? ((szAmount / totalAmount) * 100).toFixed(2) : '0'

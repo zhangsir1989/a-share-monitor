@@ -69,7 +69,7 @@ function updateVolumeData(data) {
     }
   }
   
-  // totalVolume 单位是万手，直接显示
+  // totalVolume 单位是亿手，直接显示
   elements.totalVolume.textContent = formatNumber(data.totalVolume);
   
   // 沪市成交额显示（单位：亿元，保留 2 位小数）
