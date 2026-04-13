@@ -67,7 +67,7 @@ async function loadAllData() {
     IntradayChart.render(intradayResult.data);
     console.log('✅ 分时走势加载完成');
   } else {
-    Chart.drawPlaceholder('分时数据加载失败');
+    IntradayChart.drawPlaceholder('分时数据加载失败');
   }
   
   // 加载基本信息
@@ -157,6 +157,7 @@ async function loadBasicInfo() {
   const result = await API.getStockBasic(StockState.code, StockState.market);
   if (result.success) {
     UI.updateBasicInfo(result.data);  // 更新股票名称、价格、涨幅
+    UI.updateBasicData(result.data);  // 更新基本数据表格
   }
   // 同时更新分时图
   const intradayResult = await API.getIntraday(StockState.code, StockState.market);
