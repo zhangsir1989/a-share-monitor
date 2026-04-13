@@ -91,6 +91,11 @@ async function init() {
   
   // 启动自动刷新
   startAutoRefresh();
+  
+  // 初始化分组管理器
+  if (typeof initGroupManager === 'function') {
+    initGroupManager();
+  }
 }
 
 // ==================== 时间和市场状态 ====================
@@ -366,10 +371,22 @@ function clearAllStocks() {
 }
 
 function updateStockList() {
-  elements.stockCount.textContent = pageState.stocks.length;
-  elements.emptyState.style.display = pageState.stocks.length === 0 ? 'block' : 'none';
+  const filteredStocks = typeof getFilteredStocks === 'function' ? getFilteredStocks() : pageState.stocks;
+  
+  elements.stockCount.textContent = filteredStocks.length;
+  elements.emptyState.style.display = filteredStocks.length === 0 ? 'block' : 'none';
   elements.clearAllBtn.style.display = pageState.stocks.length > 0 ? 'block' : 'none';
   elements.sortButtons.style.display = pageState.stocks.length > 0 ? 'flex' : 'none';
+  
+  // 显示分组管理按钮和筛选器
+  const groupManagerBtn = document.getElementById('group-manager-btn');
+  const groupFilterSelect = document.getElementById('group-filter-select');
+  if (groupManagerBtn && pageState.stocks.length > 0) {
+    groupManagerBtn.style.display = 'inline-flex';
+  }
+  if (groupFilterSelect && GroupManager && GroupManager.groups.length > 0) {
+    groupFilterSelect.style.display = 'inline-block';
+  }
   
   renderStockCards();
 }
@@ -413,14 +430,17 @@ async function fetchAllStockData() {
 
 // 获取排序后的股票列表
 function getSortedStocks() {
+  // 先获取筛选后的股票
+  const baseStocks = typeof getFilteredStocks === 'function' ? getFilteredStocks() : pageState.stocks;
+  
   if (pageState.sortBy === 'default') {
-    return pageState.stocks;
+    return baseStocks;
   }
   
   const field = pageState.sortBy;
   const order = pageState.sortOrder || 'desc';  // 默认降序
   
-  return [...pageState.stocks].sort((a, b) => {
+  return [...baseStocks].sort((a, b) => {
     const dataA = pageState.stockData[a.code] || {};
     const dataB = pageState.stockData[b.code] || {};
     
@@ -540,7 +560,10 @@ function renderStockCards(prevData = {}) {
               <span class="detail-value">${formatAmount(data.amount)}</span>
             </div>
           </div>
-          <button class="delete-btn" onclick="event.stopPropagation(); removeStock('${stock.code}')" title="删除">🗑️</button>
+          <div class="card-actions">
+            ${typeof renderGroupSelector === 'function' ? renderGroupSelector(stock.code, stock.name) : ''}
+            <button class="delete-btn" onclick="event.stopPropagation(); removeStock('${stock.code}')" title="删除">🗑️</button>
+          </div>
         </div>
       </div>
     `;

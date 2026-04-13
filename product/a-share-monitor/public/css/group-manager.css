@@ -1,0 +1,497 @@
+/**
+ * 自选股分组管理样式
+ * 独立样式文件，不影响原有自选股样式
+ */
+
+/* ==================== 分组管理按钮 ==================== */
+
+.group-manager-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+}
+
+.group-manager-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.group-manager-btn:active {
+  transform: translateY(0);
+}
+
+/* ==================== 分组下拉菜单 ==================== */
+
+.group-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: #1e1e2f;
+  border: 1px solid #2d2d44;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  min-width: 320px;
+  max-width: 400px;
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+}
+
+.group-dropdown.show {
+  display: block;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.group-dropdown-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #2d2d44;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.group-dropdown-header h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #e0e0e0;
+}
+
+.btn-create-group {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.btn-create-group:hover {
+  transform: scale(1.05);
+}
+
+.group-dropdown-content {
+  padding: 12px;
+}
+
+/* ==================== 分组筛选 ==================== */
+
+.group-filter-section {
+  margin-bottom: 16px;
+}
+
+.group-filter-section label {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.group-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.group-filter-btn {
+  background: #2d2d44;
+  color: #e0e0e0;
+  border: 1px solid #3d3d5c;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.group-filter-btn:hover {
+  background: #3d3d5c;
+}
+
+.group-filter-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  color: white;
+}
+
+/* ==================== 分组列表 ==================== */
+
+.group-list-section h5 {
+  font-size: 12px;
+  color: #888;
+  margin: 0 0 8px 0;
+}
+
+.group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-item {
+  background: #2d2d44;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.group-item:hover {
+  background: #32324a;
+}
+
+.group-item-header {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.group-icon {
+  font-size: 16px;
+}
+
+.group-name {
+  flex: 1;
+  font-size: 13px;
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+.group-count {
+  background: #667eea;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.group-item-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.group-item:hover .group-item-actions {
+  opacity: 1;
+}
+
+.btn-group-action {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.btn-group-action:hover {
+  background: #3d3d5c;
+}
+
+.btn-group-action.btn-delete:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.group-item-stocks {
+  padding: 8px 12px;
+  border-top: 1px solid #3d3d5c;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.group-stock-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #3d3d5c;
+}
+
+.group-stock-item:last-child {
+  border-bottom: none;
+}
+
+.group-stock-item .stock-name {
+  flex: 1;
+  font-size: 12px;
+  color: #e0e0e0;
+}
+
+.group-stock-item .stock-code {
+  font-size: 11px;
+  color: #888;
+}
+
+.btn-remove-stock {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 2px;
+  font-size: 12px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.btn-remove-stock:hover {
+  opacity: 1;
+}
+
+.empty-groups,
+.empty-group-stocks {
+  padding: 20px;
+  text-align: center;
+  color: #888;
+  font-size: 13px;
+}
+
+/* ==================== 分组筛选下拉框 ==================== */
+
+.group-filter-select {
+  background: #2d2d44;
+  color: #e0e0e0;
+  border: 1px solid #3d3d5c;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.group-filter-select:hover {
+  border-color: #667eea;
+}
+
+.group-filter-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+/* ==================== 分组选择器（股票卡片） ==================== */
+
+.group-selector {
+  position: relative;
+  display: inline-block;
+}
+
+.btn-group-selector {
+  background: #2d2d44;
+  color: #e0e0e0;
+  border: 1px solid #3d3d5c;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s ease;
+}
+
+.btn-group-selector:hover {
+  background: #3d3d5c;
+  border-color: #667eea;
+}
+
+.group-selector-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  background: #1e1e2f;
+  border: 1px solid #2d2d44;
+  border-radius: 6px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+  min-width: 150px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  display: none;
+  padding: 8px;
+}
+
+.group-selector:hover .group-selector-dropdown {
+  display: block;
+}
+
+.group-selector-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #e0e0e0;
+  transition: background 0.2s ease;
+}
+
+.group-selector-item:hover {
+  background: #2d2d44;
+}
+
+.group-selector-item.selected {
+  background: rgba(102, 126, 234, 0.2);
+  color: #667eea;
+}
+
+.group-selector-item input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.empty-selector {
+  padding: 12px;
+  text-align: center;
+  color: #888;
+  font-size: 12px;
+}
+
+/* ==================== 分组模态框 ==================== */
+
+.group-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.group-modal-content {
+  background: #1e1e2f;
+  border: 1px solid #2d2d44;
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.group-modal-content h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  color: #e0e0e0;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.form-group input[type="text"],
+.form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  background: #2d2d44;
+  border: 1px solid #3d3d5c;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.form-group input[type="text"]:focus,
+.form-group select:focus {
+  border-color: #667eea;
+}
+
+.form-group input[type="color"] {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #3d3d5c;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #2d2d44;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-actions .btn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-actions .btn-cancel {
+  background: #2d2d44;
+  color: #e0e0e0;
+  border: 1px solid #3d3d5c;
+}
+
+.modal-actions .btn-cancel:hover {
+  background: #3d3d5c;
+}
+
+.modal-actions .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+}
+
+.modal-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* ==================== 响应式 ==================== */
+
+@media (max-width: 768px) {
+  .group-dropdown {
+    min-width: 280px;
+    max-width: 90vw;
+  }
+  
+  .group-manager-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}

@@ -139,6 +139,34 @@ async function initDatabase() {
   `);
   console.log('✅ 自选股表已检查');
   
+  // 创建分组表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS custom_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      icon TEXT DEFAULT '📁',
+      color TEXT DEFAULT '#4a9eff',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  console.log('✅ 分组表已检查');
+  
+  // 创建股票 - 分组关联表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS stock_group_relations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      stock_code TEXT NOT NULL,
+      stock_market TEXT NOT NULL,
+      group_id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(stock_code, stock_market, group_id),
+      FOREIGN KEY (group_id) REFERENCES custom_groups(id) ON DELETE CASCADE
+    )
+  `);
+  console.log('✅ 股票分组关联表已检查');
+  
   db.run(`
     CREATE TABLE IF NOT EXISTS securities (
       code TEXT PRIMARY KEY,
@@ -1940,6 +1968,213 @@ app.post('/api/custom-stocks/delete', (req, res) => {
   } catch (error) {
     console.error('删除失败:', error.message);
     res.status(500).json({ success: false, message: '删除失败' });
+  }
+});
+
+// ==================== 分组管理 API ====================
+
+// 获取分组列表
+app.get('/api/custom-groups/list', (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: '未登录' });
+    }
+    
+    // 获取所有分组
+    const groupsResult = db.exec(`SELECT id, name, icon, color, created_at FROM custom_groups WHERE user_id = '${userId}' ORDER BY created_at ASC`);
+    const groups = groupsResult.length > 0 ? groupsResult[0].values.map(row => ({
+      id: row[0],
+      name: row[1],
+      icon: row[2],
+      color: row[3],
+      createdAt: row[4]
+    })) : [];
+    
+    // 获取股票 - 分组映射
+    const relationsResult = db.exec(`SELECT stock_code, group_id FROM stock_group_relations WHERE user_id = '${userId}'`);
+    const stockGroups = {};
+    if (relationsResult.length > 0) {
+      relationsResult[0].values.forEach(row => {
+        const code = row[0];
+        const groupId = row[1];
+        if (!stockGroups[code]) {
+          stockGroups[code] = [];
+        }
+        stockGroups[code].push(groupId);
+      });
+    }
+    
+    res.json({ success: true, data: { groups, stockGroups } });
+  } catch (error) {
+    console.error('获取分组列表失败:', error.message);
+    res.status(500).json({ success: false, message: '获取分组列表失败' });
+  }
+});
+
+// 创建分组
+app.post('/api/custom-groups/create', (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: '未登录' });
+    }
+    
+    const { name, icon, color } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ success: false, message: '分组名称不能为空' });
+    }
+    
+    db.run(
+      `INSERT INTO custom_groups (user_id, name, icon, color) VALUES (?, ?, ?, ?)`,
+      [userId, name, icon || '📁', color || '#4a9eff']
+    );
+    saveDatabase();
+    
+    const result = db.exec(`SELECT last_insert_rowid()`);
+    const groupId = result[0].values[0][0];
+    
+    console.log(`✅ 用户 ${userId} 创建分组：${name}`);
+    res.json({ success: true, message: '分组创建成功', data: { id: groupId, name, icon, color } });
+  } catch (error) {
+    console.error('创建分组失败:', error.message);
+    res.status(500).json({ success: false, message: '创建分组失败' });
+  }
+});
+
+// 更新分组
+app.post('/api/custom-groups/update', (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: '未登录' });
+    }
+    
+    const { id, name, icon, color } = req.body;
+    
+    if (!id || !name) {
+      return res.status(400).json({ success: false, message: '参数错误' });
+    }
+    
+    // 验证分组属于当前用户
+    const check = db.exec(`SELECT COUNT(*) FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
+    if (check[0].values[0][0] === 0) {
+      return res.status(404).json({ success: false, message: '分组不存在' });
+    }
+    
+    db.run(
+      `UPDATE custom_groups SET name = ?, icon = ?, color = ? WHERE id = ? AND user_id = ?`,
+      [name, icon || '📁', color || '#4a9eff', id, userId]
+    );
+    saveDatabase();
+    
+    console.log(`✅ 用户 ${userId} 更新分组：${name}`);
+    res.json({ success: true, message: '分组更新成功' });
+  } catch (error) {
+    console.error('更新分组失败:', error.message);
+    res.status(500).json({ success: false, message: '更新分组失败' });
+  }
+});
+
+// 删除分组
+app.post('/api/custom-groups/delete', (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: '未登录' });
+    }
+    
+    const { id } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ success: false, message: '参数错误' });
+    }
+    
+    // 验证分组属于当前用户
+    const check = db.exec(`SELECT COUNT(*) FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
+    if (check[0].values[0][0] === 0) {
+      return res.status(404).json({ success: false, message: '分组不存在' });
+    }
+    
+    // 先删除关联关系
+    db.run(`DELETE FROM stock_group_relations WHERE group_id = ${id}`);
+    // 再删除分组
+    db.run(`DELETE FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
+    saveDatabase();
+    
+    console.log(`✅ 用户 ${userId} 删除分组：${id}`);
+    res.json({ success: true, message: '分组删除成功' });
+  } catch (error) {
+    console.error('删除分组失败:', error.message);
+    res.status(500).json({ success: false, message: '删除分组失败' });
+  }
+});
+
+// 将股票分配到分组
+app.post('/api/custom-groups/assign', (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: '未登录' });
+    }
+    
+    const { code, groupId } = req.body;
+    
+    if (!code || !groupId) {
+      return res.status(400).json({ success: false, message: '参数错误' });
+    }
+    
+    // 获取股票市场信息
+    const stockResult = db.exec(`SELECT stock_market FROM custom_stocks WHERE user_id = '${userId}' AND stock_code = '${code}'`);
+    if (stockResult.length === 0) {
+      return res.status(404).json({ success: false, message: '股票不在自选列表中' });
+    }
+    const market = stockResult[0].values[0][0];
+    
+    // 验证分组属于当前用户
+    const groupCheck = db.exec(`SELECT COUNT(*) FROM custom_groups WHERE id = ${groupId} AND user_id = '${userId}'`);
+    if (groupCheck[0].values[0][0] === 0) {
+      return res.status(404).json({ success: false, message: '分组不存在' });
+    }
+    
+    // 添加关联关系
+    db.run(
+      `INSERT OR IGNORE INTO stock_group_relations (user_id, stock_code, stock_market, group_id) VALUES (?, ?, ?, ?)`,
+      [userId, code, market, groupId]
+    );
+    saveDatabase();
+    
+    console.log(`✅ 用户 ${userId} 将 ${code} 分配到分组 ${groupId}`);
+    res.json({ success: true, message: '分配成功' });
+  } catch (error) {
+    console.error('分配分组失败:', error.message);
+    res.status(500).json({ success: false, message: '分配分组失败' });
+  }
+});
+
+// 从分组移除股票
+app.post('/api/custom-groups/remove', (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: '未登录' });
+    }
+    
+    const { code, groupId } = req.body;
+    
+    if (!code || !groupId) {
+      return res.status(400).json({ success: false, message: '参数错误' });
+    }
+    
+    db.run(`DELETE FROM stock_group_relations WHERE stock_code = ? AND group_id = ?`, [code, groupId]);
+    saveDatabase();
+    
+    console.log(`✅ 用户 ${userId} 从分组 ${groupId} 移除 ${code}`);
+    res.json({ success: true, message: '移除成功' });
+  } catch (error) {
+    console.error('移除分组失败:', error.message);
+    res.status(500).json({ success: false, message: '移除分组失败' });
   }
 });
 

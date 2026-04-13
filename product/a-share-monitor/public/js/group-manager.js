@@ -1,0 +1,545 @@
+/**
+ * 自选股分组管理逻辑
+ * 功能：创建/编辑/删除分组，管理股票分组归属，按分组筛选
+ * 独立模块，不影响原有自选股功能
+ */
+
+// 分组管理状态
+const GroupManager = {
+  groups: [],  // 分组列表 [{id, name, icon, color, createdAt}]
+  stockGroups: {},  // 股票 - 分组映射 {code: [groupId1, groupId2]}
+  currentFilter: 'all',  // 当前筛选的分组 ID，'all' 表示全部
+  elements: {}
+};
+
+// ==================== 初始化 ====================
+
+function initGroupManager() {
+  console.log('📁 初始化分组管理器...');
+  
+  // 初始化 DOM 元素
+  GroupManager.elements = {
+    groupManagerBtn: document.getElementById('group-manager-btn'),
+    groupDropdown: document.getElementById('group-dropdown'),
+    groupFilterSelect: document.getElementById('group-filter-select'),
+    createGroupInput: document.getElementById('create-group-input'),
+    createGroupBtn: document.getElementById('create-group-btn'),
+    groupList: document.getElementById('group-list'),
+    stockCountLabel: document.getElementById('stock-count-label')
+  };
+  
+  // 从数据库加载分组
+  loadGroups();
+  
+  // 绑定事件
+  bindGroupEvents();
+}
+
+// ==================== 分组数据管理 ====================
+
+async function loadGroups() {
+  try {
+    const response = await fetch('/api/custom-groups/list');
+    const result = await response.json();
+    
+    if (result.success) {
+      GroupManager.groups = result.data.groups || [];
+      GroupManager.stockGroups = result.data.stockGroups || {};
+      console.log('📁 加载分组:', GroupManager.groups.length, '个');
+      renderGroupDropdown();
+      renderGroupFilter();
+    }
+  } catch (error) {
+    console.error('加载分组失败:', error);
+  }
+}
+
+async function saveGroup(name, icon = '📁', color = '#4a9eff') {
+  try {
+    const response = await fetch('/api/custom-groups/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, icon, color })
+    });
+    const result = await response.json();
+    
+    if (result.success) {
+      await loadGroups();
+      showToast(`分组 "${name}" 创建成功`, 'success');
+      return result.data;
+    } else {
+      showToast(result.message || '创建失败', 'error');
+      return null;
+    }
+  } catch (error) {
+    console.error('创建分组失败:', error);
+    showToast('网络错误', 'error');
+    return null;
+  }
+}
+
+async function updateGroup(groupId, name, icon, color) {
+  try {
+    const response = await fetch('/api/custom-groups/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: groupId, name, icon, color })
+    });
+    const result = await response.json();
+    
+    if (result.success) {
+      await loadGroups();
+      showToast('分组更新成功', 'success');
+      return true;
+    } else {
+      showToast(result.message || '更新失败', 'error');
+      return false;
+    }
+  } catch (error) {
+    console.error('更新分组失败:', error);
+    showToast('网络错误', 'error');
+    return false;
+  }
+}
+
+async function deleteGroup(groupId) {
+  if (!confirm('确定要删除这个分组吗？分组内的股票不会被删除，只是移除分组关联。')) {
+    return false;
+  }
+  
+  try {
+    const response = await fetch('/api/custom-groups/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: groupId })
+    });
+    const result = await response.json();
+    
+    if (result.success) {
+      await loadGroups();
+      showToast('分组删除成功', 'success');
+      return true;
+    } else {
+      showToast(result.message || '删除失败', 'error');
+      return false;
+    }
+  } catch (error) {
+    console.error('删除分组失败:', error);
+    showToast('网络错误', 'error');
+    return false;
+  }
+}
+
+async function assignStockToGroup(code, groupId) {
+  try {
+    const response = await fetch('/api/custom-groups/assign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, groupId })
+    });
+    const result = await response.json();
+    
+    if (result.success) {
+      await loadGroups();
+      return true;
+    } else {
+      showToast(result.message || '分配失败', 'error');
+      return false;
+    }
+  } catch (error) {
+    console.error('分配分组失败:', error);
+    showToast('网络错误', 'error');
+    return false;
+  }
+}
+
+async function removeStockFromGroup(code, groupId) {
+  try {
+    const response = await fetch('/api/custom-groups/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, groupId })
+    });
+    const result = await response.json();
+    
+    if (result.success) {
+      await loadGroups();
+      return true;
+    } else {
+      showToast(result.message || '移除失败', 'error');
+      return false;
+    }
+  } catch (error) {
+    console.error('移除分组失败:', error);
+    return false;
+  }
+}
+
+// ==================== UI 渲染 ====================
+
+function renderGroupDropdown() {
+  const btn = GroupManager.elements.groupManagerBtn;
+  const dropdown = GroupManager.elements.groupDropdown;
+  
+  if (!btn || !dropdown) return;
+  
+  // 更新按钮计数
+  const totalGroups = GroupManager.groups.length;
+  btn.innerHTML = `📁 分组管理 (${totalGroups})`;
+  
+  // 渲染下拉列表
+  dropdown.innerHTML = `
+    <div class="group-dropdown-header">
+      <h4>我的分组</h4>
+      <button class="btn-create-group" id="btn-create-group">➕ 新建分组</button>
+    </div>
+    
+    <div class="group-dropdown-content">
+      <div class="group-filter-section">
+        <label>快速筛选：</label>
+        <div class="group-filter-buttons" id="group-filter-buttons">
+          <button class="group-filter-btn active" data-group="all">全部 (${pageState.stocks.length})</button>
+        </div>
+      </div>
+      
+      <div class="group-list-section">
+        <h5>分组列表</h5>
+        <div class="group-list" id="group-list-inner">
+          ${renderGroupListHTML()}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // 绑定新建分组按钮事件
+  document.getElementById('btn-create-group')?.addEventListener('click', showCreateGroupModal);
+  
+  // 绑定筛选按钮事件
+  document.querySelectorAll('.group-filter-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.group-filter-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      filterByGroup(e.target.dataset.group);
+    });
+  });
+  
+  // 绑定分组列表事件
+  bindGroupListEvents();
+}
+
+function renderGroupListHTML() {
+  if (GroupManager.groups.length === 0) {
+    return '<div class="empty-groups">暂无分组，点击右上角新建</div>';
+  }
+  
+  return GroupManager.groups.map(group => {
+    const stockCount = Object.values(GroupManager.stockGroups)
+      .filter(groups => groups.includes(group.id)).length;
+    
+    return `
+      <div class="group-item" data-group-id="${group.id}">
+        <div class="group-item-header">
+          <span class="group-icon">${group.icon}</span>
+          <span class="group-name">${group.name}</span>
+          <span class="group-count">${stockCount}</span>
+          <div class="group-item-actions">
+            <button class="btn-group-action btn-edit" title="编辑">✏️</button>
+            <button class="btn-group-action btn-delete" title="删除">🗑️</button>
+          </div>
+        </div>
+        <div class="group-item-stocks" id="group-stocks-${group.id}">
+          ${renderGroupStocksHTML(group.id)}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderGroupStocksHTML(groupId) {
+  const stocks = pageState.stocks.filter(stock => {
+    const groups = GroupManager.stockGroups[stock.code] || [];
+    return groups.includes(groupId);
+  });
+  
+  if (stocks.length === 0) {
+    return '<div class="empty-group-stocks">暂无股票</div>';
+  }
+  
+  return stocks.map(stock => `
+    <div class="group-stock-item" data-code="${stock.code}">
+      <span class="stock-name">${stock.name}</span>
+      <span class="stock-code">${stock.code}</span>
+      <button class="btn-remove-stock" title="从分组移除">❌</button>
+    </div>
+  `).join('');
+}
+
+function renderGroupFilter() {
+  const select = GroupManager.elements.groupFilterSelect;
+  if (!select) return;
+  
+  select.innerHTML = `
+    <option value="all">全部分组 (${pageState.stocks.length})</option>
+    ${GroupManager.groups.map(g => {
+      const count = Object.values(GroupManager.stockGroups)
+        .filter(groups => groups.includes(g.id)).length;
+      return `<option value="${g.id}">${g.icon} ${g.name} (${count})</option>`;
+    }).join('')}
+  `;
+}
+
+// ==================== 事件绑定 ====================
+
+function bindGroupEvents() {
+  // 分组管理按钮点击
+  GroupManager.elements.groupManagerBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    GroupManager.elements.groupDropdown.classList.toggle('show');
+  });
+  
+  // 点击其他地方关闭下拉菜单
+  document.addEventListener('click', () => {
+    GroupManager.elements.groupDropdown?.classList.remove('show');
+  });
+  
+  // 筛选下拉框变化
+  GroupManager.elements.groupFilterSelect?.addEventListener('change', (e) => {
+    filterByGroup(e.target.value);
+  });
+}
+
+function bindGroupListEvents() {
+  // 编辑分组
+  document.querySelectorAll('.btn-group-action.btn-edit').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const groupId = btn.closest('.group-item').dataset.groupId;
+      const group = GroupManager.groups.find(g => g.id === groupId);
+      if (group) {
+        showEditGroupModal(group);
+      }
+    });
+  });
+  
+  // 删除分组
+  document.querySelectorAll('.btn-group-action.btn-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const groupId = btn.closest('.group-item').dataset.groupId;
+      deleteGroup(groupId);
+    });
+  });
+  
+  // 从分组移除股票
+  document.querySelectorAll('.btn-remove-stock').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const stockCode = btn.closest('.group-stock-item').dataset.code;
+      const groupId = btn.closest('.group-item').dataset.groupId;
+      removeStockFromGroup(stockCode, groupId);
+    });
+  });
+}
+
+// ==================== 筛选功能 ====================
+
+function filterByGroup(groupId) {
+  GroupManager.currentFilter = groupId;
+  
+  // 更新 URL 参数（可选，用于刷新后保持筛选状态）
+  const url = new URL(window.location);
+  if (groupId === 'all') {
+    url.searchParams.delete('group');
+  } else {
+    url.searchParams.set('group', groupId);
+  }
+  window.history.pushState({}, '', url);
+  
+  // 重新渲染股票列表
+  if (typeof updateStockList === 'function') {
+    updateStockList();
+  }
+  
+  console.log('📁 筛选分组:', groupId === 'all' ? '全部' : groupId);
+}
+
+function getFilteredStocks() {
+  if (GroupManager.currentFilter === 'all') {
+    return pageState.stocks;
+  }
+  
+  return pageState.stocks.filter(stock => {
+    const groups = GroupManager.stockGroups[stock.code] || [];
+    return groups.includes(GroupManager.currentFilter);
+  });
+}
+
+// ==================== 模态框 ====================
+
+function showCreateGroupModal() {
+  const modal = document.createElement('div');
+  modal.className = 'group-modal';
+  modal.innerHTML = `
+    <div class="group-modal-content">
+      <h3>新建分组</h3>
+      <div class="form-group">
+        <label>分组名称：</label>
+        <input type="text" id="new-group-name" placeholder="如：AI 算力、半导体、持仓股" maxlength="20">
+      </div>
+      <div class="form-group">
+        <label>分组图标：</label>
+        <select id="new-group-icon">
+          <option value="📁">📁 文件夹</option>
+          <option value="📂">📂 打开文件夹</option>
+          <option value="🏷️">🏷️ 标签</option>
+          <option value="⭐">⭐ 星标</option>
+          <option value="🔥">🔥 热门</option>
+          <option value="💎">💎 钻石</option>
+          <option value="🚀">🚀 火箭</option>
+          <option value="📈">📈 上涨</option>
+          <option value="🤖">🤖 AI</option>
+          <option value="💻">💻 科技</option>
+          <option value="🏦">🏦 金融</option>
+          <option value="💊">💊 医药</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>分组颜色：</label>
+        <input type="color" id="new-group-color" value="#4a9eff">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="this.closest('.group-modal').remove()">取消</button>
+        <button class="btn btn-primary" id="confirm-create-group">创建</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  document.getElementById('confirm-create-group').addEventListener('click', async () => {
+    const name = document.getElementById('new-group-name').value.trim();
+    const icon = document.getElementById('new-group-icon').value;
+    const color = document.getElementById('new-group-color').value;
+    
+    if (!name) {
+      showToast('请输入分组名称', 'warning');
+      return;
+    }
+    
+    const success = await saveGroup(name, icon, color);
+    if (success) {
+      modal.remove();
+      // 关闭下拉菜单
+      GroupManager.elements.groupDropdown?.classList.remove('show');
+    }
+  });
+}
+
+function showEditGroupModal(group) {
+  const modal = document.createElement('div');
+  modal.className = 'group-modal';
+  modal.innerHTML = `
+    <div class="group-modal-content">
+      <h3>编辑分组</h3>
+      <div class="form-group">
+        <label>分组名称：</label>
+        <input type="text" id="edit-group-name" value="${group.name}" maxlength="20">
+      </div>
+      <div class="form-group">
+        <label>分组图标：</label>
+        <select id="edit-group-icon">
+          <option value="📁" ${group.icon === '📁' ? 'selected' : ''}>📁 文件夹</option>
+          <option value="📂" ${group.icon === '📂' ? 'selected' : ''}>📂 打开文件夹</option>
+          <option value="🏷️" ${group.icon === '🏷️' ? 'selected' : ''}>🏷️ 标签</option>
+          <option value="⭐" ${group.icon === '⭐' ? 'selected' : ''}>⭐ 星标</option>
+          <option value="🔥" ${group.icon === '🔥' ? 'selected' : ''}>🔥 热门</option>
+          <option value="💎" ${group.icon === '💎' ? 'selected' : ''}>💎 钻石</option>
+          <option value="🚀" ${group.icon === '🚀' ? 'selected' : ''}>🚀 火箭</option>
+          <option value="📈" ${group.icon === '📈' ? 'selected' : ''}>📈 上涨</option>
+          <option value="🤖" ${group.icon === '🤖' ? 'selected' : ''}>🤖 AI</option>
+          <option value="💻" ${group.icon === '💻' ? 'selected' : ''}>💻 科技</option>
+          <option value="🏦" ${group.icon === '🏦' ? 'selected' : ''}>🏦 金融</option>
+          <option value="💊" ${group.icon === '💊' ? 'selected' : ''}>💊 医药</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>分组颜色：</label>
+        <input type="color" id="edit-group-color" value="${group.color}">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="this.closest('.group-modal').remove()">取消</button>
+        <button class="btn btn-primary" id="confirm-edit-group">保存</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  document.getElementById('confirm-edit-group').addEventListener('click', async () => {
+    const name = document.getElementById('edit-group-name').value.trim();
+    const icon = document.getElementById('edit-group-icon').value;
+    const color = document.getElementById('edit-group-color').value;
+    
+    if (!name) {
+      showToast('请输入分组名称', 'warning');
+      return;
+    }
+    
+    const success = await updateGroup(group.id, name, icon, color);
+    if (success) {
+      modal.remove();
+    }
+  });
+}
+
+// ==================== 添加到股票卡片 ====================
+
+function renderGroupSelector(code, stockName) {
+  const userGroups = GroupManager.groups;
+  const stockGroups = GroupManager.stockGroups[code] || [];
+  
+  return `
+    <div class="group-selector" onclick="event.stopPropagation()">
+      <button class="btn-group-selector">📁 分组</button>
+      <div class="group-selector-dropdown">
+        ${userGroups.map(group => {
+          const isSelected = stockGroups.includes(group.id);
+          return `
+            <label class="group-selector-item ${isSelected ? 'selected' : ''}">
+              <input type="checkbox" 
+                     ${isSelected ? 'checked' : ''} 
+                     onchange="toggleStockGroup('${code}', '${group.id}')">
+              <span>${group.icon}</span>
+              <span>${group.name}</span>
+            </label>
+          `;
+        }).join('')}
+        ${userGroups.length === 0 ? '<div class="empty-selector">暂无分组</div>' : ''}
+      </div>
+    </div>
+  `;
+}
+
+function toggleStockGroup(code, groupId) {
+  const stockGroups = GroupManager.stockGroups[code] || [];
+  const index = stockGroups.indexOf(groupId);
+  
+  if (index > -1) {
+    // 已选中，移除
+    removeStockFromGroup(code, groupId);
+  } else {
+    // 未选中，添加
+    assignStockToGroup(code, groupId);
+  }
+}
+
+// ==================== 导出 ====================
+
+if (typeof window !== 'undefined') {
+  window.GroupManager = GroupManager;
+  window.initGroupManager = initGroupManager;
+  window.filterByGroup = filterByGroup;
+  window.getFilteredStocks = getFilteredStocks;
+  window.renderGroupSelector = renderGroupSelector;
+  window.toggleStockGroup = toggleStockGroup;
+}
