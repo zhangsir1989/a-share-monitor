@@ -783,16 +783,32 @@ function initPaginationEvents() {
   });
 }
 
-// 初始化日期选择器
+// 获取最近交易日（与后端逻辑一致）
 function getLatestTradeDate() {
-  const today = new Date();
-  const weekday = today.getDay();
-  let tradingDate = new Date(today);
-  if (weekday === 0) { // 周日
-    tradingDate.setDate(today.getDate() - 2);
-  } else if (weekday === 6) { // 周六
-    tradingDate.setDate(today.getDate() - 1);
+  const now = new Date();
+  const weekday = now.getDay();
+  const hour = now.getHours();
+  let tradingDate = new Date(now);
+  
+  // 周一且 15:00 前，使用上周五
+  if (weekday === 1 && hour < 15) {
+    tradingDate.setDate(now.getDate() - 3);
+    return tradingDate.toISOString().split('T')[0];
   }
+  
+  // 周日，使用周五
+  if (weekday === 0) {
+    tradingDate.setDate(now.getDate() - 2);
+    return tradingDate.toISOString().split('T')[0];
+  }
+  
+  // 周六，使用周五
+  if (weekday === 6) {
+    tradingDate.setDate(now.getDate() - 1);
+    return tradingDate.toISOString().split('T')[0];
+  }
+  
+  // 其他情况使用今天
   return tradingDate.toISOString().split('T')[0];
 }
 
