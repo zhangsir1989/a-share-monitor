@@ -115,28 +115,49 @@ async function loadTickTrades() {
 // ==================== 自动刷新 ====================
 
 function startAutoRefresh() {
+  console.log('🔄 [startAutoRefresh] 启动自动刷新...');
+  const now = new Date();
+  console.log(`  当前时间：${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`);
+  console.log(`  是否交易时间：${Utils.isTradingTime()}`);
+  
   // 清除所有定时器
   stopAutoRefresh();
   
-  // 快速刷新（500ms）- 成交明细、资金流向、五档
-  StockState.tradeTimer = setInterval(() => {
-    if (!StockState.refreshPaused && Utils.isTradingTime()) {
-      loadTradeDetail();
-      loadOrderBook();
-      loadCapitalFlow();
-    }
-  }, StockState.refreshInterval);
+  // 无论是否交易时间，都先加载一次数据（用于非交易时间显示）
+  console.log('📊 [startAutoRefresh] 首次加载数据（非交易时间也显示）');
+  loadBasicInfo();
+  loadTradeDetail();
+  loadOrderBook();
+  loadCapitalFlow();
   
-  // 正常刷新（1秒）- 基本数据
-  StockState.refreshTimer = setInterval(() => {
-    if (!StockState.refreshPaused && Utils.isTradingTime()) {
-      loadBasicInfo();
-    }
-  }, CONFIG.REFRESH.NORMAL);
+  // 交易时间才启动定时器刷新
+  if (Utils.isTradingTime()) {
+    console.log('✅ [startAutoRefresh] 交易时间，启动定时器刷新');
+    
+    // 快速刷新（500ms）- 成交明细、资金流向、五档
+    StockState.tradeTimer = setInterval(() => {
+      if (!StockState.refreshPaused && Utils.isTradingTime()) {
+        loadTradeDetail();
+        loadOrderBook();
+        loadCapitalFlow();
+      }
+    }, StockState.refreshInterval);
+    
+    // 正常刷新（1 秒）- 基本数据
+    StockState.refreshTimer = setInterval(() => {
+      if (!StockState.refreshPaused && Utils.isTradingTime()) {
+        loadBasicInfo();
+      }
+    }, CONFIG.REFRESH.NORMAL);
+    
+    console.log(`✅ 自动刷新已启动（间隔：${StockState.refreshInterval}ms）`);
+  } else {
+    console.log('⏸️ [startAutoRefresh] 非交易时间，仅显示数据不刷新');
+  }
   
-  console.log(`✅ 自动刷新已启动（间隔: ${StockState.refreshInterval}ms）`);
   updateRefreshStatusUI();
 }
+
 
 function stopAutoRefresh() {
   if (StockState.refreshTimer) {
