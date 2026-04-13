@@ -283,11 +283,6 @@ function renderGroupDropdown() {
   
   // 绑定分组列表事件
   bindGroupListEvents();
-  
-  // 更新快速筛选按钮（新位置，在分组管理按钮下方）
-  if (typeof renderQuickFilterButtons === 'function' && typeof pageState !== 'undefined') {
-    renderQuickFilterButtons(GroupManager.groups, GroupManager.stockGroups, pageState.stocks || []);
-  }
 }
 
 function renderGroupListHTML() {

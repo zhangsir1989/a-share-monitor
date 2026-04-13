@@ -200,10 +200,6 @@ async function loadStocks(type = 1) {
       console.log('📦 从数据库加载自选股:', pageState.stocks.length, '只');
       console.log('📦 加载的股票列表:', pageState.stocks);
       updateStockList();
-      // 更新快速筛选按钮的股票数量
-      if (typeof updateQuickFilterCounts === 'function') {
-        updateQuickFilterCounts(pageState.stocks);
-      }
       // 加载完列表后立即获取行情数据
       console.log('📡 开始获取行情数据...');
       await fetchAllStockData();
