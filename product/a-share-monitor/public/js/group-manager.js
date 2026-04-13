@@ -48,6 +48,11 @@ async function loadGroups() {
       console.log('📁 加载分组:', GroupManager.groups.length, '个');
       renderGroupDropdown();
       renderGroupFilter();
+      
+      // 重新渲染股票列表，确保显示分组选择器
+      if (typeof updateStockList === 'function') {
+        updateStockList();
+      }
     }
   } catch (error) {
     console.error('加载分组失败:', error);
@@ -199,6 +204,14 @@ function renderGroupDropdown() {
         <label>快速筛选：</label>
         <div class="group-filter-buttons" id="group-filter-buttons">
           <button class="group-filter-btn active" data-group="all">全部 (${pageState.stocks.length})</button>
+          ${GroupManager.groups.map(g => {
+            const count = Object.keys(GroupManager.stockGroups).filter(code => {
+              const groups = GroupManager.stockGroups[code] || [];
+              const isInCustomStocks = pageState.stocks.some(s => s.code === code);
+              return groups.includes(g.id) && isInCustomStocks;
+            }).length;
+            return `<button class="group-filter-btn" data-group="${g.id}">${g.icon} ${g.name} (${count})</button>`;
+          }).join('')}
         </div>
       </div>
       
@@ -233,8 +246,12 @@ function renderGroupListHTML() {
   }
   
   return GroupManager.groups.map(group => {
-    const stockCount = Object.values(GroupManager.stockGroups)
-      .filter(groups => groups.includes(group.id)).length;
+    // 计算分组内股票数量（只计算自选股中的股票）
+    const stockCount = Object.keys(GroupManager.stockGroups).filter(code => {
+      const groups = GroupManager.stockGroups[code] || [];
+      const isInCustomStocks = pageState.stocks.some(s => s.code === code);
+      return groups.includes(group.id) && isInCustomStocks;
+    }).length;
     
     return `
       <div class="group-item" data-group-id="${group.id}">
@@ -256,6 +273,7 @@ function renderGroupListHTML() {
 }
 
 function renderGroupStocksHTML(groupId) {
+  // 只显示自选股中属于该分组的股票
   const stocks = pageState.stocks.filter(stock => {
     const groups = GroupManager.stockGroups[stock.code] || [];
     return groups.includes(groupId);
@@ -281,8 +299,12 @@ function renderGroupFilter() {
   select.innerHTML = `
     <option value="all">全部分组 (${pageState.stocks.length})</option>
     ${GroupManager.groups.map(g => {
-      const count = Object.values(GroupManager.stockGroups)
-        .filter(groups => groups.includes(g.id)).length;
+      // 只计算自选股中属于该分组的股票数量
+      const count = Object.keys(GroupManager.stockGroups).filter(code => {
+        const groups = GroupManager.stockGroups[code] || [];
+        const isInCustomStocks = pageState.stocks.some(s => s.code === code);
+        return groups.includes(g.id) && isInCustomStocks;
+      }).length;
       return `<option value="${g.id}">${g.icon} ${g.name} (${count})</option>`;
     }).join('')}
   `;
@@ -368,6 +390,7 @@ function getFilteredStocks() {
     return pageState.stocks;
   }
   
+  // 筛选逻辑：只显示自选股中属于该分组的股票
   return pageState.stocks.filter(stock => {
     const groups = GroupManager.stockGroups[stock.code] || [];
     return groups.includes(GroupManager.currentFilter);

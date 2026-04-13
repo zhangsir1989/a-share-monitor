@@ -2125,12 +2125,33 @@ app.post('/api/custom-groups/assign', (req, res) => {
       return res.status(400).json({ success: false, message: '参数错误' });
     }
     
-    // 获取股票市场信息
+    // 获取股票市场信息（从自选股表中查询）
     const stockResult = db.exec(`SELECT stock_market FROM custom_stocks WHERE user_id = '${userId}' AND stock_code = '${code}'`);
+    
+    // 如果股票不在自选股中，自动添加到自选股（type=1）
     if (stockResult.length === 0) {
-      return res.status(404).json({ success: false, message: '股票不在自选列表中' });
+      // 需要先获取股票市场信息（从证券信息表或默认）
+      let market = 'sh';
+      if (/^\d{5}$/.test(code)) {
+        market = 'hk';  // 港股：5 位数字
+      } else if (code.startsWith('6') || code.startsWith('5') || code.startsWith('9')) {
+        market = 'sh';
+      } else if (code.startsWith('0') || code.startsWith('3')) {
+        market = 'sz';
+      } else if (code.startsWith('8') || code.startsWith('4')) {
+        market = 'bj';
+      }
+      
+      // 自动添加到自选股
+      db.run(
+        `INSERT OR IGNORE INTO custom_stocks (user_id, stock_code, stock_market, type) VALUES (?, ?, ?, 1)`,
+        [userId, code, market]
+      );
+      saveDatabase();
+      console.log(`✅ 用户 ${userId} 自动添加股票 ${code} 到自选股`);
     }
-    const market = stockResult[0].values[0][0];
+    
+    const market = stockResult.length > 0 ? stockResult[0].values[0][0] : (code.startsWith('6') ? 'sh' : 'sz');
     
     // 验证分组属于当前用户
     const groupCheck = db.exec(`SELECT COUNT(*) FROM custom_groups WHERE id = ${groupId} AND user_id = '${userId}'`);
