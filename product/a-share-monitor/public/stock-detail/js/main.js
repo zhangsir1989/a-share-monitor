@@ -193,6 +193,20 @@ async function loadOrderBook() {
   }
 }
 
+async function loadTradeDetail() {
+  const result = await API.getTradeDetail(StockState.code, StockState.market);
+  if (result.success) {
+    UI.updateTradeDetail(result.data);
+  }
+}
+
+async function loadCapitalFlow() {
+  const result = await API.getCapitalFlow(StockState.code, StockState.market);
+  if (result.success && result.data) {
+    UI.updateCapitalFlow(result.data);
+  }
+}
+
 // 暂停/恢复刷新
 function toggleRefreshPause() {
   StockState.refreshPaused = !StockState.refreshPaused;
