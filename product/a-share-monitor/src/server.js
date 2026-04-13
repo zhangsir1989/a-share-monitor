@@ -827,97 +827,94 @@ app.get('/stock', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/stock.html'));
 });
 
-// 分时图 API - 使用 MyData API 获取 5 分钟 K 线数据
+// 分时图 API - 使用 MyData 实时数据接口
 app.get('/api/intraday/:code', async (req, res) => {
   const code = req.params.code.replace(/^(sh|sz|bj|hk)/, '');
   const market = req.params.code.match(/^(sh|sz|bj|hk)/)?.[1] || (code.startsWith('6') ? 'sh' : 'sz');
   
   try {
-    // 获取今天或最近一个交易日
-    let targetDate = new Date();
-    let attempts = 0;
-    let intradayResult = null;
+    // 使用 MyData 实时数据接口获取分时数据（1 分钟线）
+    const MYDATA_LICENCE = 'FB1A859B-6832-4F70-AAA2-38274F23FC90';
+    const url = `https://api.mairuiapi.com/hsstock/latest/${code}.${market.toUpperCase()}/1/n/${MYDATA_LICENCE}?lt=240`;
     
-    // 最多尝试 5 天（向前推）
-    while (attempts < 5 && !intradayResult) {
-      const dateStr = targetDate.toISOString().slice(0, 10).replace(/-/g, '');
-      
-      // 从 MyData API 获取 5 分钟 K 线数据（48 条）
-      intradayResult = await fetchIntradayHistory(code, market, dateStr);
-      
-      if (!intradayResult.success || !intradayResult.data || intradayResult.data.length === 0) {
-        // 没有数据，向前推一天
-        targetDate.setDate(targetDate.getDate() - 1);
-        attempts++;
-        intradayResult = null;
-      }
+    console.log('📊 MyData 分时实时 API:', url);
+    
+    const response = await axios.get(url, {
+      timeout: 10000,
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    
+    const data = response.data;
+    
+    if (!Array.isArray(data) || data.length === 0) {
+      // 如果实时数据为空，尝试使用 5 分钟 K 线
+      console.log('⚠️ 实时分时数据为空，降级使用 5 分钟 K 线');
+      return res.json(await fetchIntradayHistoryFallback(code, market));
     }
     
-    const tradeDate = targetDate.toISOString().slice(0, 10).replace(/-/g, '');
-    
-    if (intradayResult && intradayResult.success && intradayResult.data && intradayResult.data.length > 0) {
-      // 存储到数据库（如果不存在）
-      try {
-        const existingCount = db.exec(`SELECT COUNT(*) FROM intraday_data WHERE stock_code = '${code}' AND trade_date = '${tradeDate}'`);
-        const count = existingCount.length > 0 ? existingCount[0].values[0][0] : 0;
-        
-        if (count === 0) {
-          // 批量插入数据
-          const stmt = db.prepare(`INSERT INTO intraday_data (stock_code, trade_date, time, price, open, high, low, volume, amount, prevClose) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-          for (const item of intradayResult.data) {
-            stmt.run([code, tradeDate, item.time, item.price, item.open, item.high, item.low, item.volume, item.amount, item.prevClose]);
-          }
-          stmt.free();
-          saveDatabase();
-          console.log('💾 存储分时数据到数据库:', intradayResult.data.length, '条，日期:', tradeDate);
-        }
-      } catch (e) {
-        console.error('❌ 存储数据失败:', e.message);
-      }
+    // 将 1 分钟实时数据转换为分时图格式
+    const intradayData = data.map(item => {
+      const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
+      const time = timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '00:00';
       
-      res.json({
-        success: true,
-        prevClose: intradayResult.prevClose,
-        data: intradayResult.data,
-        source: 'mydata',
-        tradeDate: tradeDate
-      });
-    } else {
-      // 如果 API 失败，尝试从数据库获取
-      try {
-        const result = db.exec(`SELECT time, price, open, high, low, volume, amount, prevClose FROM intraday_data WHERE stock_code = '${code}' ORDER BY trade_date DESC, time ASC LIMIT 48`);
-        if (result.length > 0) {
-          const historicalData = result[0].values.map(row => ({
-            time: row[0],
-            price: row[1],
-            open: row[2],
-            high: row[3],
-            low: row[4],
-            volume: row[5],
-            amount: row[6],
-            prevClose: row[7]
-          }));
-          console.log('📚 从数据库获取历史数据:', historicalData.length, '条');
-          
-          res.json({
-            success: true,
-            prevClose: historicalData[0]?.prevClose || 0,
-            data: historicalData,
-            source: 'database'
-          });
-        } else {
-          res.json({ success: false, message: '无分时数据', data: [] });
+      return {
+        time: time,
+        price: item.c || 0,
+        open: item.o || 0,
+        high: item.h || 0,
+        low: item.l || 0,
+        volume: item.v || 0,
+        amount: item.a || 0,
+        prevClose: item.pc || 0
+      };
+    });
+    
+    // 按时间排序
+    intradayData.sort((a, b) => a.time.localeCompare(b.time));
+    
+    // 存储到数据库（如果不存在）
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      const existingCount = db.exec(`SELECT COUNT(*) FROM intraday_data WHERE stock_code = '${code}' AND trade_date = '${today}'`);
+      const count = existingCount.length > 0 ? existingCount[0].values[0][0] : 0;
+      
+      if (count === 0 && intradayData.length > 0) {
+        const stmt = db.prepare(`INSERT INTO intraday_data (stock_code, trade_date, time, price, open, high, low, volume, amount, prevClose) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+        for (const item of intradayData) {
+          stmt.run([code, today, item.time, item.price, item.open, item.high, item.low, item.volume, item.amount, item.prevClose]);
         }
-      } catch (e) {
-        res.json({ success: false, message: '获取失败', data: [] });
+        stmt.free();
+        saveDatabase();
+        console.log('💾 存储分时数据到数据库:', intradayData.length, '条，日期:', today);
       }
+    } catch (e) {
+      console.error('❌ 存储数据失败:', e.message);
     }
+    
+    res.json({
+      success: true,
+      prevClose: data[0]?.pc || 0,
+      data: intradayData,
+      source: 'mydata',
+      tradeDate: today
+    });
     
   } catch (error) {
     console.error('❌ 分时图 API 失败:', error.message);
-    res.status(500).json({ success: false, message: '获取失败' });
+    // 降级使用 5 分钟 K 线
+    return res.json(await fetchIntradayHistoryFallback(code, market));
   }
 });
+
+// 分时图降级方案（5 分钟 K 线）
+async function fetchIntradayHistoryFallback(code, market) {
+  try {
+    const result = await fetchIntradayHistory(code, market);
+    return result;
+  } catch (e) {
+    return { success: false, message: '获取失败', data: [] };
+  }
+}
 
 // 逐笔成交 API（代理东方财富接口）
 app.get('/api/stock/:code/trades', async (req, res) => {
