@@ -69,9 +69,8 @@ function updateVolumeData(data) {
     }
   }
   
-  // totalVolume 单位是亿手，转换为万手显示（1 亿手 = 10000 万手）
-  const totalVolumeWanShou = data.totalVolume * 10000;
-  elements.totalVolume.textContent = formatNumber(totalVolumeWanShou);
+  // totalVolume 单位是万手，直接显示
+  elements.totalVolume.textContent = formatNumber(data.totalVolume);
   
   // 沪市成交额显示（单位：亿元，保留 2 位小数）
   elements.shAmount.textContent = data.shAmount.toFixed(2);
@@ -712,6 +711,10 @@ function initPaginationEvents() {
       idPrefix = 'limit-down';
     } else if (tableType === 'strongStocks') {
       idPrefix = 'strong';
+    } else if (tableType === 'breakBoardStocks') {
+      idPrefix = 'break-board';
+    } else if (tableType === 'newBaseStocks') {
+      idPrefix = 'new-base';
     } else {
       idPrefix = tableType;
     }
