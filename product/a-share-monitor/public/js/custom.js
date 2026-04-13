@@ -348,8 +348,21 @@ async function addStock(code, name, market) {
     addedAt: Date.now()
   });
   
+  // 更新分组映射（确保 getFilteredStocks() 能正确筛选）
+  const currentType = (typeof GroupManager !== 'undefined' && GroupManager.currentType) ? GroupManager.currentType : 1;
+  if (typeof GroupManager !== 'undefined') {
+    GroupManager.stockGroups[code] = currentType;
+    console.log('📦 更新分组映射:', code, '→ type', currentType);
+  }
+  
   updateStockList();
   fetchAllStockData();
+  
+  // 更新分组标签计数
+  if (typeof updateGroupTabCounts === 'function') {
+    updateGroupTabCounts();
+  }
+  
   showToast(`已添加 ${name}`, 'success');
   return true;
 }
@@ -367,7 +380,20 @@ async function removeStock(code) {
       const index = pageState.stocks.findIndex(s => s.code === code);
       if (index > -1) {
         pageState.stocks.splice(index, 1);
+        
+        // 从分组映射中删除
+        if (typeof GroupManager !== 'undefined') {
+          delete GroupManager.stockGroups[code];
+          console.log('📦 删除分组映射:', code);
+        }
+        
         updateStockList();
+        
+        // 更新分组标签计数
+        if (typeof updateGroupTabCounts === 'function') {
+          updateGroupTabCounts();
+        }
+        
         showToast(`已移除 ${stock.name}`, 'info');
       }
     } else {

@@ -353,10 +353,17 @@ function renderGroupTabs() {
     return;
   }
   
-  // 计算每个分组的股票数量
+  // 计算每个分组的股票数量（使用 stockGroups，包含所有股票）
   const stockCounts = {};
   GroupManager.groups.forEach(g => {
-    stockCounts[g.type] = pageState.stocks.filter(s => (GroupManager.stockGroups[s.code] || 1) === g.type).length;
+    stockCounts[g.type] = 0;  // 初始化为 0
+  });
+  
+  // 遍历 stockGroups 统计每个分组的股票数
+  Object.values(GroupManager.stockGroups || {}).forEach(type => {
+    if (stockCounts[type] !== undefined) {
+      stockCounts[type]++;
+    }
   });
   
   // 渲染分组标签
@@ -409,9 +416,17 @@ async function switchGroup(type) {
 
 // 更新分组标签的股票数量
 function updateGroupTabCounts(stocks = []) {
+  // 使用 stockGroups 统计每个分组的股票数（不依赖 pageState.stocks）
   const stockCounts = {};
   GroupManager.groups.forEach(g => {
-    stockCounts[g.type] = stocks.filter(s => (GroupManager.stockGroups[s.code] || 1) === g.type).length;
+    stockCounts[g.type] = 0;  // 初始化为 0
+  });
+  
+  // 遍历 stockGroups 统计每个分组的股票数
+  Object.values(GroupManager.stockGroups || {}).forEach(type => {
+    if (stockCounts[type] !== undefined) {
+      stockCounts[type]++;
+    }
   });
   
   // 更新每个标签的计数
