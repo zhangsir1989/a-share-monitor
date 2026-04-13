@@ -310,35 +310,40 @@ function isCloseToClose() {
 
 // 获取最近交易日（处理周末）
 function getLatestTradeDate() {
-  // 使用北京时间（UTC+8）计算
-  const now = new Date();
-  const utcTime = now.getTime();
-  const beijingTime = new Date(utcTime + (8 * 3600000)); // 转换为北京时间
+  // 系统时间已是北京时间（CST/UTC+8），直接使用
+  const beijingTime = new Date();
   
   const weekday = beijingTime.getDay();
-  let daysBack = 0;
+  const hour = beijingTime.getHours();
   
-  // 计算初始回退天数
-  if (weekday === 0) { // 周日
-    daysBack = 2;
-  } else if (weekday === 6) { // 周六
-    daysBack = 1;
+  // 周一且 15:00 前，使用上周五（今天数据还没生成）
+  if (weekday === 1 && hour < 15) {
+    const lastFriday = new Date(beijingTime);
+    lastFriday.setDate(beijingTime.getDate() - 3);
+    console.log("📅 周一早盘，使用上周五:", lastFriday.toISOString().split('T')[0]);
+    return lastFriday.toISOString().split('T')[0];
   }
   
-  // 向前查找，跳过周末
-  for (let i = 0; i < 5; i++) {
-    const tradingDate = new Date(beijingTime);
-    tradingDate.setDate(beijingTime.getDate() - daysBack - i);
-    const checkWeekday = tradingDate.getDay();
-    if (checkWeekday !== 0 && checkWeekday !== 6) {
-      return tradingDate.toISOString().split('T')[0];
-    }
+  // 周日，使用周五
+  if (weekday === 0) {
+    const friday = new Date(beijingTime);
+    friday.setDate(beijingTime.getDate() - 2);
+    console.log("📅 周日，使用周五:", friday.toISOString().split('T')[0]);
+    return friday.toISOString().split('T')[0];
   }
   
-  // 默认返回 5 天前
-  const fallback = new Date(beijingTime);
-  fallback.setDate(beijingTime.getDate() - 5);
-  return fallback.toISOString().split('T')[0];
+  // 周六，使用周五
+  if (weekday === 6) {
+    const friday = new Date(beijingTime);
+    friday.setDate(beijingTime.getDate() - 1);
+    console.log("📅 周六，使用周五:", friday.toISOString().split('T')[0]);
+    return friday.toISOString().split('T')[0];
+  }
+  
+  // 其他情况使用今天
+  const today = beijingTime.toISOString().split('T')[0];
+  console.log("📅 使用今天:", today);
+  return today;
 }
 
 // 获取全部数据
