@@ -192,29 +192,29 @@ const IntradayChart = {
     const currentMinute = now.getUTCMinutes();
     const currentTotalMinutes = currentHour * 60 + currentMinute;
     
-    // 交易时间：9:30-11:30(120 分钟), 13:00-15:00(120 分钟)
+    // 交易时间：9:30-11:30(121 分钟), 13:00-15:00(121 分钟)
     const marketOpen = 9 * 60 + 30;      // 570 - 上午开盘
     const marketNoonEnd = 11 * 60 + 30;  // 690 - 上午收盘
     const marketAfternoonStart = 13 * 60; // 780 - 下午开盘
     const marketClose = 15 * 60;         // 900 - 下午收盘
     
-    // 计算当前应该绘制的数据点索引（基于 240 分钟固定时间轴）
+    // 计算当前应该绘制的数据点索引（基于 242 分钟固定时间轴）
     let currentIndex = this.fullTimelineData.length - 1; // 默认绘制全部
     
     if (currentTotalMinutes < marketOpen) {
       // 还没开盘，不绘制
       currentIndex = 0;
     } else if (currentTotalMinutes <= marketNoonEnd) {
-      // 上午交易时间：9:30-11:30
+      // 上午交易时间：9:30-11:30（0-120 索引）
       const minutesFromOpen = currentTotalMinutes - marketOpen;
       currentIndex = minutesFromOpen;
     } else if (currentTotalMinutes < marketAfternoonStart) {
       // 午休时间：11:30-13:00，停留在上午收盘
-      currentIndex = 119; // 上午最后一个索引
+      currentIndex = 120; // 上午最后一个索引（9:30-11:30 共 121 条）
     } else if (currentTotalMinutes <= marketClose) {
-      // 下午交易时间：13:00-15:00
+      // 下午交易时间：13:00-15:00（121-241 索引）
       const afternoonMinutes = currentTotalMinutes - marketAfternoonStart;
-      currentIndex = 120 + afternoonMinutes;
+      currentIndex = 121 + afternoonMinutes;
     }
     
     // 确保索引有效
@@ -260,7 +260,7 @@ const IntradayChart = {
     const displayMax = this.prevClose + range;
 
     // 坐标转换函数 - 基于固定的 240 分钟时间轴
-    const xScale = (i) => padding.left + (i / 239) * chartWidth;  // 239 = 240-1
+    const xScale = (i) => padding.left + (i / 241) * chartWidth;  // 241 = 242-1
     const yScale = (price) => {
       const range = displayMax - displayMin || 0.01;
       return padding.top + priceChartHeight - ((price - displayMin) / range) * priceChartHeight;
@@ -333,7 +333,7 @@ const IntradayChart = {
     for (const t of timePoints) {
       const index = this.findTimeIndex(t);
       if (index >= 0) {
-        const x = padding.left + (index / 239) * chartWidth;  // 239 = 240-1
+        const x = padding.left + (index / 241) * chartWidth;  // 241 = 242-1
         this.ctx.beginPath();
         this.ctx.moveTo(x, padding.top);
         this.ctx.lineTo(x, padding.top + priceChartHeight);
@@ -517,7 +517,7 @@ const IntradayChart = {
       const price = this.fullTimelineData[i].price;
       if (price === null) continue;  // 跳过无数据的点
       
-      const x = padding.left + (i / 239) * chartWidth - barWidth / 2;  // 239 = 240-1
+      const x = padding.left + (i / 241) * chartWidth - barWidth / 2;  // 241 = 242-1
       const barHeight = (volumes[i] / maxVolume) * volumeHeight;
       const y = yBase + volumeHeight - barHeight;
 
@@ -550,7 +550,7 @@ const IntradayChart = {
     for (const t of targetTimes) {
       const index = this.findTimeIndex(t);
       if (index >= 0) {
-        const x = padding.left + (index / 239) * chartWidth;  // 239 = 240-1
+        const x = padding.left + (index / 241) * chartWidth;  // 241 = 242-1
         this.ctx.fillText(t, x, yPosition);
       }
     }
