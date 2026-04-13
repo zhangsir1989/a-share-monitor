@@ -236,11 +236,20 @@ const API = {
    * 获取分时走势数据
    */
   async getIntraday(code, market) {
+    console.log('📡 [api.js] getIntraday() 请求:', code, market);
     try {
       const response = await fetch(`/api/intraday/${code}`);
+      console.log('📡 [api.js] fetch 响应状态:', response.status);
+      
       const result = await response.json();
+      console.log('📡 [api.js] 解析后的 result:', result);
+      console.log('  result.success:', result?.success);
+      console.log('  result.data:', result?.data);
+      console.log('  result.data?.length:', result?.data?.length);
+      console.log('  result.prevClose:', result?.prevClose);
       
       if (result.success && result.data) {
+        console.log('✅ [api.js] 返回成功结果');
         return { 
           success: true, 
           data: result.data,
@@ -248,9 +257,10 @@ const API = {
         }; 
       }
       
+      console.warn('⚠️ [api.js] 返回失败结果');
       return { success: false, message: '获取分时数据失败' }; 
     } catch (error) {
-      console.error('获取分时走势失败:', error);
+      console.error('❌ [api.js] 获取分时走势失败:', error);
       return { success: false, message: '网络错误' }; 
     }
   },

@@ -173,10 +173,18 @@ async function loadBasicInfo() {
 
 // 只更新分时图（500ms 刷新）
 async function loadIntraday() {
+  console.log('📈 [main.js] loadIntraday() 被调用');
+  console.log('  股票代码:', StockState.code, StockState.market);
+  
   const result = await API.getIntraday(StockState.code, StockState.market);
+  console.log('📡 [main.js] API.getIntraday() 返回:', result);
+  
   if (result.success) {
+    console.log('✅ [main.js] API 调用成功，调用 IntradayChart.render()');
     // 传递完整的结果对象（包含 data 和 prevClose）
     IntradayChart.render(result);
+  } else {
+    console.error('❌ [main.js] API 调用失败:', result.message);
   }
 }
 

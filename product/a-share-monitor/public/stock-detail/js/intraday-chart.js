@@ -45,22 +45,46 @@ const IntradayChart = {
   },
 
   render(responseData) {
+    console.log('📈 [分时图] render() 被调用');
+    console.log('  完整 responseData:', JSON.stringify(responseData, null, 2));
+    console.log('  responseData.data:', responseData?.data);
+    console.log('  responseData.data?.length:', responseData?.data?.length);
+    console.log('  responseData.prevClose:', responseData?.prevClose);
+    
     if (!responseData || !responseData.data || responseData.data.length === 0) {
+      console.warn('⚠️ [分时图] 数据为空，显示占位符');
       this.drawPlaceholder('暂无分时数据');
       return;
     }
+
+    console.log('✅ [分时图] 数据有效，开始处理');
 
     // 分离盘中数据（09:30-15:00）和盘后数据
     this.data = responseData.data.filter(d => d.time >= '09:30' && d.time <= '15:00');
     this.afterHoursData = responseData.data.filter(d => d.time > '15:00');
     this.prevClose = responseData.prevClose || this.data[0]?.prevClose || 0;
     
+    console.log('  盘中数据条数:', this.data.length);
+    console.log('  盘后数据条数:', this.afterHoursData?.length || 0);
+    console.log('  昨收价:', this.prevClose);
+    console.log('  第一条数据:', this.data[0]);
+    console.log('  最后一条数据:', this.data[this.data.length - 1]);
+    
     // 构建完整的 240 分钟时间轴数据（9:30-11:30, 13:00-15:00）
     // 用已有数据填充，缺失的时间点用 null 占位
     this.fullTimelineData = this.buildFullTimeline(this.data);
     
+    console.log('  完整时间轴数据条数:', this.fullTimelineData.length);
+    console.log('  统计信息计算前...');
+    
     this.calculateStats();
+    
+    console.log('  统计信息:', this.stats);
+    console.log('✅ [分时图] 开始绘制');
+    
     this.draw();
+    
+    console.log('✅ [分时图] 绘制完成');
   },
 
   buildFullTimeline(data) {
