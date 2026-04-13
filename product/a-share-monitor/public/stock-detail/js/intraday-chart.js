@@ -102,6 +102,8 @@ const IntradayChart = {
       for (let minute = 0; minute < 60; minute++) {
         // 跳过 9:00-9:29
         if (hour === 9 && minute < 30) continue;
+        // 跳过 11:31-11:59
+        if (hour === 11 && minute > 30) break;
         
         const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         const item = dataMap.get(time);
@@ -123,7 +125,7 @@ const IntradayChart = {
     // 下午：13:00-15:00 (120 分钟)
     for (let hour = 13; hour <= 15; hour++) {
       for (let minute = 0; minute < 60; minute++) {
-        // 15:00 不绘制
+        // 15:01-15:59 不绘制
         if (hour === 15 && minute > 0) break;
         
         const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
@@ -142,6 +144,7 @@ const IntradayChart = {
       }
     }
     
+    console.log('  buildFullTimeline 生成数据条数:', fullData.length);
     return fullData;
   },
 
@@ -412,7 +415,10 @@ const IntradayChart = {
     this.ctx.beginPath();
     this.ctx.moveTo(xScale(0), prevCloseY);
     for (let i = 0; i <= currentIndex; i++) {
-      this.ctx.lineTo(xScale(i), yScale(this.data[i].price));
+      const dataPoint = this.fullTimelineData[i];
+      if (dataPoint && dataPoint.price !== null) {
+        this.ctx.lineTo(xScale(i), yScale(dataPoint.price));
+      }
     }
     this.ctx.lineTo(xScale(currentIndex), prevCloseY);
     this.ctx.closePath();
