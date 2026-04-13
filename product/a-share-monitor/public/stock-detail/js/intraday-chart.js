@@ -88,11 +88,17 @@ const IntradayChart = {
   },
 
   buildFullTimeline(data) {
+    console.log('[buildFullTimeline] 输入数据:', data);
+    
     // 创建时间到数据的映射
     const dataMap = new Map();
     data.forEach(item => {
+      console.log(`  添加数据到 Map: time="${item.time}", price=${item.price}`);
       dataMap.set(item.time, item);
     });
+    
+    console.log(`  dataMap 大小：${dataMap.size}`);
+    console.log(`  dataMap keys:`, Array.from(dataMap.keys()));
     
     // 构建完整的 240 分钟时间轴
     const fullData = [];
@@ -132,6 +138,7 @@ const IntradayChart = {
         const item = dataMap.get(time);
         
         if (item) {
+          console.log(`  ✅ 匹配到数据：time="${time}", price=${item.price}, 索引=${fullData.length}`);
           fullData.push(item);
         } else {
           fullData.push({
@@ -145,6 +152,8 @@ const IntradayChart = {
     }
     
     console.log('  buildFullTimeline 生成数据条数:', fullData.length);
+    console.log('  有数据的索引:', fullData.map((d, i) => d.price !== null ? i : null).filter(i => i !== null));
+    console.log('  有数据的时间点:', fullData.filter(d => d.price !== null).map(d => d.time));
     return fullData;
   },
 
