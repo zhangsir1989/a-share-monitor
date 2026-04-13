@@ -7,8 +7,8 @@
 // 分组管理状态
 const GroupManager = {
   groups: [],  // 分组列表 [{id, name, icon, color, createdAt}]
-  stockGroups: {},  // 股票 - 分组映射 {code: [groupId1, groupId2]}
-  currentFilter: 'all',  // 当前筛选的分组 ID，'all' 表示全部
+  stockGroups: {},  // 股票 - 分组映射 {code: type}（type=分组 type）
+  currentFilter: 1,  // 当前筛选的分组 type，1=默认自选股
   elements: {}
 };
 
@@ -44,7 +44,7 @@ async function loadGroups() {
     
     if (result.success) {
       GroupManager.groups = result.data.groups || [];
-      GroupManager.stockGroups = result.data.stockGroups || {};
+      GroupManager.stockGroups = result.data.stockGroups || {};  // {code: type}
       console.log('📁 加载分组:', GroupManager.groups.length, '个');
       renderGroupDropdown();
       renderGroupFilter();
@@ -203,14 +203,10 @@ function renderGroupDropdown() {
       <div class="group-filter-section">
         <label>快速筛选：</label>
         <div class="group-filter-buttons" id="group-filter-buttons">
-          <button class="group-filter-btn active" data-group="all">全部 (${pageState.stocks.length})</button>
-          ${GroupManager.groups.map(g => {
-            const count = Object.keys(GroupManager.stockGroups).filter(code => {
-              const groups = GroupManager.stockGroups[code] || [];
-              const isInCustomStocks = pageState.stocks.some(s => s.code === code);
-              return groups.includes(g.id) && isInCustomStocks;
-            }).length;
-            return `<button class="group-filter-btn" data-group="${g.id}">${g.icon} ${g.name} (${count})</button>`;
+          <button class="group-filter-btn active" data-group="1">📁 我的自选股 (${pageState.stocks.filter(s => (GroupManager.stockGroups[s.code] || 1) === 1).length})</button>
+          ${GroupManager.groups.filter(g => g.type !== 1).map(g => {
+            const count = pageState.stocks.filter(s => (GroupManager.stockGroups[s.code] || 1) === g.type).length;
+            return `<button class="group-filter-btn" data-group="${g.type}">${g.icon} ${g.name} (${count})</button>`;
           }).join('')}
         </div>
       </div>
@@ -246,15 +242,15 @@ function renderGroupListHTML() {
   }
   
   return GroupManager.groups.map(group => {
-    // 计算分组内股票数量（只计算自选股中的股票）
+    // 计算分组内股票数量（type = group.type）
     const stockCount = Object.keys(GroupManager.stockGroups).filter(code => {
-      const groups = GroupManager.stockGroups[code] || [];
+      const type = GroupManager.stockGroups[code] || 1;
       const isInCustomStocks = pageState.stocks.some(s => s.code === code);
-      return groups.includes(group.id) && isInCustomStocks;
+      return type === group.type && isInCustomStocks;
     }).length;
     
     return `
-      <div class="group-item" data-group-id="${group.id}">
+      <div class="group-item" data-group-type="${group.type}">
         <div class="group-item-header">
           <span class="group-icon">${group.icon}</span>
           <span class="group-name">${group.name}</span>
@@ -264,19 +260,19 @@ function renderGroupListHTML() {
             <button class="btn-group-action btn-delete" title="删除">🗑️</button>
           </div>
         </div>
-        <div class="group-item-stocks" id="group-stocks-${group.id}">
-          ${renderGroupStocksHTML(group.id)}
+        <div class="group-item-stocks" id="group-stocks-${group.type}">
+          ${renderGroupStocksHTML(group.type)}
         </div>
       </div>
     `;
   }).join('');
 }
 
-function renderGroupStocksHTML(groupId) {
-  // 只显示自选股中属于该分组的股票
+function renderGroupStocksHTML(groupType) {
+  // 只显示自选股中属于该分组的股票（type = groupType）
   const stocks = pageState.stocks.filter(stock => {
-    const groups = GroupManager.stockGroups[stock.code] || [];
-    return groups.includes(groupId);
+    const type = GroupManager.stockGroups[stock.code] || 1;
+    return type === groupType;
   });
   
   if (stocks.length === 0) {
@@ -287,7 +283,7 @@ function renderGroupStocksHTML(groupId) {
     <div class="group-stock-item" data-code="${stock.code}">
       <span class="stock-name">${stock.name}</span>
       <span class="stock-code">${stock.code}</span>
-      <button class="btn-remove-stock" title="从分组移除">❌</button>
+      <button class="btn-remove-stock" title="从分组移除" onclick="removeStockFromGroup('${stock.code}')">❌</button>
     </div>
   `).join('');
 }
@@ -297,15 +293,11 @@ function renderGroupFilter() {
   if (!select) return;
   
   select.innerHTML = `
-    <option value="all">全部分组 (${pageState.stocks.length})</option>
-    ${GroupManager.groups.map(g => {
-      // 只计算自选股中属于该分组的股票数量
-      const count = Object.keys(GroupManager.stockGroups).filter(code => {
-        const groups = GroupManager.stockGroups[code] || [];
-        const isInCustomStocks = pageState.stocks.some(s => s.code === code);
-        return groups.includes(g.id) && isInCustomStocks;
-      }).length;
-      return `<option value="${g.id}">${g.icon} ${g.name} (${count})</option>`;
+    <option value="1">📁 我的自选股 (${pageState.stocks.filter(s => (GroupManager.stockGroups[s.code] || 1) === 1).length})</option>
+    ${GroupManager.groups.filter(g => g.type !== 1).map(g => {
+      // 只计算自选股中属于该分组的股票数量（type = g.type）
+      const count = pageState.stocks.filter(s => (GroupManager.stockGroups[s.code] || 1) === g.type).length;
+      return `<option value="${g.type}">${g.icon} ${g.name} (${count})</option>`;
     }).join('')}
   `;
 }
@@ -335,8 +327,8 @@ function bindGroupListEvents() {
   document.querySelectorAll('.btn-group-action.btn-edit').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const groupId = btn.closest('.group-item').dataset.groupId;
-      const group = GroupManager.groups.find(g => g.id === groupId);
+      const groupType = btn.closest('.group-item').dataset.groupType;
+      const group = GroupManager.groups.find(g => g.type === parseInt(groupType));
       if (group) {
         showEditGroupModal(group);
       }
@@ -347,33 +339,32 @@ function bindGroupListEvents() {
   document.querySelectorAll('.btn-group-action.btn-delete').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const groupId = btn.closest('.group-item').dataset.groupId;
-      deleteGroup(groupId);
+      const groupType = btn.closest('.group-item').dataset.groupType;
+      deleteGroupByType(parseInt(groupType));
     });
   });
   
-  // 从分组移除股票
+  // 从分组移除股票（回归默认分组 type=1）
   document.querySelectorAll('.btn-remove-stock').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const stockCode = btn.closest('.group-stock-item').dataset.code;
-      const groupId = btn.closest('.group-item').dataset.groupId;
-      removeStockFromGroup(stockCode, groupId);
+      removeStockFromGroup(stockCode);
     });
   });
 }
 
 // ==================== 筛选功能 ====================
 
-function filterByGroup(groupId) {
-  GroupManager.currentFilter = groupId;
+function filterByGroup(type) {
+  GroupManager.currentFilter = type === 'all' ? 1 : parseInt(type);
   
   // 更新 URL 参数（可选，用于刷新后保持筛选状态）
   const url = new URL(window.location);
-  if (groupId === 'all') {
+  if (GroupManager.currentFilter === 1) {
     url.searchParams.delete('group');
   } else {
-    url.searchParams.set('group', groupId);
+    url.searchParams.set('group', GroupManager.currentFilter);
   }
   window.history.pushState({}, '', url);
   
@@ -382,18 +373,23 @@ function filterByGroup(groupId) {
     updateStockList();
   }
   
-  console.log('📁 筛选分组:', groupId === 'all' ? '全部' : groupId);
+  const groupName = GroupManager.groups.find(g => g.type === GroupManager.currentFilter)?.name || '我的自选股';
+  console.log('📁 筛选分组:', groupName, '(type=' + GroupManager.currentFilter + ')');
 }
 
 function getFilteredStocks() {
-  if (GroupManager.currentFilter === 'all') {
-    return pageState.stocks;
+  if (GroupManager.currentFilter === 1 || GroupManager.currentFilter === 'all') {
+    // 显示默认自选股（type=1）
+    return pageState.stocks.filter(stock => {
+      const type = GroupManager.stockGroups[stock.code] || 1;
+      return type === 1;
+    });
   }
   
-  // 筛选逻辑：只显示自选股中属于该分组的股票
+  // 显示指定分组的股票（type = 分组 type）
   return pageState.stocks.filter(stock => {
-    const groups = GroupManager.stockGroups[stock.code] || [];
-    return groups.includes(GroupManager.currentFilter);
+    const type = GroupManager.stockGroups[stock.code] || 1;
+    return type === GroupManager.currentFilter;
   });
 }
 
@@ -519,41 +515,31 @@ function showEditGroupModal(group) {
 
 function renderGroupSelector(code, stockName) {
   const userGroups = GroupManager.groups;
-  const stockGroups = GroupManager.stockGroups[code] || [];
+  const currentType = GroupManager.stockGroups[code] || 1;  // 默认 type=1（我的自选股）
+  
+  // 找到当前分组
+  const currentGroup = userGroups.find(g => g.type === currentType) || userGroups.find(g => g.type === 1);
+  const currentIcon = currentGroup ? currentGroup.icon : '📁';
+  const currentName = currentGroup ? currentGroup.name : '我的自选股';
   
   return `
     <div class="group-selector" onclick="event.stopPropagation()">
-      <button class="btn-group-selector">📁 分组</button>
+      <button class="btn-group-selector">${currentIcon} ${currentName}</button>
       <div class="group-selector-dropdown">
         ${userGroups.map(group => {
-          const isSelected = stockGroups.includes(group.id);
+          const isSelected = group.type === currentType;
           return `
-            <label class="group-selector-item ${isSelected ? 'selected' : ''}">
-              <input type="checkbox" 
-                     ${isSelected ? 'checked' : ''} 
-                     onchange="toggleStockGroup('${code}', '${group.id}')">
+            <div class="group-selector-item ${isSelected ? 'selected' : ''}" 
+                 onclick="assignStockToGroup('${code}', ${group.type})">
               <span>${group.icon}</span>
-              <span>${group.name}</span>
-            </label>
+              <span>${group.name}${isSelected ? ' ✓' : ''}</span>
+            </div>
           `;
         }).join('')}
         ${userGroups.length === 0 ? '<div class="empty-selector">暂无分组</div>' : ''}
       </div>
     </div>
   `;
-}
-
-function toggleStockGroup(code, groupId) {
-  const stockGroups = GroupManager.stockGroups[code] || [];
-  const index = stockGroups.indexOf(groupId);
-  
-  if (index > -1) {
-    // 已选中，移除
-    removeStockFromGroup(code, groupId);
-  } else {
-    // 未选中，添加
-    assignStockToGroup(code, groupId);
-  }
 }
 
 // ==================== 导出 ====================

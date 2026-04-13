@@ -132,14 +132,21 @@ async function initDatabase() {
       user_id TEXT NOT NULL,
       stock_code TEXT NOT NULL,
       stock_market TEXT NOT NULL,
-      type INTEGER DEFAULT 0,
-      added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(user_id, stock_code, stock_market, type)
+      type INTEGER DEFAULT 1,
+      added_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
   console.log('✅ 自选股表已检查');
   
-  // 创建分组表
+  // 迁移：移除 custom_stocks 的 UNIQUE 约束（如果存在）
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_custom_stocks_user_code ON custom_stocks(user_id, stock_code)`);
+    console.log('✅ 自选股表索引已创建');
+  } catch (e) {
+    console.log('⚠️ 自选股表索引创建失败:', e.message);
+  }
+  
+  // 创建分组表（type 字段直接对应分组 ID）
   db.run(`
     CREATE TABLE IF NOT EXISTS custom_groups (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -147,25 +154,31 @@ async function initDatabase() {
       name TEXT NOT NULL,
       icon TEXT DEFAULT '📁',
       color TEXT DEFAULT '#4a9eff',
+      type INTEGER NOT NULL UNIQUE,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
   console.log('✅ 分组表已检查');
   
-  // 创建股票 - 分组关联表
-  db.run(`
-    CREATE TABLE IF NOT EXISTS stock_group_relations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL,
-      stock_code TEXT NOT NULL,
-      stock_market TEXT NOT NULL,
-      group_id INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(stock_code, stock_market, group_id),
-      FOREIGN KEY (group_id) REFERENCES custom_groups(id) ON DELETE CASCADE
-    )
-  `);
-  console.log('✅ 股票分组关联表已检查');
+  // 迁移：如果 custom_groups 表没有 type 字段，添加它
+  try {
+    db.exec(`ALTER TABLE custom_groups ADD COLUMN type INTEGER`);
+    console.log('✅ 分组表已添加 type 字段');
+    
+    // 为现有分组分配 type 值（从 2 开始）
+    const existingGroups = db.exec(`SELECT id FROM custom_groups WHERE type IS NULL`);
+    if (existingGroups.length > 0) {
+      let typeCounter = 2;
+      existingGroups[0].values.forEach(row => {
+        const id = row[0];
+        db.run(`UPDATE custom_groups SET type = ${typeCounter} WHERE id = ${id}`);
+        typeCounter++;
+      });
+      console.log(`✅ 已为 ${existingGroups[0].values.length} 个现有分组分配 type 值`);
+    }
+  } catch (e) {
+    // 列已存在，忽略
+  }
   
   db.run(`
     CREATE TABLE IF NOT EXISTS securities (
@@ -1971,233 +1984,8 @@ app.post('/api/custom-stocks/delete', (req, res) => {
   }
 });
 
-// ==================== 分组管理 API ====================
+// ==================== 定时任务 API ====================
 
-// 获取分组列表
-app.get('/api/custom-groups/list', (req, res) => {
-  try {
-    const userId = req.session?.userId;
-    if (!userId) {
-      return res.status(401).json({ success: false, message: '未登录' });
-    }
-    
-    // 获取所有分组
-    const groupsResult = db.exec(`SELECT id, name, icon, color, created_at FROM custom_groups WHERE user_id = '${userId}' ORDER BY created_at ASC`);
-    const groups = groupsResult.length > 0 ? groupsResult[0].values.map(row => ({
-      id: row[0],
-      name: row[1],
-      icon: row[2],
-      color: row[3],
-      createdAt: row[4]
-    })) : [];
-    
-    // 获取股票 - 分组映射
-    const relationsResult = db.exec(`SELECT stock_code, group_id FROM stock_group_relations WHERE user_id = '${userId}'`);
-    const stockGroups = {};
-    if (relationsResult.length > 0) {
-      relationsResult[0].values.forEach(row => {
-        const code = row[0];
-        const groupId = row[1];
-        if (!stockGroups[code]) {
-          stockGroups[code] = [];
-        }
-        stockGroups[code].push(groupId);
-      });
-    }
-    
-    res.json({ success: true, data: { groups, stockGroups } });
-  } catch (error) {
-    console.error('获取分组列表失败:', error.message);
-    res.status(500).json({ success: false, message: '获取分组列表失败' });
-  }
-});
-
-// 创建分组
-app.post('/api/custom-groups/create', (req, res) => {
-  try {
-    const userId = req.session?.userId;
-    if (!userId) {
-      return res.status(401).json({ success: false, message: '未登录' });
-    }
-    
-    const { name, icon, color } = req.body;
-    
-    if (!name) {
-      return res.status(400).json({ success: false, message: '分组名称不能为空' });
-    }
-    
-    db.run(
-      `INSERT INTO custom_groups (user_id, name, icon, color) VALUES (?, ?, ?, ?)`,
-      [userId, name, icon || '📁', color || '#4a9eff']
-    );
-    saveDatabase();
-    
-    const result = db.exec(`SELECT last_insert_rowid()`);
-    const groupId = result[0].values[0][0];
-    
-    console.log(`✅ 用户 ${userId} 创建分组：${name}`);
-    res.json({ success: true, message: '分组创建成功', data: { id: groupId, name, icon, color } });
-  } catch (error) {
-    console.error('创建分组失败:', error.message);
-    res.status(500).json({ success: false, message: '创建分组失败' });
-  }
-});
-
-// 更新分组
-app.post('/api/custom-groups/update', (req, res) => {
-  try {
-    const userId = req.session?.userId;
-    if (!userId) {
-      return res.status(401).json({ success: false, message: '未登录' });
-    }
-    
-    const { id, name, icon, color } = req.body;
-    
-    if (!id || !name) {
-      return res.status(400).json({ success: false, message: '参数错误' });
-    }
-    
-    // 验证分组属于当前用户
-    const check = db.exec(`SELECT COUNT(*) FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
-    if (check[0].values[0][0] === 0) {
-      return res.status(404).json({ success: false, message: '分组不存在' });
-    }
-    
-    db.run(
-      `UPDATE custom_groups SET name = ?, icon = ?, color = ? WHERE id = ? AND user_id = ?`,
-      [name, icon || '📁', color || '#4a9eff', id, userId]
-    );
-    saveDatabase();
-    
-    console.log(`✅ 用户 ${userId} 更新分组：${name}`);
-    res.json({ success: true, message: '分组更新成功' });
-  } catch (error) {
-    console.error('更新分组失败:', error.message);
-    res.status(500).json({ success: false, message: '更新分组失败' });
-  }
-});
-
-// 删除分组
-app.post('/api/custom-groups/delete', (req, res) => {
-  try {
-    const userId = req.session?.userId;
-    if (!userId) {
-      return res.status(401).json({ success: false, message: '未登录' });
-    }
-    
-    const { id } = req.body;
-    
-    if (!id) {
-      return res.status(400).json({ success: false, message: '参数错误' });
-    }
-    
-    // 验证分组属于当前用户
-    const check = db.exec(`SELECT COUNT(*) FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
-    if (check[0].values[0][0] === 0) {
-      return res.status(404).json({ success: false, message: '分组不存在' });
-    }
-    
-    // 先删除关联关系
-    db.run(`DELETE FROM stock_group_relations WHERE group_id = ${id}`);
-    // 再删除分组
-    db.run(`DELETE FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
-    saveDatabase();
-    
-    console.log(`✅ 用户 ${userId} 删除分组：${id}`);
-    res.json({ success: true, message: '分组删除成功' });
-  } catch (error) {
-    console.error('删除分组失败:', error.message);
-    res.status(500).json({ success: false, message: '删除分组失败' });
-  }
-});
-
-// 将股票分配到分组
-app.post('/api/custom-groups/assign', (req, res) => {
-  try {
-    const userId = req.session?.userId;
-    if (!userId) {
-      return res.status(401).json({ success: false, message: '未登录' });
-    }
-    
-    const { code, groupId } = req.body;
-    
-    if (!code || !groupId) {
-      return res.status(400).json({ success: false, message: '参数错误' });
-    }
-    
-    // 获取股票市场信息（从自选股表中查询）
-    const stockResult = db.exec(`SELECT stock_market FROM custom_stocks WHERE user_id = '${userId}' AND stock_code = '${code}'`);
-    
-    // 如果股票不在自选股中，自动添加到自选股（type=1）
-    if (stockResult.length === 0) {
-      // 需要先获取股票市场信息（从证券信息表或默认）
-      let market = 'sh';
-      if (/^\d{5}$/.test(code)) {
-        market = 'hk';  // 港股：5 位数字
-      } else if (code.startsWith('6') || code.startsWith('5') || code.startsWith('9')) {
-        market = 'sh';
-      } else if (code.startsWith('0') || code.startsWith('3')) {
-        market = 'sz';
-      } else if (code.startsWith('8') || code.startsWith('4')) {
-        market = 'bj';
-      }
-      
-      // 自动添加到自选股
-      db.run(
-        `INSERT OR IGNORE INTO custom_stocks (user_id, stock_code, stock_market, type) VALUES (?, ?, ?, 1)`,
-        [userId, code, market]
-      );
-      saveDatabase();
-      console.log(`✅ 用户 ${userId} 自动添加股票 ${code} 到自选股`);
-    }
-    
-    const market = stockResult.length > 0 ? stockResult[0].values[0][0] : (code.startsWith('6') ? 'sh' : 'sz');
-    
-    // 验证分组属于当前用户
-    const groupCheck = db.exec(`SELECT COUNT(*) FROM custom_groups WHERE id = ${groupId} AND user_id = '${userId}'`);
-    if (groupCheck[0].values[0][0] === 0) {
-      return res.status(404).json({ success: false, message: '分组不存在' });
-    }
-    
-    // 添加关联关系
-    db.run(
-      `INSERT OR IGNORE INTO stock_group_relations (user_id, stock_code, stock_market, group_id) VALUES (?, ?, ?, ?)`,
-      [userId, code, market, groupId]
-    );
-    saveDatabase();
-    
-    console.log(`✅ 用户 ${userId} 将 ${code} 分配到分组 ${groupId}`);
-    res.json({ success: true, message: '分配成功' });
-  } catch (error) {
-    console.error('分配分组失败:', error.message);
-    res.status(500).json({ success: false, message: '分配分组失败' });
-  }
-});
-
-// 从分组移除股票
-app.post('/api/custom-groups/remove', (req, res) => {
-  try {
-    const userId = req.session?.userId;
-    if (!userId) {
-      return res.status(401).json({ success: false, message: '未登录' });
-    }
-    
-    const { code, groupId } = req.body;
-    
-    if (!code || !groupId) {
-      return res.status(400).json({ success: false, message: '参数错误' });
-    }
-    
-    db.run(`DELETE FROM stock_group_relations WHERE stock_code = ? AND group_id = ?`, [code, groupId]);
-    saveDatabase();
-    
-    console.log(`✅ 用户 ${userId} 从分组 ${groupId} 移除 ${code}`);
-    res.json({ success: true, message: '移除成功' });
-  } catch (error) {
-    console.error('移除分组失败:', error.message);
-    res.status(500).json({ success: false, message: '移除分组失败' });
-  }
-});
 
 // ==================== 定时任务 API ====================
 
@@ -3042,6 +2830,11 @@ async function startServer() {
     console.error('❌ 数据库初始化失败:', error.message);
     console.log('⚠️  将继续启动，但登录功能可能不可用');
   }
+  
+  // 初始化分组管理 API（在数据库初始化之后）
+  const initGroupAPI = require('./group-api');
+  initGroupAPI(app, db, saveDatabase);
+  console.log('✅ 分组管理 API 已初始化');
   
   app.listen(PORT, '0.0.0.0', () => {
     console.log('');
