@@ -64,7 +64,8 @@ async function loadAllData() {
   // 加载分时走势数据
   const intradayResult = await API.getIntraday(StockState.code, StockState.market);
   if (intradayResult.success) {
-    IntradayChart.render(intradayResult.data);
+    console.log('✅ [initPage] 分时走势加载完成，传递完整对象');
+    IntradayChart.render(intradayResult);  // 传递完整对象 { success, data, prevClose }
     console.log('✅ 分时走势加载完成');
   } else {
     IntradayChart.drawPlaceholder('分时数据加载失败');
