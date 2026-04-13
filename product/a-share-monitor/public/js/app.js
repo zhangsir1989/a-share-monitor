@@ -577,11 +577,8 @@ async function fetchData() {
   if (state.isPaused) return;
   
   try {
-    // 获取用户选择的日期
-    const tradeDateInput = document.getElementById('trade-date');
-    const tradeDate = tradeDateInput ? tradeDateInput.value : null;
-    
-    const url = tradeDate ? `/api/all?tradeDate=${tradeDate}` : '/api/all';
+    // 始终使用当前交易日（后端自动判断）
+    const url = '/api/all';
     
     const [dataResponse, sourceResponse] = await Promise.all([
       fetch(url, {cache: "no-cache"}),
@@ -812,51 +809,14 @@ function getLatestTradeDate() {
   return tradingDate.toISOString().split('T')[0];
 }
 
+// 初始化 - 不再需要日期选择器，直接加载数据
 function initDatePickers() {
-  const dateStr = getLatestTradeDate();
-  
-  const tradeDateInput = document.getElementById('trade-date');
-  const queryBtn = document.getElementById('query-btn');
-  
-  if (tradeDateInput) {
-    tradeDateInput.value = dateStr;
-  }
-  
-  // 更新三个卡片的日期显示
-  updateDateDisplays(dateStr);
-  
-  // 查询按钮点击事件
-  if (queryBtn) {
-    queryBtn.addEventListener('click', () => {
-      if (tradeDateInput && tradeDateInput.value) {
-        updateDateDisplays(tradeDateInput.value);
-        fetchData();
-      }
-    });
-  }
-  
-  // 日期选择器变更事件（回车或改变时自动查询）
-  if (tradeDateInput) {
-    tradeDateInput.addEventListener('change', () => {
-      updateDateDisplays(tradeDateInput.value);
-      fetchData();
-    });
-  }
+  console.log('✅ 首页初始化完成，交易时间自动刷新');
 }
 
-// 更新三个卡片的日期显示
+// 更新日期显示 - 保留函数但不再使用（卡片右上角自动显示）
 function updateDateDisplays(dateStr) {
-  const limitUpDate = document.getElementById('limit-up-date');
-  const limitDownDate = document.getElementById('limit-down-date');
-  const strongDate = document.getElementById('strong-date');
-  const breakBoardDate = document.getElementById('break-board-date');
-  const newBaseDate = document.getElementById('new-base-date');
-  
-  if (limitUpDate) limitUpDate.textContent = dateStr;
-  if (limitDownDate) limitDownDate.textContent = dateStr;
-  if (strongDate) strongDate.textContent = dateStr;
-  if (breakBoardDate) breakBoardDate.textContent = dateStr;
-  if (newBaseDate) newBaseDate.textContent = dateStr;
+  // 不再需要手动更新日期，各模块右上角自动显示
 }
 
 // 初始化排序事件
