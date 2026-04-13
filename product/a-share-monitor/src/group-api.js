@@ -1,6 +1,19 @@
 // ==================== 分组管理 API（type 字段关联）====================
 // 导出初始化函数，接收 app 和 db 依赖
-module.exports = function(app, db, saveDatabase) {
+const fs = require('fs');
+const path = require('path');
+const DB_PATH = path.join(__dirname, '../data/users.db');
+
+function saveDatabase(db) {
+  if (db) {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(DB_PATH, buffer);
+    console.log(`💾 分组 API：数据库已保存 (${buffer.length} bytes)`);
+  }
+}
+
+module.exports = function(app, db) {
 
 // 获取分组列表
 app.get('/api/custom-groups/list', (req, res) => {
@@ -14,7 +27,7 @@ app.get('/api/custom-groups/list', (req, res) => {
     const defaultGroupCheck = db.exec(`SELECT id FROM custom_groups WHERE user_id = '${userId}' AND type = 1`);
     if (defaultGroupCheck.length === 0) {
       db.run(`INSERT INTO custom_groups (user_id, name, type, icon, color) VALUES (?, '我的自选股', 1, '📁', '#4a9eff')`, [userId]);
-      saveDatabase();
+      saveDatabase(db);
       console.log(`✅ 为用户 ${userId} 创建默认分组（type=1）`);
     }
     
@@ -62,7 +75,7 @@ app.post('/api/custom-groups/create', (req, res) => {
     
     db.run(`INSERT INTO custom_groups (user_id, name, type, icon, color) VALUES (?, ?, ?, ?, ?)`,
       [userId, name, newType, icon || '📁', color || '#4a9eff']);
-    saveDatabase();
+    saveDatabase(db);
     
     const result = db.exec(`SELECT last_insert_rowid()`);
     console.log(`✅ 用户 ${userId} 创建分组：${name} (type=${newType})`);
@@ -87,7 +100,7 @@ app.post('/api/custom-groups/update', (req, res) => {
     
     db.run(`UPDATE custom_groups SET name = ?, icon = ?, color = ? WHERE id = ? AND user_id = ?`,
       [name, icon || '📁', color || '#4a9eff', id, userId]);
-    saveDatabase();
+    saveDatabase(db);
     
     console.log(`✅ 用户 ${userId} 更新分组：${name}`);
     res.json({ success: true, message: '分组更新成功' });
@@ -113,15 +126,34 @@ app.post('/api/custom-groups/delete', (req, res) => {
     if (groupType === 1) return res.status(400).json({ success: false, message: '不能删除默认自选股分组' });
     
     // 将该分组的股票 type 改回 1（回归默认自选股）
+    console.log(`🔄 更新股票 type: user_id='${userId}', type=${groupType} → 1`);
     db.run(`UPDATE custom_stocks SET type = 1 WHERE user_id = '${userId}' AND type = ${groupType}`);
+    
+    console.log(`🗑️ 删除分组：id=${id}`);
     db.run(`DELETE FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
-    saveDatabase();
+    
+    // 验证更新
+    const verifyAfter = db.exec(`SELECT stock_code, type FROM custom_stocks WHERE user_id = '${userId}' AND type = ${groupType}`);
+    if (verifyAfter.length > 0 && verifyAfter[0].values.length > 0) {
+      console.log(`⚠️ 警告：删除后仍有 type=${groupType} 的股票：`, verifyAfter[0].values);
+    } else {
+      console.log(`✅ 验证：type=${groupType} 的股票已全部更新为 type=1`);
+    }
+    
+    const verifyType1 = db.exec(`SELECT COUNT(*) FROM custom_stocks WHERE user_id = '${userId}' AND type = 1`);
+    if (verifyType1.length > 0) {
+      console.log(`📊 当前 type=1 的股票数量：${verifyType1[0].values[0][0]}`);
+    }
+    
+    saveDatabase(db);
+    console.log(`💾 数据库已保存到 ${DB_PATH}`);
     
     console.log(`✅ 用户 ${userId} 删除分组：${id} (type=${groupType})，股票已回归默认分组`);
     res.json({ success: true, message: '分组删除成功' });
   } catch (error) {
     console.error('删除分组失败:', error.message);
-    res.status(500).json({ success: false, message: '删除分组失败' });
+    console.error('错误堆栈:', error.stack);
+    res.status(500).json({ success: false, message: '删除分组失败：' + error.message });
   }
 });
 
@@ -147,7 +179,7 @@ app.post('/api/custom-groups/assign', (req, res) => {
       console.log(`✅ 用户 ${userId} 移动股票 ${code} 到分组 (type=${type})`);
     }
     
-    saveDatabase();
+    saveDatabase(db);
     res.json({ success: true, message: '已分配到分组' });
   } catch (error) {
     console.error('分配分组失败:', error.message);
@@ -168,7 +200,7 @@ app.post('/api/custom-groups/remove', (req, res) => {
     
     db.run(`UPDATE custom_stocks SET type = 1 WHERE user_id = ? AND stock_code = ? AND stock_market = ?`,
       [userId, code, stockMarket]);
-    saveDatabase();
+    saveDatabase(db);
     
     console.log(`✅ 用户 ${userId} 将股票 ${code} 移回默认分组`);
     res.json({ success: true, message: '已移回默认自选股' });

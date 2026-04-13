@@ -278,17 +278,20 @@ function renderStocksTable(stocks) {
   const tbody = document.getElementById('stocks-table-body');
   
   if (stocks.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" class="loading">暂无数据</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="loading">暂无数据</td></tr>';
     return;
   }
   
   const marketNames = { sh: '沪市', sz: '深市', bj: '北交所' };
+  const typeNames = { 1: '我的自选股' };
   
   tbody.innerHTML = stocks.map(stock => `
     <tr>
       <td>${stock.user_id}</td>
       <td>${stock.stock_code}</td>
       <td>${marketNames[stock.stock_market] || stock.stock_market}</td>
+      <td>${stock.type || 1}</td>
+      <td>${stock.group_name || typeNames[stock.type] || '未知分组'}</td>
       <td>${stock.added_at || '--'}</td>
     </tr>
   `).join('');

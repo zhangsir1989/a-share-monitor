@@ -108,7 +108,7 @@ async function updateGroup(groupId, name, icon, color) {
 }
 
 async function deleteGroup(groupId) {
-  if (!confirm('确定要删除这个分组吗？分组内的股票不会被删除，只是移除分组关联。')) {
+  if (!confirm('确定要删除这个分组吗？分组内的股票将回归默认自选股。')) {
     return false;
   }
   
@@ -122,7 +122,56 @@ async function deleteGroup(groupId) {
     
     if (result.success) {
       await loadGroups();
-      showToast('分组删除成功', 'success');
+      // 如果在自选股页面，刷新股票列表
+      if (typeof loadStocks === 'function') {
+        await loadStocks(1);
+      }
+      showToast('分组删除成功，股票已回归默认自选股', 'success');
+      return true;
+    } else {
+      showToast(result.message || '删除失败', 'error');
+      return false;
+    }
+  } catch (error) {
+    console.error('删除分组失败:', error);
+    showToast('网络错误', 'error');
+    return false;
+  }
+}
+
+// 按 type 删除分组（用于快速筛选按钮）
+async function deleteGroupByType(groupType) {
+  if (groupType === 1) {
+    showToast('不能删除默认自选股分组', 'error');
+    return false;
+  }
+  
+  if (!confirm('确定要删除这个分组吗？分组内的股票将回归默认自选股。')) {
+    return false;
+  }
+  
+  try {
+    // 先根据 type 找到分组 id
+    const group = GroupManager.groups.find(g => g.type === groupType);
+    if (!group) {
+      showToast('分组不存在', 'error');
+      return false;
+    }
+    
+    const response = await fetch('/api/custom-groups/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: group.id })
+    });
+    const result = await response.json();
+    
+    if (result.success) {
+      await loadGroups();
+      // 如果在自选股页面，刷新股票列表
+      if (typeof loadStocks === 'function') {
+        await loadStocks(1);
+      }
+      showToast('分组删除成功，股票已回归默认自选股', 'success');
       return true;
     } else {
       showToast(result.message || '删除失败', 'error');

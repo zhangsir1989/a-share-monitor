@@ -232,10 +232,18 @@ async function initDatabase() {
 
 // 保存数据库到文件
 function saveDatabase() {
+  console.log(`🔍 saveDatabase 被调用，db=${db ? '存在' : 'null'}, DB_PATH=${typeof DB_PATH !== 'undefined' ? DB_PATH : '未定义'}`);
   if (db) {
+    if (typeof DB_PATH === 'undefined') {
+      console.error('❌ DB_PATH 未定义！');
+      return;
+    }
     const data = db.export();
     const buffer = Buffer.from(data);
     fs.writeFileSync(DB_PATH, buffer);
+    console.log(`💾 数据库已保存：${DB_PATH} (${buffer.length} bytes)`);
+  } else {
+    console.error('❌ saveDatabase 失败：db 对象为 null');
   }
 }
 
@@ -1866,18 +1874,29 @@ app.get('/api/admin/custom-stocks', (req, res) => {
     const countResult = db.exec(`SELECT COUNT(*) FROM custom_stocks ${whereClause}`);
     const total = countResult[0]?.values[0]?.[0] || 0;
     
-    // 查询数据
-    const results = db.exec(`SELECT user_id, stock_code, stock_market, added_at FROM custom_stocks ${whereClause} ORDER BY added_at DESC LIMIT ${limit} OFFSET ${offset}`);
+    // 查询数据（包含 type 字段）
+    const results = db.exec(`SELECT user_id, stock_code, stock_market, type, added_at FROM custom_stocks ${whereClause} ORDER BY added_at DESC LIMIT ${limit} OFFSET ${offset}`);
     
     if (results.length === 0) {
       return res.json({ success: true, data: [], total: 0, page: parseInt(page), pageSize: parseInt(pageSize) });
+    }
+    
+    // 获取所有分组用于映射 type -> 分组名称
+    const groupsResult = db.exec(`SELECT type, name FROM custom_groups`);
+    const groupMap = {};
+    if (groupsResult.length > 0) {
+      groupsResult[0].values.forEach(row => {
+        groupMap[row[0]] = row[1];
+      });
     }
     
     const stocks = results[0].values.map(row => ({
       user_id: row[0],
       stock_code: row[1],
       stock_market: row[2],
-      added_at: row[3]
+      type: row[3] || 1,
+      group_name: groupMap[row[3]] || (row[3] === 1 ? '我的自选股' : '未知分组'),
+      added_at: row[4]
     }));
     
     res.json({ success: true, data: stocks, total, page: parseInt(page), pageSize: parseInt(pageSize) });
@@ -2833,7 +2852,7 @@ async function startServer() {
   
   // 初始化分组管理 API（在数据库初始化之后）
   const initGroupAPI = require('./group-api');
-  initGroupAPI(app, db, saveDatabase);
+  initGroupAPI(app, db);
   console.log('✅ 分组管理 API 已初始化');
   
   app.listen(PORT, '0.0.0.0', () => {
