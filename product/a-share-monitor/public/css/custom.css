@@ -775,3 +775,82 @@
 .stock-table td {
   padding: 12px 8px;
 }
+
+/* ==================== 分组标签页 ==================== */
+
+.list-header-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.list-header-title h2 {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.group-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.group-tab {
+  background: #2d2d44;
+  color: #888;
+  border: 1px solid #3d3d5c;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group-tab:hover {
+  background: #3d3d5c;
+  color: #e0e0e0;
+  transform: translateY(-1px);
+}
+
+.group-tab.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.group-tab .stock-count {
+  font-size: 11px;
+  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.group-tab.active .stock-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .list-header-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .group-tabs {
+    width: 100%;
+  }
+  
+  .group-tab {
+    flex: 1;
+    min-width: calc(50% - 4px);
+    justify-content: center;
+  }
+}

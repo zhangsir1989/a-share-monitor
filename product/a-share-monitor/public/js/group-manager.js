@@ -9,6 +9,7 @@ const GroupManager = {
   groups: [],  // 分组列表 [{id, name, icon, color, createdAt}]
   stockGroups: {},  // 股票 - 分组映射 {code: type}（type=分组 type）
   currentFilter: 1,  // 当前筛选的分组 type，1=默认自选股
+  currentType: 1,  // 当前选中的分组 type（用于添加股票）
   elements: {}
 };
 
@@ -48,6 +49,7 @@ async function loadGroups() {
       console.log('📁 加载分组:', GroupManager.groups.length, '个');
       renderGroupDropdown();
       renderGroupFilter();
+      renderGroupTabs();  // 渲染分组标签
       
       // 重新渲染股票列表，确保显示分组选择器
       if (typeof updateStockList === 'function') {
@@ -335,6 +337,90 @@ function renderGroupStocksHTML(groupType) {
       <button class="btn-remove-stock" title="从分组移除" onclick="removeStockFromGroup('${stock.code}')">❌</button>
     </div>
   `).join('');
+}
+
+// ==================== 分组标签页 ====================
+
+function renderGroupTabs() {
+  const container = document.getElementById('group-tabs');
+  if (!container) {
+    console.warn('分组标签容器不存在');
+    return;
+  }
+  
+  if (!GroupManager.groups || GroupManager.groups.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  // 计算每个分组的股票数量
+  const stockCounts = {};
+  GroupManager.groups.forEach(g => {
+    stockCounts[g.type] = pageState.stocks.filter(s => (GroupManager.stockGroups[s.code] || 1) === g.type).length;
+  });
+  
+  // 渲染分组标签
+  container.innerHTML = GroupManager.groups.map(group => {
+    const isActive = GroupManager.currentType === group.type;
+    return `
+      <div class="group-tab ${isActive ? 'active' : ''}" data-type="${group.type}" title="${group.name}">
+        <span>${group.icon}</span>
+        <span>${group.name}</span>
+        <span class="stock-count">${stockCounts[group.type] || 0}</span>
+      </div>
+    `;
+  }).join('');
+  
+  // 绑定点击事件
+  document.querySelectorAll('.group-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const type = parseInt(tab.dataset.type);
+      switchGroup(type);
+    });
+  });
+}
+
+// 切换分组
+async function switchGroup(type) {
+  if (GroupManager.currentType === type) {
+    return;  // 已经是当前分组，无需切换
+  }
+  
+  GroupManager.currentType = type;
+  
+  // 重新渲染标签（更新激活状态）
+  renderGroupTabs();
+  
+  // 从后端加载该分组的股票
+  if (typeof loadStocks === 'function') {
+    await loadStocks(type);
+  }
+  
+  // 更新分组管理按钮的计数
+  const groupManagerBtn = document.getElementById('group-manager-btn');
+  if (groupManagerBtn) {
+    groupManagerBtn.innerHTML = `📁 分组管理 (${GroupManager.groups.length})`;
+  }
+  
+  const groupName = GroupManager.groups.find(g => g.type === type)?.name || '我的自选股';
+  console.log('📁 切换到分组:', groupName, '(type=' + type + ')');
+}
+
+// 更新分组标签的股票数量
+function updateGroupTabCounts(stocks = []) {
+  const stockCounts = {};
+  GroupManager.groups.forEach(g => {
+    stockCounts[g.type] = stocks.filter(s => (GroupManager.stockGroups[s.code] || 1) === g.type).length;
+  });
+  
+  // 更新每个标签的计数
+  document.querySelectorAll('.group-tab').forEach(tab => {
+    const type = parseInt(tab.dataset.type);
+    const countEl = tab.querySelector('.stock-count');
+    if (countEl) {
+      countEl.textContent = stockCounts[type] || 0;
+    }
+  });
 }
 
 function renderGroupFilter() {

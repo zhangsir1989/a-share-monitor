@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="css/sidebar.css?v=20260415">
   <link rel="stylesheet" href="css/style.css?v=20260433">
   <link rel="stylesheet" href="css/custom.css?v=20260415">
-  <link rel="stylesheet" href="css/group-manager.css?v=2026041309">
+  <link rel="stylesheet" href="css/group-manager.css?v=2026041310">
 </head>
 <body>
   <div class="container">
@@ -158,7 +158,10 @@
     <!-- 股票列表 -->
     <section class="stock-list-section">
       <div class="list-header">
-        <h2>📋 我的自选股 (<span id="stock-count">0</span>)</h2>
+        <div class="list-header-title">
+          <h2>📋 我的自选股 (<span id="stock-count">0</span>)</h2>
+          <div id="group-tabs" class="group-tabs"></div>
+        </div>
         <div class="list-header-actions">
           <button id="group-manager-btn" class="group-manager-btn" style="display: inline-block;">📁 分组管理 (0)</button>
           <button id="clear-all-btn" class="btn btn-danger" style="display: none;">🗑️ 清空全部</button>
@@ -205,7 +208,7 @@
   </div>
 
   <script src="js/sidebar.js?v=20260422"></script>
-  <script src="js/group-manager.js?v=2026041309"></script>
-  <script src="js/custom.js?v=2026041308"></script>
+  <script src="js/group-manager.js?v=2026041310"></script>
+  <script src="js/custom.js?v=2026041310"></script>
 </body>
 </html>
