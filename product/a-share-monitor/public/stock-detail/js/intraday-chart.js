@@ -89,6 +89,7 @@ const IntradayChart = {
 
   buildFullTimeline(data) {
     console.log('[buildFullTimeline] 输入数据:', data);
+    console.log('[buildFullTimeline] 输入数据条数:', data.length);
     
     // 创建时间到数据的映射
     const dataMap = new Map();
@@ -100,10 +101,10 @@ const IntradayChart = {
     console.log(`  dataMap 大小：${dataMap.size}`);
     console.log(`  dataMap keys:`, Array.from(dataMap.keys()));
     
-    // 构建完整的 240 分钟时间轴
+    // 构建完整的 242 分钟时间轴
     const fullData = [];
     
-    // 上午：9:30-11:30 (120 分钟)
+    // 上午：9:30-11:30 (121 分钟)
     for (let hour = 9; hour <= 11; hour++) {
       for (let minute = 0; minute < 60; minute++) {
         // 跳过 9:00-9:29
@@ -128,7 +129,7 @@ const IntradayChart = {
       }
     }
     
-    // 下午：13:00-15:00 (120 分钟)
+    // 下午：13:00-15:00 (121 分钟)
     for (let hour = 13; hour <= 15; hour++) {
       for (let minute = 0; minute < 60; minute++) {
         // 15:01-15:59 不绘制

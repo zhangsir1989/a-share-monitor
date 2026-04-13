@@ -835,40 +835,106 @@ app.get('/api/intraday/:code', async (req, res) => {
   try {
     const MYDATA_LICENCE = 'FB1A859B-6832-4F70-AAA2-38274F23FC90';
     
-    // 1. 获取实时数据（最新 5 条 1 分钟线）
-    const realtimeUrl = `https://api.mairuiapi.com/hsstock/latest/${code}.${market.toUpperCase()}/1/n/${MYDATA_LICENCE}?lt=5`;
-    console.log('📊 MyData 分时实时 API:', realtimeUrl);
+    // 判断当前是否在交易时间
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    const day = now.getDay(); // 0=周日，1-6=周一 - 周六
     
-    const realtimeResp = await axios.get(realtimeUrl, {
-      timeout: 10000,
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    // 交易时间判断：周一 - 周五，9:15-11:30 或 13:00-15:00
+    const isTradingTime = (day >= 1 && day <= 5) && 
+      ((hour === 9 && minute >= 15) || (hour >= 10 && hour <= 11) || (hour === 12 && minute >= 30) || 
+       (hour === 13) || (hour === 14) || (hour === 15 && minute === 0));
     
-    const realtimeData = realtimeResp.data;
+    console.log(`🕐 当前时间：${now.toISOString()} (北京时间 ${hour}:${minute.toString().padStart(2, '0')})`);
+    console.log(`📊 是否交易时间：${isTradingTime}`);
     
-    // 2. 获取历史数据（1 分钟 K 线，用于填充图表）
-    // 注意：历史 API 的 lt 参数也需要 <= 5，所以我们用多次请求或者只用实时数据
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    
-    // 构建完整的 1 分钟分时数据
     let intradayData = [];
+    let prevClose = 0;
+    let dataSource = '';
     
-    // 如果有实时数据，直接使用
-    if (Array.isArray(realtimeData) && realtimeData.length > 0) {
-      // 转换实时数据格式
-      intradayData = realtimeData.map(item => {
-        const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
-        return {
-          time: timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '00:00',
-          price: item.c || 0,
-          open: item.o || 0,
-          high: item.h || 0,
-          low: item.l || 0,
-          volume: item.v || 0,
-          amount: item.a || 0,
-          prevClose: item.pc || 0
-        };
+    if (isTradingTime) {
+      // ✅ 交易时间：使用实时数据 API（最新 5 条 1 分钟线）
+      console.log('📡 交易时间，使用实时数据 API');
+      const realtimeUrl = `https://api.mairuiapi.com/hsstock/latest/${code}.${market.toUpperCase()}/1/n/${MYDATA_LICENCE}?lt=5`;
+      console.log('📊 MyData 分时实时 API:', realtimeUrl);
+      
+      const realtimeResp = await axios.get(realtimeUrl, {
+        timeout: 10000,
+        headers: { 'User-Agent': 'Mozilla/5.0' }
       });
+      
+      const realtimeData = realtimeResp.data;
+      
+      if (Array.isArray(realtimeData) && realtimeData.length > 0) {
+        intradayData = realtimeData.map(item => {
+          const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
+          return {
+            time: timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '00:00',
+            price: item.c || 0,
+            open: item.o || 0,
+            high: item.h || 0,
+            low: item.l || 0,
+            volume: item.v || 0,
+            amount: item.a || 0,
+            prevClose: item.pc || 0
+          };
+        });
+        prevClose = realtimeData[0]?.pc || 0;
+        dataSource = 'mydata-realtime';
+      }
+    } else {
+      // ✅ 非交易时间：使用历史数据 API（5 分钟 K 线，48 条）
+      console.log('📚 非交易时间，使用历史数据 API（5 分钟 K 线）');
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const historyUrl = `https://api.mairuiapi.com/hsstock/history/${code}.${market.toUpperCase()}/5/n/${MYDATA_LICENCE}?st=${today}&et=${today}&lt=48`;
+      console.log('📊 MyData 分时历史 API:', historyUrl);
+      
+      const historyResp = await axios.get(historyUrl, {
+        timeout: 10000,
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+      
+      const historyData = historyResp.data;
+      
+      if (Array.isArray(historyData) && historyData.length > 0) {
+        // 将 5 分钟 K 线转换为 1 分钟数据（简单插值：每个 5 分钟点重复 5 次）
+        const minuteData = [];
+        for (let i = 0; i < historyData.length; i++) {
+          const item = historyData[i];
+          const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
+          if (!timeMatch) continue;
+          
+          const baseHour = parseInt(timeMatch[1]);
+          const baseMinute = parseInt(timeMatch[2]);
+          
+          // 每个 5 分钟点生成 5 个 1 分钟点
+          for (let j = 0; j < 5; j++) {
+            const minute = baseMinute + j;
+            
+            // 跳过小时边界（11:30 之后、13:00 之前；15:00 之后）
+            if (minute >= 60) continue;
+            if (baseHour === 11 && minute > 30) continue;  // 跳过 11:31-11:59
+            if (baseHour === 12) continue;  // 跳过 12:xx
+            if (baseHour === 15 && minute > 0) continue;  // 跳过 15:01-15:59
+            
+            const time = `${baseHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            minuteData.push({
+              time: time,
+              price: item.c || 0,
+              open: item.o || 0,
+              high: item.h || 0,
+              low: item.l || 0,
+              volume: Math.floor((item.v || 0) / 5), // 成交量均分
+              amount: Math.floor((item.a || 0) / 5), // 成交额均分
+              prevClose: item.pc || 0
+            });
+          }
+        }
+        intradayData = minuteData;
+        prevClose = historyData[0]?.pc || 0;
+        dataSource = 'mydata-history-5min-interpolated';
+      }
     }
     
     // 按时间排序
@@ -878,13 +944,13 @@ app.get('/api/intraday/:code', async (req, res) => {
       return res.json({ success: false, message: '无分时数据', data: [] });
     }
     
-    console.log(`✅ 返回分时数据：${intradayData.length} 条，最新时间：${intradayData[intradayData.length - 1].time}, 最新价：${intradayData[intradayData.length - 1].price}`);
+    console.log(`✅ 返回分时数据：${intradayData.length} 条，最新时间：${intradayData[intradayData.length - 1].time}, 最新价：${intradayData[intradayData.length - 1].price}, 数据源：${dataSource}`);
     
     res.json({
       success: true,
-      prevClose: intradayData[0]?.prevClose || 0,
+      prevClose: prevClose,
       data: intradayData,
-      source: 'mydata',
+      source: dataSource,
       tradeDate: new Date().toISOString().slice(0, 10)
     });
     
