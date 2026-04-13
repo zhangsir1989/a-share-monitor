@@ -827,76 +827,103 @@ app.get('/stock', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/stock.html'));
 });
 
-// 分时图 API - 使用 MyData 实时数据接口
+// 分时图 API - 使用 MyData 实时数据接口 + 历史数据
 app.get('/api/intraday/:code', async (req, res) => {
   const code = req.params.code.replace(/^(sh|sz|bj|hk)/, '');
   const market = req.params.code.match(/^(sh|sz|bj|hk)/)?.[1] || (code.startsWith('6') ? 'sh' : 'sz');
   
   try {
-    // 使用 MyData 实时数据接口获取分时数据（1 分钟线）
     const MYDATA_LICENCE = 'FB1A859B-6832-4F70-AAA2-38274F23FC90';
-    const url = `https://api.mairuiapi.com/hsstock/latest/${code}.${market.toUpperCase()}/1/n/${MYDATA_LICENCE}?lt=240`;
     
-    console.log('📊 MyData 分时实时 API:', url);
+    // 1. 获取实时数据（最新 5 条 1 分钟线）
+    const realtimeUrl = `https://api.mairuiapi.com/hsstock/latest/${code}.${market.toUpperCase()}/1/n/${MYDATA_LICENCE}?lt=5`;
+    console.log('📊 MyData 分时实时 API:', realtimeUrl);
     
-    const response = await axios.get(url, {
+    const realtimeResp = await axios.get(realtimeUrl, {
       timeout: 10000,
       headers: { 'User-Agent': 'Mozilla/5.0' }
     });
     
-    const data = response.data;
+    const realtimeData = realtimeResp.data;
     
-    if (!Array.isArray(data) || data.length === 0) {
-      // 如果实时数据为空，尝试使用 5 分钟 K 线
-      console.log('⚠️ 实时分时数据为空，降级使用 5 分钟 K 线');
-      return res.json(await fetchIntradayHistoryFallback(code, market));
+    // 2. 获取历史数据（5 分钟 K 线，用于填充图表）
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const historyUrl = `https://api.mairuiapi.com/hsstock/history/${code}.${market.toUpperCase()}/5/n/${MYDATA_LICENCE}?st=${today}&et=${today}&lt=48`;
+    console.log('📊 MyData 分时历史 API:', historyUrl);
+    
+    const historyResp = await axios.get(historyUrl, {
+      timeout: 10000,
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    
+    const historyData = historyResp.data;
+    
+    // 3. 合并数据：历史数据 + 实时数据覆盖
+    let intradayData = [];
+    
+    if (Array.isArray(historyData) && historyData.length > 0) {
+      // 转换历史数据格式
+      intradayData = historyData.map(item => {
+        const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
+        return {
+          time: timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '00:00',
+          price: item.c || 0,
+          open: item.o || 0,
+          high: item.h || 0,
+          low: item.l || 0,
+          volume: item.v || 0,
+          amount: item.a || 0,
+          prevClose: item.pc || 0
+        };
+      });
     }
     
-    // 将 1 分钟实时数据转换为分时图格式
-    const intradayData = data.map(item => {
-      const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
-      const time = timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '00:00';
+    // 用实时数据覆盖对应时间点的数据
+    if (Array.isArray(realtimeData) && realtimeData.length > 0) {
+      const realtimeMap = new Map();
+      realtimeData.forEach(item => {
+        const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
+        if (timeMatch) {
+          const time = `${timeMatch[1]}:${timeMatch[2]}`;
+          realtimeMap.set(time, {
+            time: time,
+            price: item.c || 0,
+            open: item.o || 0,
+            high: item.h || 0,
+            low: item.l || 0,
+            volume: item.v || 0,
+            amount: item.a || 0,
+            prevClose: item.pc || 0
+          });
+        }
+      });
       
-      return {
-        time: time,
-        price: item.c || 0,
-        open: item.o || 0,
-        high: item.h || 0,
-        low: item.l || 0,
-        volume: item.v || 0,
-        amount: item.a || 0,
-        prevClose: item.pc || 0
-      };
-    });
+      // 覆盖历史数据中的对应时间点
+      intradayData = intradayData.map(item => {
+        return realtimeMap.get(item.time) || item;
+      });
+      
+      // 添加实时数据中新增的时间点（不在历史数据中的）
+      realtimeMap.forEach((item, time) => {
+        if (!intradayData.find(d => d.time === time)) {
+          intradayData.push(item);
+        }
+      });
+    }
     
     // 按时间排序
     intradayData.sort((a, b) => a.time.localeCompare(b.time));
     
-    // 存储到数据库（如果不存在）
-    const today = new Date().toISOString().slice(0, 10);
-    try {
-      const existingCount = db.exec(`SELECT COUNT(*) FROM intraday_data WHERE stock_code = '${code}' AND trade_date = '${today}'`);
-      const count = existingCount.length > 0 ? existingCount[0].values[0][0] : 0;
-      
-      if (count === 0 && intradayData.length > 0) {
-        const stmt = db.prepare(`INSERT INTO intraday_data (stock_code, trade_date, time, price, open, high, low, volume, amount, prevClose) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-        for (const item of intradayData) {
-          stmt.run([code, today, item.time, item.price, item.open, item.high, item.low, item.volume, item.amount, item.prevClose]);
-        }
-        stmt.free();
-        saveDatabase();
-        console.log('💾 存储分时数据到数据库:', intradayData.length, '条，日期:', today);
-      }
-    } catch (e) {
-      console.error('❌ 存储数据失败:', e.message);
+    if (intradayData.length === 0) {
+      return res.json({ success: false, message: '无分时数据', data: [] });
     }
     
     res.json({
       success: true,
-      prevClose: data[0]?.pc || 0,
+      prevClose: intradayData[0]?.prevClose || 0,
       data: intradayData,
       source: 'mydata',
-      tradeDate: today
+      tradeDate: new Date().toISOString().slice(0, 10)
     });
     
   } catch (error) {
