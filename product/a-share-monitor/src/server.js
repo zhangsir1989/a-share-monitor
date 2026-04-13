@@ -846,24 +846,17 @@ app.get('/api/intraday/:code', async (req, res) => {
     
     const realtimeData = realtimeResp.data;
     
-    // 2. 获取历史数据（5 分钟 K 线，用于填充图表）
+    // 2. 获取历史数据（1 分钟 K 线，用于填充图表）
+    // 注意：历史 API 的 lt 参数也需要 <= 5，所以我们用多次请求或者只用实时数据
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const historyUrl = `https://api.mairuiapi.com/hsstock/history/${code}.${market.toUpperCase()}/5/n/${MYDATA_LICENCE}?st=${today}&et=${today}&lt=48`;
-    console.log('📊 MyData 分时历史 API:', historyUrl);
     
-    const historyResp = await axios.get(historyUrl, {
-      timeout: 10000,
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
-    
-    const historyData = historyResp.data;
-    
-    // 3. 合并数据：历史数据 + 实时数据覆盖
+    // 构建完整的 1 分钟分时数据
     let intradayData = [];
     
-    if (Array.isArray(historyData) && historyData.length > 0) {
-      // 转换历史数据格式
-      intradayData = historyData.map(item => {
+    // 如果有实时数据，直接使用
+    if (Array.isArray(realtimeData) && realtimeData.length > 0) {
+      // 转换实时数据格式
+      intradayData = realtimeData.map(item => {
         const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
         return {
           time: timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '00:00',
@@ -878,45 +871,14 @@ app.get('/api/intraday/:code', async (req, res) => {
       });
     }
     
-    // 用实时数据覆盖对应时间点的数据
-    if (Array.isArray(realtimeData) && realtimeData.length > 0) {
-      const realtimeMap = new Map();
-      realtimeData.forEach(item => {
-        const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
-        if (timeMatch) {
-          const time = `${timeMatch[1]}:${timeMatch[2]}`;
-          realtimeMap.set(time, {
-            time: time,
-            price: item.c || 0,
-            open: item.o || 0,
-            high: item.h || 0,
-            low: item.l || 0,
-            volume: item.v || 0,
-            amount: item.a || 0,
-            prevClose: item.pc || 0
-          });
-        }
-      });
-      
-      // 覆盖历史数据中的对应时间点
-      intradayData = intradayData.map(item => {
-        return realtimeMap.get(item.time) || item;
-      });
-      
-      // 添加实时数据中新增的时间点（不在历史数据中的）
-      realtimeMap.forEach((item, time) => {
-        if (!intradayData.find(d => d.time === time)) {
-          intradayData.push(item);
-        }
-      });
-    }
-    
     // 按时间排序
     intradayData.sort((a, b) => a.time.localeCompare(b.time));
     
     if (intradayData.length === 0) {
       return res.json({ success: false, message: '无分时数据', data: [] });
     }
+    
+    console.log(`✅ 返回分时数据：${intradayData.length} 条，最新时间：${intradayData[intradayData.length - 1].time}, 最新价：${intradayData[intradayData.length - 1].price}`);
     
     res.json({
       success: true,

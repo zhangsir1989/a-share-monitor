@@ -55,17 +55,81 @@ const IntradayChart = {
     this.afterHoursData = responseData.data.filter(d => d.time > '15:00');
     this.prevClose = responseData.prevClose || this.data[0]?.prevClose || 0;
     
+    // 构建完整的 240 分钟时间轴数据（9:30-11:30, 13:00-15:00）
+    // 用已有数据填充，缺失的时间点用 null 占位
+    this.fullTimelineData = this.buildFullTimeline(this.data);
+    
     this.calculateStats();
     this.draw();
   },
 
+  buildFullTimeline(data) {
+    // 创建时间到数据的映射
+    const dataMap = new Map();
+    data.forEach(item => {
+      dataMap.set(item.time, item);
+    });
+    
+    // 构建完整的 240 分钟时间轴
+    const fullData = [];
+    
+    // 上午：9:30-11:30 (120 分钟)
+    for (let hour = 9; hour <= 11; hour++) {
+      for (let minute = 0; minute < 60; minute++) {
+        // 跳过 9:00-9:29
+        if (hour === 9 && minute < 30) continue;
+        
+        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const item = dataMap.get(time);
+        
+        if (item) {
+          fullData.push(item);
+        } else {
+          // 用 null 占位，绘制时跳过
+          fullData.push({
+            time: time,
+            price: null,
+            volume: 0,
+            amount: 0
+          });
+        }
+      }
+    }
+    
+    // 下午：13:00-15:00 (120 分钟)
+    for (let hour = 13; hour <= 15; hour++) {
+      for (let minute = 0; minute < 60; minute++) {
+        // 15:00 不绘制
+        if (hour === 15 && minute > 0) break;
+        
+        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const item = dataMap.get(time);
+        
+        if (item) {
+          fullData.push(item);
+        } else {
+          fullData.push({
+            time: time,
+            price: null,
+            volume: 0,
+            amount: 0
+          });
+        }
+      }
+    }
+    
+    return fullData;
+  },
+
   calculateStats() {
-    const prices = this.data.map(d => d.price);
+    // 使用有数据的点计算统计
+    const validData = this.data.filter(d => d.price !== null);
+    const prices = validData.map(d => d.price);
     this.stats = {
-      open: this.data[0]?.price || 0,
+      open: validData[0]?.price || 0,
       high: Math.max(...prices),
       low: Math.min(...prices),
-      close: this.data[this.data.length - 1]?.price || 0,
+      close: validData[validData.length - 1]?.price || 0,
       avgPrice: this.calculateAvgPrice()
     };
   },
@@ -73,6 +137,7 @@ const IntradayChart = {
   calculateAvgPrice() {
     let totalAmount = 0, totalVolume = 0;
     for (const d of this.data) {
+      if (d.price === null) continue;
       const vol = d.volume || 0;
       totalAmount += d.price * vol;
       totalVolume += vol;
@@ -81,7 +146,7 @@ const IntradayChart = {
   },
 
   draw() {
-    if (!this.ctx || !this.data || this.data.length === 0) return;
+    if (!this.ctx || !this.fullTimelineData || this.fullTimelineData.length === 0) return;
 
     const width = this.canvas.width;
     const height = this.canvas.height;
@@ -106,8 +171,8 @@ const IntradayChart = {
     const marketAfternoonStart = 13 * 60; // 780 - 下午开盘
     const marketClose = 15 * 60;         // 900 - 下午收盘
     
-    // 计算当前应该绘制的数据点索引
-    let currentIndex = this.data.length - 1; // 默认绘制全部
+    // 计算当前应该绘制的数据点索引（基于 240 分钟固定时间轴）
+    let currentIndex = this.fullTimelineData.length - 1; // 默认绘制全部
     
     if (currentTotalMinutes < marketOpen) {
       // 还没开盘，不绘制
@@ -115,25 +180,46 @@ const IntradayChart = {
     } else if (currentTotalMinutes <= marketNoonEnd) {
       // 上午交易时间：9:30-11:30
       const minutesFromOpen = currentTotalMinutes - marketOpen;
-      currentIndex = Math.floor((minutesFromOpen / 120) * 120);
+      currentIndex = minutesFromOpen;
     } else if (currentTotalMinutes < marketAfternoonStart) {
       // 午休时间：11:30-13:00，停留在上午收盘
-      currentIndex = 120;
+      currentIndex = 119; // 上午最后一个索引
     } else if (currentTotalMinutes <= marketClose) {
       // 下午交易时间：13:00-15:00
       const afternoonMinutes = currentTotalMinutes - marketAfternoonStart;
-      currentIndex = 121 + Math.floor((afternoonMinutes / 120) * 120);
+      currentIndex = 120 + afternoonMinutes;
     }
     
     // 确保索引有效
-    currentIndex = Math.max(0, Math.min(currentIndex, this.data.length - 1));
+    currentIndex = Math.max(0, Math.min(currentIndex, this.fullTimelineData.length - 1));
+    
+    // 找到最后一个有数据的点
+    let lastDataIndex = currentIndex;
+    for (let i = currentIndex; i >= 0; i--) {
+      if (this.fullTimelineData[i].price !== null) {
+        lastDataIndex = i;
+        break;
+      }
+    }
     
     console.log('⏰ 当前时间:', currentHour + ':' + currentMinute, '(' + currentTotalMinutes + '分钟)');
-    console.log('⏰ 当前索引:', currentIndex, '时间:', this.data[currentIndex]?.time, '价格:', this.data[currentIndex]?.price);
+    console.log('⏰ 当前索引:', currentIndex, '最后数据索引:', lastDataIndex);
+    if (this.fullTimelineData[lastDataIndex]) {
+      console.log('⏰ 最后数据时间:', this.fullTimelineData[lastDataIndex].time, '价格:', this.fullTimelineData[lastDataIndex].price);
+    }
 
-    const prices = this.data.map(d => d.price);
-    const maxPrice = Math.max(...prices);
-    const minPrice = Math.min(...prices);
+    // 计算价格范围（只使用有数据的点）
+    const validPrices = this.fullTimelineData.slice(0, lastDataIndex + 1)
+      .filter(d => d.price !== null)
+      .map(d => d.price);
+    
+    if (validPrices.length === 0) {
+      this.drawPlaceholder('暂无分时数据');
+      return;
+    }
+    
+    const maxPrice = Math.max(...validPrices);
+    const minPrice = Math.min(...validPrices);
     
     // 以昨收价为中心对称计算价格范围
     const maxChange = Math.max(
@@ -146,8 +232,8 @@ const IntradayChart = {
     const displayMin = this.prevClose - range;
     const displayMax = this.prevClose + range;
 
-    // 坐标转换函数
-    const xScale = (i) => padding.left + (i / (this.data.length - 1)) * chartWidth;
+    // 坐标转换函数 - 基于固定的 240 分钟时间轴
+    const xScale = (i) => padding.left + (i / 239) * chartWidth;  // 239 = 240-1
     const yScale = (price) => {
       const range = displayMax - displayMin || 0.01;
       return padding.top + priceChartHeight - ((price - displayMin) / range) * priceChartHeight;
@@ -167,7 +253,7 @@ const IntradayChart = {
     this.drawAvgLine(padding, chartWidth, avgY);
 
     // 4. 绘制填充区域（只到当前时间）
-    this.drawAreaFill(xScale, yScale, prevCloseY, currentIndex);
+    this.drawAreaFill(xScale, yScale, prevCloseY, lastDataIndex);
 
     // 5. 绘制盘后数据
     if (this.afterHoursData?.length > 0) {
@@ -215,12 +301,12 @@ const IntradayChart = {
       this.ctx.fillText(sign + changePercent.toFixed(2) + '%', padding.left + chartWidth + 5, y + 4);
     }
 
-    // 竖线（时间）
+    // 竖线（时间）- 使用固定的 240 分钟时间轴
     const timePoints = ['09:30', '10:00', '10:30', '11:00', '11:30', '13:00', '13:30', '14:00', '14:30', '15:00'];
     for (const t of timePoints) {
       const index = this.findTimeIndex(t);
       if (index >= 0) {
-        const x = padding.left + (index / (this.data.length - 1)) * chartWidth;
+        const x = padding.left + (index / 239) * chartWidth;  // 239 = 240-1
         this.ctx.beginPath();
         this.ctx.moveTo(x, padding.top);
         this.ctx.lineTo(x, padding.top + priceChartHeight);
@@ -264,16 +350,36 @@ const IntradayChart = {
   },
 
   drawAreaFill(xScale, yScale, prevCloseY, currentIndex) {
-    const currentPrice = this.data[currentIndex].price;
+    // 找到当前价格和最后一个有数据的点
+    let currentPrice = 0;
+    for (let i = currentIndex; i >= 0; i--) {
+      if (this.fullTimelineData[i].price !== null) {
+        currentPrice = this.fullTimelineData[i].price;
+        break;
+      }
+    }
+    
     const isUp = currentPrice >= this.prevClose;
     const lineColor = isUp ? '#ff4d4f' : '#52c41a';
 
-    // 绘制价格曲线（只到当前时间）
+    // 绘制价格曲线（只到当前时间，跳过 null 点）
     this.ctx.beginPath();
-    this.ctx.moveTo(xScale(0), yScale(this.data[0].price));
-    for (let i = 1; i <= currentIndex; i++) {
-      this.ctx.lineTo(xScale(i), yScale(this.data[i].price));
+    let started = false;
+    for (let i = 0; i <= currentIndex; i++) {
+      const price = this.fullTimelineData[i].price;
+      if (price === null) continue;
+      
+      const x = xScale(i);
+      const y = yScale(price);
+      
+      if (!started) {
+        this.ctx.moveTo(x, y);
+        started = true;
+      } else {
+        this.ctx.lineTo(x, y);
+      }
     }
+    if (started) this.ctx.stroke();
     this.ctx.strokeStyle = lineColor;
     this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
@@ -297,7 +403,7 @@ const IntradayChart = {
   },
 
   drawAfterHoursData(xScale, yScale, closePrice) {
-    const lastIntradayX = xScale(this.data.length - 1);
+    const lastIntradayX = xScale(this.fullTimelineData.length - 1);
     const closeY = yScale(closePrice);
     
     this.ctx.strokeStyle = '#1890ff';
@@ -318,7 +424,19 @@ const IntradayChart = {
   },
 
   drawStats(x, y, chartWidth) {
-    const change = this.stats.close - this.prevClose;
+    // 使用有数据的点计算统计
+    const validData = this.fullTimelineData.filter(d => d.price !== null);
+    if (validData.length === 0) return;
+    
+    const prices = validData.map(d => d.price);
+    const stats = {
+      open: validData[0]?.price || 0,
+      high: Math.max(...prices),
+      low: Math.min(...prices),
+      close: validData[validData.length - 1]?.price || 0
+    };
+    
+    const change = stats.close - this.prevClose;
     const changePercent = (change / this.prevClose) * 100;
     const isUp = change >= 0;
     const color = isUp ? '#ff4d4f' : '#52c41a';
@@ -329,10 +447,10 @@ const IntradayChart = {
     
     // 第一行：开、高、低、收
     this.ctx.fillStyle = '#8b949e';
-    this.ctx.fillText(`开 ${this.stats.open.toFixed(2)}`, x, y - 10);
-    this.ctx.fillText(`高 ${this.stats.high.toFixed(2)}`, x + chartWidth / 4, y - 10);
-    this.ctx.fillText(`低 ${this.stats.low.toFixed(2)}`, x + chartWidth / 2, y - 10);
-    this.ctx.fillText(`收 ${this.stats.close.toFixed(2)}`, x + chartWidth * 3/4, y - 10);
+    this.ctx.fillText(`开 ${stats.open.toFixed(2)}`, x, y - 10);
+    this.ctx.fillText(`高 ${stats.high.toFixed(2)}`, x + chartWidth / 4, y - 10);
+    this.ctx.fillText(`低 ${stats.low.toFixed(2)}`, x + chartWidth / 2, y - 10);
+    this.ctx.fillText(`收 ${stats.close.toFixed(2)}`, x + chartWidth * 3/4, y - 10);
     
     // 第二行：涨跌、涨幅、成交量、成交额
     this.ctx.fillStyle = color;
@@ -341,8 +459,8 @@ const IntradayChart = {
     this.ctx.fillText(`${sign}${changePercent.toFixed(2)}%`, x + chartWidth / 4, y + 8);
     
     // 计算成交量和成交额
-    const totalVolume = this.data.reduce((sum, d) => sum + (d.volume || 0), 0);
-    const totalAmount = this.data.reduce((sum, d) => sum + d.price * (d.volume || 0), 0);
+    const totalVolume = validData.reduce((sum, d) => sum + (d.volume || 0), 0);
+    const totalAmount = validData.reduce((sum, d) => sum + d.price * (d.volume || 0), 0);
     const volumeText = totalVolume > 1e8 ? (totalVolume / 1e8).toFixed(2) + '亿手' : 
                        totalVolume > 1e4 ? (totalVolume / 1e4).toFixed(2) + '万手' : totalVolume.toFixed(0) + '手';
     const amountText = totalAmount > 1e8 ? (totalAmount / 1e8).toFixed(2) + '亿' : 
@@ -354,23 +472,25 @@ const IntradayChart = {
     this.ctx.fillText(`额 ${amountText}`, x + chartWidth * 3/4, y + 8);
     
     // 右侧：振幅
-    const amplitude = ((this.stats.high - this.stats.low) / this.prevClose) * 100;
+    const amplitude = ((stats.high - stats.low) / this.prevClose) * 100;
     this.ctx.fillStyle = '#8b949e';
     this.ctx.textAlign = 'right';
     this.ctx.fillText(`振幅 ${amplitude.toFixed(2)}%`, x + chartWidth, y + 8);
   },
 
   drawVolumeBar(padding, chartWidth, volumeHeight, yBase) {
-    const volumes = this.data.map(d => d.volume || 0);
+    const volumes = this.fullTimelineData.map(d => d.volume || 0);
     const maxVolume = Math.max(...volumes) || 1;
-    const barWidth = Math.max(1, chartWidth / this.data.length * 0.8);
+    const barWidth = Math.max(1, chartWidth / this.fullTimelineData.length * 0.8);
 
-    for (let i = 0; i < this.data.length; i++) {
-      const x = padding.left + (i / (this.data.length - 1)) * chartWidth - barWidth / 2;
+    for (let i = 0; i < this.fullTimelineData.length; i++) {
+      const price = this.fullTimelineData[i].price;
+      if (price === null) continue;  // 跳过无数据的点
+      
+      const x = padding.left + (i / 239) * chartWidth - barWidth / 2;  // 239 = 240-1
       const barHeight = (volumes[i] / maxVolume) * volumeHeight;
       const y = yBase + volumeHeight - barHeight;
 
-      const price = this.data[i].price;
       const isUp = price >= this.prevClose;
       
       // 成交量柱状图颜色：红涨绿跌，使用实心颜色
@@ -378,7 +498,9 @@ const IntradayChart = {
       this.ctx.fillRect(x, y, barWidth, barHeight);
     }
 
-    const totalAmount = this.data.reduce((sum, d) => sum + d.price * (d.volume || 0), 0);
+    const totalAmount = this.fullTimelineData
+      .filter(d => d.price !== null)
+      .reduce((sum, d) => sum + d.price * (d.volume || 0), 0);
     const amountText = totalAmount > 1e8 ? (totalAmount / 1e8).toFixed(2) + '亿' : 
                        totalAmount > 1e4 ? (totalAmount / 1e4).toFixed(2) + '万' : totalAmount.toFixed(0);
     
@@ -398,23 +520,18 @@ const IntradayChart = {
     for (const t of targetTimes) {
       const index = this.findTimeIndex(t);
       if (index >= 0) {
-        const x = padding.left + (index / (this.data.length - 1)) * chartWidth;
+        const x = padding.left + (index / 239) * chartWidth;  // 239 = 240-1
         this.ctx.fillText(t, x, yPosition);
       }
     }
   },
 
   findTimeIndex(targetTime) {
-    for (let i = 0; i < this.data.length; i++) {
-      if (this.data[i].time === targetTime) return i;
+    // 在 fullTimelineData 中查找
+    for (let i = 0; i < this.fullTimelineData.length; i++) {
+      if (this.fullTimelineData[i].time === targetTime) return i;
     }
-    const [h, m] = targetTime.split(':').map(Number);
-    const targetMinutes = h * 60 + m;
-    for (let i = 0; i < this.data.length; i++) {
-      const [hh, mm] = this.data[i].time.split(':').map(Number);
-      if (hh * 60 + mm >= targetMinutes) return i;
-    }
-    return this.data.length - 1;
+    return -1;
   },
 
   drawPlaceholder(message) {
