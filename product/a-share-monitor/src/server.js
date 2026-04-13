@@ -72,6 +72,51 @@ async function initDatabase() {
       )
     `);
     console.log('✅ 定时任务表已创建');
+    
+    // 创建自选股表
+    db.run(`
+      CREATE TABLE IF NOT EXISTS custom_stocks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        stock_code TEXT NOT NULL,
+        stock_market TEXT NOT NULL,
+        type INTEGER DEFAULT 0,
+        added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, stock_code, stock_market, type)
+      )
+    `);
+    console.log('✅ 自选股表已创建');
+    
+    // 创建证券信息表
+    db.run(`
+      CREATE TABLE IF NOT EXISTS securities (
+        code TEXT PRIMARY KEY,
+        name TEXT,
+        market TEXT,
+        category TEXT,
+        list_date TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ 证券信息表已创建');
+    
+    // 创建逐笔成交表
+    db.run(`
+      CREATE TABLE IF NOT EXISTS tick_trade (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stock_code TEXT NOT NULL,
+        trade_date TEXT NOT NULL,
+        time TEXT NOT NULL,
+        price REAL,
+        volume INTEGER,
+        amount REAL,
+        direction TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_tick_code_date ON tick_trade(stock_code, trade_date)`);
+    console.log('✅ 逐笔成交表已创建');
     saveDatabase();
     console.log('✅ 数据库创建成功，默认用户：admin / admin123');
   } else {
@@ -79,6 +124,53 @@ async function initDatabase() {
     db = new SQL.Database(fileBuffer);
     console.log('✓ 数据库连接成功:', DB_PATH);
   }
+  
+  // 确保所有表都存在（无论数据库是新创建还是已存在）
+  db.run(`
+    CREATE TABLE IF NOT EXISTS custom_stocks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      stock_code TEXT NOT NULL,
+      stock_market TEXT NOT NULL,
+      type INTEGER DEFAULT 0,
+      added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, stock_code, stock_market, type)
+    )
+  `);
+  console.log('✅ 自选股表已检查');
+  
+  db.run(`
+    CREATE TABLE IF NOT EXISTS securities (
+      code TEXT PRIMARY KEY,
+      name TEXT,
+      market TEXT,
+      category TEXT,
+      list_date TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  console.log('✅ 证券信息表已检查');
+  
+  db.run(`
+    CREATE TABLE IF NOT EXISTS tick_trade (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      stock_code TEXT NOT NULL,
+      trade_date TEXT NOT NULL,
+      time TEXT NOT NULL,
+      price REAL,
+      volume INTEGER,
+      amount REAL,
+      direction TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_tick_code_date ON tick_trade(stock_code, trade_date)`);
+  console.log('✅ 逐笔成交表已检查');
+  
+  // 保存表结构到数据库文件
+  saveDatabase();
+  console.log('✅ 数据库表结构已保存');
   
   // 初始化证券同步函数
   // 使用 MyData API 同步模块
