@@ -241,7 +241,11 @@ const API = {
       const result = await response.json();
       
       if (result.success && result.data) {
-        return { success: true, data: result }; 
+        return { 
+          success: true, 
+          data: result.data,
+          prevClose: result.prevClose
+        }; 
       }
       
       return { success: false, message: '获取分时数据失败' }; 
