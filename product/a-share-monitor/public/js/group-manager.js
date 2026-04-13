@@ -387,6 +387,7 @@ async function switchGroup(type) {
   }
   
   GroupManager.currentType = type;
+  GroupManager.currentFilter = type;  // 同步更新 currentFilter，确保筛选逻辑正确
   
   // 重新渲染标签（更新激活状态）
   renderGroupTabs();
@@ -403,7 +404,7 @@ async function switchGroup(type) {
   }
   
   const groupName = GroupManager.groups.find(g => g.type === type)?.name || '我的自选股';
-  console.log('📁 切换到分组:', groupName, '(type=' + type + ')');
+  console.log('📁 切换到分组:', groupName, '(type=' + type + ', currentFilter=' + GroupManager.currentFilter + ')');
 }
 
 // 更新分组标签的股票数量
@@ -512,6 +513,7 @@ function bindGroupListEvents() {
 async function filterByGroup(type) {
   const newType = type === 'all' ? 1 : parseInt(type);
   GroupManager.currentFilter = newType;
+  GroupManager.currentType = newType;  // 同步更新 currentType，确保添加股票到正确分组
   
   // 更新 URL 参数（可选，用于刷新后保持筛选状态）
   const url = new URL(window.location);
