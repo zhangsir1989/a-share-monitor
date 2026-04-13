@@ -146,6 +146,10 @@ function stopAutoRefresh() {
     clearInterval(StockState.tradeTimer);
     StockState.tradeTimer = null;
   }
+  if (StockState.intradayTimer) {
+    clearInterval(StockState.intradayTimer);
+    StockState.intradayTimer = null;
+  }
   if (StockState.capitalTimer) {
     clearInterval(StockState.capitalTimer);
     StockState.capitalTimer = null;
@@ -163,6 +167,14 @@ async function loadBasicInfo() {
   const intradayResult = await API.getIntraday(StockState.code, StockState.market);
   if (intradayResult.success) {
     IntradayChart.render(intradayResult.data);
+  }
+}
+
+// 只更新分时图（500ms 刷新）
+async function loadIntraday() {
+  const result = await API.getIntraday(StockState.code, StockState.market);
+  if (result.success) {
+    IntradayChart.render(result.data);
   }
 }
 
