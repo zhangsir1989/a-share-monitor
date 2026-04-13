@@ -47,14 +47,17 @@ async function initDatabase() {
     // 创建 users 表
     db.run(`
       CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        role TEXT DEFAULT '0',
+        is_active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_login DATETIME
       )
     `);
     // 插入默认管理员账户
-    db.run(`INSERT INTO users (username, password) VALUES ('admin', 'admin123')`);
+    db.run(`INSERT INTO users (user_id, username, password, role, is_active) VALUES ('admin', 'admin', 'admin123', '1', 1)`);
     saveDatabase();
     console.log('✅ 数据库创建成功，默认用户：admin / admin123');
   } else {
