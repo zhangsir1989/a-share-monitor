@@ -1995,7 +1995,7 @@ app.post('/api/custom-stocks/add', (req, res) => {
     }
     
     const { stock_code, stock_market, type } = req.body;
-    const stockType = type || 1;  // 默认为自选股
+    const stockType = (type !== undefined && type !== null) ? parseInt(type) : 1;  // 默认为自选股（type=1），支持 type=0（持仓）
     
     if (!stock_code || !stock_market) {
       console.log('⚠️ 缺少参数:', stock_code, stock_market);

@@ -184,8 +184,8 @@ function stopAutoRefresh() {
 // 从数据库加载用户的持仓
 async function loadStocks() {
   try {
-    console.log('📦 开始从数据库加载持仓...');
-    const response = await fetch('/api/custom-stocks/list?type=2');
+    console.log('📦 开始从数据库加载持仓 (type=0)...');
+    const response = await fetch('/api/custom-stocks/list?type=0');
     const result = await response.json();
     console.log('📦 数据库返回:', result);
     
@@ -245,10 +245,11 @@ function saveStocksToLocalStorage() {
 // 保存到数据库（添加股票时调用）
 async function saveStockToDb(code, market) {
   try {
+    // 持仓页面使用 type=0
     const response = await fetch('/api/custom-stocks/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stock_code: code, stock_market: market, type: 2 })
+      body: JSON.stringify({ stock_code: code, stock_market: market, type: 0 })
     });
     const result = await response.json();
     if (!result.success) {
@@ -269,7 +270,7 @@ async function deleteStockFromDb(code, market) {
     const response = await fetch('/api/custom-stocks/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stock_code: code, stock_market: market, type: 2 })
+      body: JSON.stringify({ stock_code: code, stock_market: market, type: 0 })
     });
     const result = await response.json();
     return result.success;
@@ -332,6 +333,7 @@ async function addStock(code, name, market) {
   
   updateStockList();
   fetchAllStockData();
+  
   showToast(`已添加 ${name}`, 'success');
   return true;
 }
