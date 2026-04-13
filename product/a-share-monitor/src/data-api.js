@@ -1021,22 +1021,15 @@ async function fetchMainIndices() {
 
 
 /**
- * 获取最近交易日（最多向前查找 5 天，跳过周末）
+ * 获取最近交易日
+ * 逻辑：
+ * - 周一至周五：使用今天（交易日当天从开盘就有实时数据）
+ * - 周六/周日：使用上周五
  */
 function getLatestTradeDate() {
-  // 返回最近一个有数据的交易日
   // 系统时间已是 CST (UTC+8)，不需要转换
   const beijingTime = new Date();
   const weekday = beijingTime.getDay();
-  const hour = beijingTime.getHours();
-  
-  // 周一且 15:00 前，使用上周五（今天数据还没生成）
-  if (weekday === 1 && hour < 15) {
-    const lastFriday = new Date(beijingTime);
-    lastFriday.setDate(beijingTime.getDate() - 3);
-    console.log("📅 周一早盘，使用上周五:", lastFriday.toISOString().split('T')[0]);
-    return lastFriday.toISOString().split('T')[0];
-  }
   
   // 周日，使用周五
   if (weekday === 0) {
@@ -1054,9 +1047,9 @@ function getLatestTradeDate() {
     return friday.toISOString().split('T')[0];
   }
   
-  // 其他情况使用今天
+  // 周一至周五（交易日），使用今天
   const today = beijingTime.toISOString().split('T')[0];
-  console.log("📅 使用今天:", today);
+  console.log("📅 交易日，使用今天:", today);
   return today;
 }
 

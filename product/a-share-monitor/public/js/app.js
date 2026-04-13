@@ -781,17 +781,13 @@ function initPaginationEvents() {
 }
 
 // 获取最近交易日（与后端逻辑一致）
+// 逻辑：
+// - 周一至周五：使用今天（交易日当天从开盘就有实时数据）
+// - 周六/周日：使用上周五
 function getLatestTradeDate() {
   const now = new Date();
   const weekday = now.getDay();
-  const hour = now.getHours();
   let tradingDate = new Date(now);
-  
-  // 周一且 15:00 前，使用上周五
-  if (weekday === 1 && hour < 15) {
-    tradingDate.setDate(now.getDate() - 3);
-    return tradingDate.toISOString().split('T')[0];
-  }
   
   // 周日，使用周五
   if (weekday === 0) {
@@ -805,7 +801,7 @@ function getLatestTradeDate() {
     return tradingDate.toISOString().split('T')[0];
   }
   
-  // 其他情况使用今天
+  // 周一至周五（交易日），使用今天
   return tradingDate.toISOString().split('T')[0];
 }
 
