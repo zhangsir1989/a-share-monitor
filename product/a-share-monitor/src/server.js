@@ -1327,19 +1327,12 @@ app.get('/api/stock/:code/tick-trades', async (req, res) => {
     // 分页参数
     const page = parseInt(req.query.page) || 1;
     const pageSize = parseInt(req.query.pageSize) || 100;
-    const allData = req.query.all === 'true';  // 是否返回全部数据
     
     // MyData API Licence
     const MYDATA_LICENCE = 'FB1A859B-6832-4F70-AAA2-38274F23FC90';
     
-    // 1. 获取流通市值
-    const basicResult = await fetchStockDetail(code);
-    let floatMarketCap = 0;
-    if (basicResult.success && basicResult.data) {
-      floatMarketCap = (basicResult.data.floatMarketCap || 0) * 100000000; // 亿元转元
-    }
-    
-    // 2. 使用 MyData API 获取逐笔成交数据
+    // MyData 当天逐笔交易 API - 返回当天的实时数据（按时间倒序）
+    // 文档：https://api.mairuiapi.com/hsrl/zbjy/股票代码/LICENCE
     const tradesUrl = `https://api.mairuiapi.com/hsrl/zbjy/${codeNum}/${MYDATA_LICENCE}`;
     
     const tradesResponse = await fetch(tradesUrl, {
@@ -1356,100 +1349,72 @@ app.get('/api/stock/:code/tick-trades', async (req, res) => {
     const trades = await tradesResponse.json();
     
     if (!Array.isArray(trades) || trades.length === 0) {
-      return res.json({ success: true, data: [], total: 0 });
+      return res.json({ 
+        success: true, 
+        data: [], 
+        total: 0,
+        page: page,
+        pageSize: pageSize,
+        totalPages: 0,
+        dataSource: 'MyData（实时）',
+        tradeDate: new Date().toISOString().split('T')[0]
+      });
     }
     
-    // 3. 处理逐笔成交数据，添加订单类型分类
-    // MyData 字段: d=日期, t=时间, v=成交量-股, p=成交价, ts=方向(0中性,1买入,2卖出)
-    const processedTrades = trades
-      .filter(trade => {
-        // 排除集合竞价时间
-        const time = trade.t || '';
-        const match = time.match(/(\d{1,2}):(\d{2}):(\d{2})/);
-        if (match) {
-          const hour = parseInt(match[1]);
-          const minute = parseInt(match[2]);
-          if ((hour === 9 && minute >= 15 && minute <= 25) || (hour === 14 && minute >= 57)) {
-            return false;
-          }
-        }
-        return true;
-      })
-      .map(trade => {
-        const volume = trade.v || 0;
-        const price = trade.p || 0;
-        const amount = volume * price;  // 元
-        const amountWan = amount / 10000;  // 万元
-        
-        // 订单类型分类（使用流通市值比例）
-        let orderType = 'small';
-        if (floatMarketCap > 0) {
-          const percentage = amount / floatMarketCap;
-          if (percentage > 0.0002) orderType = 'superLarge';
-          else if (percentage > 0.00005) orderType = 'large';
-          else if (percentage > 0.00001) orderType = 'medium';
-        } else {
-          if (amountWan >= 100) orderType = 'superLarge';
-          else if (amountWan >= 20) orderType = 'large';
-          else if (amountWan >= 5) orderType = 'medium';
-        }
-        
-        // 方向
-        let direction = 'neutral';
-        if (trade.ts === 1) direction = 'buy';
-        else if (trade.ts === 2) direction = 'sell';
-        
-        return {
-          date: trade.d || '',
-          time: trade.t || '',
-          volume: volume,
-          price: price,
-          amount: amountWan,  // 万元
-          direction: direction,
-          orderType: orderType
-        };
-      });
+    // MyData 字段：d=日期，t=时间，v=成交量 - 股，p=成交价，ts=方向 (0 中性，1 买入，2 卖出)
+    const today = new Date().toISOString().split('T')[0];
     
-    // 截止15:01的数据（按时间升序：时间从小到大）
-    const sortedTrades = processedTrades.sort((a, b) => {
-      // 按时间升序排列（小到大）
-      return (a.time || '').localeCompare(b.time || '');
+    const processedTrades = trades.map(trade => {
+      const volume = trade.v || 0;  // 股
+      const price = trade.p || 0;
+      const amount = volume * price;  // 元
+      const amountWan = amount / 10000;  // 万元
+      
+      // 订单类型分类
+      let orderType = 'small';
+      if (amountWan >= 100) orderType = 'superLarge';
+      else if (amountWan >= 20) orderType = 'large';
+      else if (amountWan >= 5) orderType = 'medium';
+      
+      // 方向
+      let direction = 'neutral';
+      if (trade.ts === 1) direction = 'buy';
+      else if (trade.ts === 2) direction = 'sell';
+      
+      return {
+        date: trade.d || today,
+        time: trade.t || '',
+        volume: volume,  // 股
+        price: price,
+        amount: amountWan,  // 万元
+        direction: direction,
+        orderType: orderType
+      };
     });
     
-    // 获取交易日日期
-    const tradeDate = sortedTrades.length > 0 ? (sortedTrades[0].date || '') : '';
+    // MyData 返回的已经是倒序（最新的在前）
+    const totalCount = processedTrades.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
     
-    // 分页处理
-    let resultTrades = sortedTrades;
-    let totalPages = 1;
-    let currentPage = 1;
-    
-    if (!allData && pageSize > 0) {
-      const total = sortedTrades.length;
-      totalPages = Math.ceil(total / pageSize);
-      currentPage = Math.min(Math.max(1, page), totalPages);
-      
-      // 按时间倒序排列（最新的在前），然后分页
-      const reversedTrades = [...sortedTrades].reverse();
-      const startIndex = (currentPage - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      resultTrades = reversedTrades.slice(startIndex, endIndex);
-    }
+    // 分页
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const resultTrades = processedTrades.slice(startIndex, endIndex);
     
     res.json({
       success: true,
       data: resultTrades,
-      page: currentPage,
+      page: page,
       pageSize: pageSize,
       totalPages: totalPages,
-      total: sortedTrades.length,
-      dataSource: 'MyData API',
-      tradeDate: tradeDate
+      total: totalCount,
+      dataSource: 'MyData（实时）',
+      tradeDate: resultTrades.length > 0 ? (resultTrades[0].date || today) : today
     });
     
   } catch (error) {
     console.error('获取逐笔成交失败:', error.message);
-    res.status(500).json({ success: false, message: '获取逐笔成交失败: ' + error.message });
+    res.status(500).json({ success: false, message: '获取逐笔成交失败：' + error.message });
   }
 });
 
