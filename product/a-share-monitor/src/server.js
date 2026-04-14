@@ -2997,6 +2997,11 @@ async function startServer() {
   initGroupAPI(app, db);
   console.log('✅ 分组管理 API 已初始化');
   
+  // 初始化智能助手 API
+  const initAssistantAPI = require('./assistant-api');
+  initAssistantAPI(app, db);
+  console.log('🤖 智能助手 API 已初始化');
+  
   app.listen(PORT, '0.0.0.0', () => {
     console.log('');
     console.log('╔══════════════════════════════════════════════════════╗');
