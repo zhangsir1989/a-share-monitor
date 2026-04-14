@@ -1331,22 +1331,59 @@ app.get('/api/stock/:code/tick-trades', async (req, res) => {
     // MyData API Licence
     const MYDATA_LICENCE = 'FB1A859B-6832-4F70-AAA2-38274F23FC90';
     
-    // MyData 当天逐笔交易 API - 返回当天的实时数据（按时间倒序）
-    // 文档：https://api.mairuiapi.com/hsrl/zbjy/股票代码/LICENCE
-    const tradesUrl = `https://api.mairuiapi.com/hsrl/zbjy/${codeNum}/${MYDATA_LICENCE}`;
+    // 检查当前时间（北京时间 UTC+8）
+    const now = new Date();
+    const beijingHour = (now.getUTCHours() + 8) % 24;
+    const beijingMinutes = now.getUTCMinutes();
+    const currentTime = beijingHour * 60 + beijingMinutes;
     
-    const tradesResponse = await fetch(tradesUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json'
+    // 交易时间：9:30-11:30, 13:00-15:00 (北京时间 570-690, 780-900 分钟)
+    const isTradingTime = (currentTime >= 570 && currentTime <= 690) || (currentTime >= 780 && currentTime <= 900);
+    
+    let trades = [];
+    let dataSource = '';
+    
+    if (isTradingTime) {
+      // 交易时间：使用实时交易数据 API（每分钟更新）
+      const realtimeUrl = `https://api.mairuiapi.com/hsrl/ssjy/${codeNum}/${MYDATA_LICENCE}`;
+      const realtimeResponse = await fetch(realtimeUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (realtimeResponse.ok) {
+        const realtimeData = await realtimeResponse.json();
+        // 实时 API 返回单条最新数据，转换为数组
+        if (realtimeData && realtimeData.t) {
+          trades = [{
+            d: realtimeData.t.split(' ')[0],
+            t: realtimeData.t.split(' ')[1] || '',
+            v: realtimeData.v ? Math.floor(realtimeData.v * 100) : 0,  // 万手转股
+            p: realtimeData.p || 0,
+            ts: 0  // 实时 API 无方向信息
+          }];
+          dataSource = 'MyData（实时）';
+        }
       }
-    });
-    
-    if (!tradesResponse.ok) {
-      return res.json({ success: false, message: '获取成交数据失败' });
     }
     
-    const trades = await tradesResponse.json();
+    // 非交易时间或实时 API 失败：使用当天逐笔交易 API
+    if (trades.length === 0) {
+      const tradesUrl = `https://api.mairuiapi.com/hsrl/zbjy/${codeNum}/${MYDATA_LICENCE}`;
+      const tradesResponse = await fetch(tradesUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (tradesResponse.ok) {
+        trades = await tradesResponse.json();
+      }
+      dataSource = 'MyData（T-1）';
+    }
     
     if (!Array.isArray(trades) || trades.length === 0) {
       return res.json({ 
@@ -1356,12 +1393,12 @@ app.get('/api/stock/:code/tick-trades', async (req, res) => {
         page: page,
         pageSize: pageSize,
         totalPages: 0,
-        dataSource: 'MyData（实时）',
+        dataSource: dataSource || 'MyData',
         tradeDate: new Date().toISOString().split('T')[0]
       });
     }
     
-    // MyData 字段：d=日期，t=时间，v=成交量 - 股，p=成交价，ts=方向 (0 中性，1 买入，2 卖出)
+    // 处理逐笔成交数据
     const today = new Date().toISOString().split('T')[0];
     
     const processedTrades = trades.map(trade => {
@@ -1392,14 +1429,18 @@ app.get('/api/stock/:code/tick-trades', async (req, res) => {
       };
     });
     
-    // MyData 返回的已经是倒序（最新的在前）
-    const totalCount = processedTrades.length;
+    // 按时间倒序排列（最新的在前）
+    const sortedTrades = processedTrades.sort((a, b) => {
+      return (b.time || '').localeCompare(a.time || '');
+    });
+    
+    const totalCount = sortedTrades.length;
     const totalPages = Math.ceil(totalCount / pageSize);
     
     // 分页
     const startIndex = (page - 1) * pageSize;
     const endIndex = startIndex + pageSize;
-    const resultTrades = processedTrades.slice(startIndex, endIndex);
+    const resultTrades = sortedTrades.slice(startIndex, endIndex);
     
     res.json({
       success: true,
@@ -1408,7 +1449,7 @@ app.get('/api/stock/:code/tick-trades', async (req, res) => {
       pageSize: pageSize,
       totalPages: totalPages,
       total: totalCount,
-      dataSource: 'MyData（实时）',
+      dataSource: dataSource,
       tradeDate: resultTrades.length > 0 ? (resultTrades[0].date || today) : today
     });
     
