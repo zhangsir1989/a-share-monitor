@@ -903,8 +903,60 @@ app.get('/api/intraday/:code', async (req, res) => {
     let dataSource = '';
     
     if (isTradingTime) {
-      // ✅ 交易时间：使用实时数据 API（最新 5 条 1 分钟线）
-      console.log('📡 交易时间，使用实时数据 API');
+      // ✅ 交易时间：历史数据 + 实时数据
+      // 1. 先获取历史数据（5 分钟 K 线，覆盖从开盘到当前）
+      console.log('📡 交易时间，使用历史数据 + 实时数据');
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const historyUrl = `https://api.mairuiapi.com/hsstock/history/${code}.${market.toUpperCase()}/5/n/${MYDATA_LICENCE}?st=${today}&et=${today}&lt=300`;
+      console.log('📊 MyData 分时历史 API:', historyUrl);
+      
+      const historyResp = await axios.get(historyUrl, {
+        timeout: 10000,
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+      
+      const historyData = historyResp.data;
+      
+      if (Array.isArray(historyData) && historyData.length > 0) {
+        // 将 5 分钟 K 线转换为 1 分钟数据（插值填充）
+        const minuteData = [];
+        for (let i = 0; i < historyData.length; i++) {
+          const item = historyData[i];
+          const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
+          if (!timeMatch) continue;
+          
+          const baseHour = parseInt(timeMatch[1]);
+          const baseMinute = parseInt(timeMatch[2]);
+          
+          // 每个 5 分钟点生成 5 个 1 分钟点
+          for (let j = 0; j < 5; j++) {
+            const minute = baseMinute + j;
+            
+            // 跳过无效时间
+            if (minute >= 60) continue;
+            if (baseHour === 11 && minute > 30) continue;
+            if (baseHour === 12) continue;
+            if (baseHour === 15 && minute > 0) continue;
+            
+            const time = `${baseHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            minuteData.push({
+              time: time,
+              price: item.c || 0,
+              open: item.o || 0,
+              high: item.h || 0,
+              low: item.l || 0,
+              volume: Math.floor((item.v || 0) / 5),
+              amount: Math.floor((item.a || 0) / 5),
+              prevClose: item.pc || 0
+            });
+          }
+        }
+        intradayData = minuteData;
+        prevClose = historyData[0]?.pc || 0;
+        dataSource = 'mydata-history-5min-interpolated';
+      }
+      
+      // 2. 再获取实时数据（最新 5 条 1 分钟线），用于更新最新数据
       const realtimeUrl = `https://api.mairuiapi.com/hsstock/latest/${code}.${market.toUpperCase()}/1/n/${MYDATA_LICENCE}?lt=5`;
       console.log('📊 MyData 分时实时 API:', realtimeUrl);
       
@@ -916,10 +968,14 @@ app.get('/api/intraday/:code', async (req, res) => {
       const realtimeData = realtimeResp.data;
       
       if (Array.isArray(realtimeData) && realtimeData.length > 0) {
-        intradayData = realtimeData.map(item => {
+        // 用实时数据更新对应时间点的记录
+        realtimeData.forEach(item => {
           const timeMatch = item.t.match(/(\d{2}):(\d{2}):\d{2}/);
-          return {
-            time: timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '00:00',
+          if (!timeMatch) return;
+          
+          const time = `${timeMatch[1]}:${timeMatch[2]}`;
+          const realtimePoint = {
+            time: time,
             price: item.c || 0,
             open: item.o || 0,
             high: item.h || 0,
@@ -928,9 +984,20 @@ app.get('/api/intraday/:code', async (req, res) => {
             amount: item.a || 0,
             prevClose: item.pc || 0
           };
+          
+          // 查找是否已存在该时间点的数据
+          const existingIndex = intradayData.findIndex(d => d.time === time);
+          if (existingIndex !== -1) {
+            // 存在则更新（实时数据优先）
+            intradayData[existingIndex] = realtimePoint;
+          } else {
+            // 不存在则添加（可能是最新数据）
+            intradayData.push(realtimePoint);
+          }
         });
-        prevClose = realtimeData[0]?.pc || 0;
-        dataSource = 'mydata-realtime';
+        
+        if (realtimeData[0]?.pc) prevClose = realtimeData[0].pc;
+        dataSource = 'mydata-history+realtime';
       }
     } else {
       // ✅ 非交易时间：使用历史数据 API（5 分钟 K 线，48 条）
