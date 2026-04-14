@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="../css/sidebar.css?v=20260406">
   <link rel="stylesheet" href="../css/style.css?v=20260404">
   <link rel="stylesheet" href="css/main.css?v=20260410">
+  <link rel="stylesheet" href="css/trade-detail.css?v=2026041418">
 </head>
 <body>
   <div class="container">
@@ -305,34 +306,27 @@
             </div>
           </div>
           
-          <!-- 逐笔成交 -->
+          <!-- 分时成交明细 -->
           <div class="card tick-trade-card">
             <div class="card-header">
-              <h3>📋 逐笔成交</h3>
-              <span class="tick-trade-info">截止15:01所有明细 | 时间升序</span>
-              <button class="btn-expand" id="btn-expand-tick">展开全部</button>
+              <h3>⚡ 分时成交</h3>
+              <span class="tick-trade-info">🔄 3 秒自动刷新</span>
             </div>
-            <div class="card-body">
-              <table class="tick-trade-table">
-                <thead>
-                  <tr>
-                    <th style="width:60px">日期</th>
-                    <th style="width:70px">时间</th>
-                    <th style="width:70px">数量</th>
-                    <th style="width:70px">价格</th>
-                    <th style="width:80px">金额(万)</th>
-                    <th style="width:50px">方向</th>
-                    <th style="width:80px">订单类型</th>
-                  </tr>
-                </thead>
-                <tbody id="tick-trade-tbody">
-                  <tr><td colspan="7" class="loading">加载中...</td></tr>
-                </tbody>
-              </table>
+            <div class="card-body" id="trade-detail-container">
+              <div id="trade-detail-header">
+                <h3>📊 实时成交明细</h3>
+                <div class="trade-detail-info">
+                  <span>📝 成交：<span class="count" id="trade-detail-count">0</span> 笔</span>
+                  <span>🕐 更新：<span class="time" id="trade-detail-last-time">--:--:--</span></span>
+                </div>
+              </div>
+              <div id="trade-detail-loading">⏳ 加载中...</div>
+              <div id="trade-detail-list"></div>
             </div>
           </div>
         </div>
       </div>
+    </div>
     </div>
   </main>
 
@@ -351,5 +345,6 @@
   <script src="js/intraday-chart.js?v=2026041417"></script>
   <script src="js/ui.js?v=2026041304"></script>
   <script src="js/main.js?v=2026041315"></script>
+  <script src="js/trade-detail.js?v=2026041418"></script>
 </body>
 </html>

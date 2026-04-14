@@ -1,0 +1,216 @@
+/**
+ * 分时成交明细样式
+ */
+
+/* 容器 */
+#trade-detail-container {
+  background: linear-gradient(135deg, #1e1e2f 0%, #2d2d44 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 头部 */
+#trade-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #3d3d5c;
+}
+
+#trade-detail-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trade-detail-info {
+  display: flex;
+  gap: 15px;
+  font-size: 12px;
+  color: #888;
+}
+
+.trade-detail-info span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.trade-detail-info .count {
+  color: #4a9eff;
+  font-weight: bold;
+}
+
+.trade-detail-info .time {
+  color: #52c41a;
+}
+
+/* 列表容器 */
+#trade-detail-list {
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #4a9eff #2d2d44;
+}
+
+#trade-detail-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+#trade-detail-list::-webkit-scrollbar-track {
+  background: #2d2d44;
+  border-radius: 3px;
+}
+
+#trade-detail-list::-webkit-scrollbar-thumb {
+  background: #4a9eff;
+  border-radius: 3px;
+}
+
+/* 列表项 */
+.trade-item {
+  display: grid;
+  grid-template-columns: 80px 70px 90px 100px 60px;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.trade-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(3px);
+}
+
+/* 方向样式 */
+.trade-item.buy {
+  border-left-color: #52c41a;
+}
+
+.trade-item.sell {
+  border-left-color: #ff4d4f;
+}
+
+.trade-item.neutral {
+  border-left-color: #888;
+}
+
+/* 字段样式 */
+.trade-time {
+  color: #aaa;
+  font-family: 'Courier New', monospace;
+}
+
+.trade-price {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.trade-item.buy .trade-price {
+  color: #52c41a;
+}
+
+.trade-item.sell .trade-price {
+  color: #ff4d4f;
+}
+
+.trade-item.neutral .trade-price {
+  color: #fff;
+}
+
+.trade-volume {
+  color: #4a9eff;
+}
+
+.trade-amount {
+  color: #7289da;
+  text-align: right;
+}
+
+.trade-direction {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.direction-icon {
+  font-size: 16px;
+}
+
+.type-label {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* 订单类型样式 */
+.trade-item.type-super {
+  background: rgba(102, 126, 234, 0.15);
+}
+
+.trade-item.type-large {
+  background: rgba(118, 75, 162, 0.15);
+}
+
+.trade-item.type-medium {
+  background: rgba(74, 158, 255, 0.15);
+}
+
+/* 空状态 */
+.trade-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* 错误状态 */
+.trade-error {
+  text-align: center;
+  padding: 40px 20px;
+  color: #ff4d4f;
+  font-size: 14px;
+}
+
+/* 加载状态 */
+#trade-detail-loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #4a9eff;
+  font-size: 14px;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .trade-item {
+    grid-template-columns: 60px 60px 70px 80px 50px;
+    gap: 5px;
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+  
+  #trade-detail-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .trade-detail-info {
+    flex-wrap: wrap;
+  }
+}

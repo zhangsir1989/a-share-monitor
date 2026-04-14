@@ -71,6 +71,12 @@ async function loadAllData() {
     IntradayChart.drawPlaceholder('分时数据加载失败');
   }
   
+  // 初始化分时成交明细（独立模块，3 秒自动刷新）
+  if (typeof TradeDetail !== 'undefined') {
+    TradeDetail.init(StockState.code, StockState.market);
+    console.log('✅ 分时成交明细初始化完成');
+  }
+  
   // 加载基本信息
   const basicResult = await API.getStockBasic(StockState.code, StockState.market);
   if (basicResult.success) {
