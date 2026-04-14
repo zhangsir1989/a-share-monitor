@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../css/sidebar.css?v=20260406">
   <link rel="stylesheet" href="../css/style.css?v=20260404">
   <link rel="stylesheet" href="css/main.css?v=20260410">
-  <link rel="stylesheet" href="css/trade-detail.css?v=2026041418">
+  <link rel="stylesheet" href="css/trade-detail.css?v=2026041419">
 </head>
 <body>
   <div class="container">
@@ -317,11 +317,14 @@
                 <h3>📊 实时成交明细</h3>
                 <div class="trade-detail-info">
                   <span>📝 成交：<span class="count" id="trade-detail-count">0</span> 笔</span>
+                  <span>📅 日期：<span class="date" id="trade-detail-trade-date">--</span></span>
                   <span>🕐 更新：<span class="time" id="trade-detail-last-time">--:--:--</span></span>
+                  <span>📡 来源：<span class="source" id="trade-detail-data-source">MyData API</span></span>
                 </div>
               </div>
               <div id="trade-detail-loading">⏳ 加载中...</div>
               <div id="trade-detail-list"></div>
+              <div id="trade-detail-pagination"></div>
             </div>
           </div>
         </div>
@@ -345,6 +348,6 @@
   <script src="js/intraday-chart.js?v=2026041417"></script>
   <script src="js/ui.js?v=2026041304"></script>
   <script src="js/main.js?v=2026041315"></script>
-  <script src="js/trade-detail.js?v=2026041418"></script>
+  <script src="js/trade-detail.js?v=2026041419"></script>
 </body>
 </html>

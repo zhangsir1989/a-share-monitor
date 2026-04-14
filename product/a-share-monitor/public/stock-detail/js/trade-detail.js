@@ -8,7 +8,8 @@ const TradeDetail = {
   // 配置
   config: {
     refreshInterval: 3000,  // 3 秒刷新
-    maxRecords: 100,        // 最多显示 100 条
+    pageSize: 100,          // 每页显示 100 条
+    defaultPage: 1,         // 默认第 1 页
     excludeCallAuction: true // 排除集合竞价（9:15-9:25, 14:57-15:00）
   },
 
@@ -17,7 +18,12 @@ const TradeDetail = {
     timer: null,
     isRunning: false,
     lastUpdate: null,
-    trades: []
+    trades: [],
+    currentPage: 1,
+    totalPages: 1,
+    totalCount: 0,
+    dataSource: '',
+    tradeDate: ''
   },
 
   /**
@@ -53,6 +59,9 @@ const TradeDetail = {
     this.countEl = document.getElementById('trade-detail-count');
     this.lastTimeEl = document.getElementById('trade-detail-last-time');
     this.loadingEl = document.getElementById('trade-detail-loading');
+    this.dataSourceEl = document.getElementById('trade-detail-data-source');
+    this.tradeDateEl = document.getElementById('trade-detail-trade-date');
+    this.paginationEl = document.getElementById('trade-detail-pagination');
     
     if (!this.container) {
       console.error('❌ [TradeDetail] 未找到容器元素');
@@ -97,15 +106,21 @@ const TradeDetail = {
     if (!this.state.code) return;
     
     try {
-      const url = `/api/stock/${this.state.code}/tick-trades?limit=${this.config.maxRecords}`;
+      const url = `/api/stock/${this.state.code}/tick-trades?page=${this.state.currentPage}&pageSize=${this.config.pageSize}`;
       const response = await fetch(url);
       const result = await response.json();
       
       if (result.success && Array.isArray(result.data)) {
         this.state.trades = result.data;
+        this.state.currentPage = result.page || 1;
+        this.state.totalPages = result.totalPages || 1;
+        this.state.totalCount = result.total || 0;
+        this.state.dataSource = result.dataSource || 'MyData API';
+        this.state.tradeDate = result.tradeDate || '';
         this.state.lastUpdate = new Date();
         this.render();
-        console.log(`✅ [TradeDetail] 加载 ${result.data.length} 条成交数据`);
+        this.renderPagination();
+        console.log(`✅ [TradeDetail] 加载 ${result.data.length} 条成交数据（第${this.state.currentPage}/${this.state.totalPages}页）`);
       } else {
         console.warn('⚠️ [TradeDetail] 加载失败:', result.message);
         this.showError(result.message || '加载失败');
@@ -122,17 +137,25 @@ const TradeDetail = {
   render() {
     if (!this.listEl) return;
     
-    const trades = this.state.trades.slice(0, this.config.maxRecords);
+    const trades = this.state.trades;
     
     // 更新计数
     if (this.countEl) {
-      this.countEl.textContent = trades.length;
+      this.countEl.textContent = this.state.totalCount;
     }
     
     // 更新时间
     if (this.lastTimeEl && this.state.lastUpdate) {
       const time = this.state.lastUpdate.toLocaleTimeString('zh-CN', { hour12: false });
       this.lastTimeEl.textContent = time;
+    }
+    
+    // 更新数据来源和日期
+    if (this.dataSourceEl) {
+      this.dataSourceEl.textContent = this.state.dataSource;
+    }
+    if (this.tradeDateEl) {
+      this.tradeDateEl.textContent = this.state.tradeDate || '--';
     }
     
     // 隐藏加载提示
@@ -198,6 +221,70 @@ const TradeDetail = {
     }).join('');
     
     this.listEl.innerHTML = html;
+  },
+
+  /**
+   * 渲染分页控件
+   */
+  renderPagination() {
+    if (!this.paginationEl) return;
+    
+    const { currentPage, totalPages, totalCount } = this.state;
+    
+    if (totalPages <= 1) {
+      this.paginationEl.innerHTML = '';
+      return;
+    }
+    
+    const html = `
+      <div class="pagination-info">
+        共 ${totalCount} 条，第 ${currentPage}/${totalPages} 页
+      </div>
+      <div class="pagination-controls">
+        <button class="pagination-btn" data-page="first" ${currentPage === 1 ? 'disabled' : ''}>⏮ 首页</button>
+        <button class="pagination-btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}>◀ 上一页</button>
+        <button class="pagination-btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>下一页 ▶</button>
+        <button class="pagination-btn" data-page="last" ${currentPage === totalPages ? 'disabled' : ''}>末页 ⏭</button>
+      </div>
+    `;
+    
+    this.paginationEl.innerHTML = html;
+    
+    // 绑定分页事件
+    this.paginationEl.querySelectorAll('.pagination-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const page = e.target.dataset.page;
+        this.handlePageChange(page);
+      });
+    });
+  },
+
+  /**
+   * 处理分页切换
+   */
+  handlePageChange(page) {
+    const { currentPage, totalPages } = this.state;
+    let newPage = currentPage;
+    
+    switch (page) {
+      case 'first':
+        newPage = 1;
+        break;
+      case 'prev':
+        newPage = Math.max(1, currentPage - 1);
+        break;
+      case 'next':
+        newPage = Math.min(totalPages, currentPage + 1);
+        break;
+      case 'last':
+        newPage = totalPages;
+        break;
+    }
+    
+    if (newPage !== currentPage) {
+      this.state.currentPage = newPage;
+      this.loadTrades();
+    }
   },
 
   /**

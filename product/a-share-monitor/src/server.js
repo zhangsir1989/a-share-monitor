@@ -1324,7 +1324,9 @@ app.get('/api/stock/:code/tick-trades', async (req, res) => {
   try {
     const code = req.params.code;
     const codeNum = code.replace(/^(sh|sz|bj)/, '');
-    const limit = parseInt(req.query.limit) || 10;  // 默认返回10条
+    // 分页参数
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 100;
     const allData = req.query.all === 'true';  // 是否返回全部数据
     
     // MyData API Licence
@@ -1414,14 +1416,35 @@ app.get('/api/stock/:code/tick-trades', async (req, res) => {
       return (a.time || '').localeCompare(b.time || '');
     });
     
-    // 返回最新10条（取最后10条，因为按时间升序排列后最新的是在末尾）
-    const resultTrades = allData ? sortedTrades : sortedTrades.slice(-limit);
+    // 获取交易日日期
+    const tradeDate = sortedTrades.length > 0 ? (sortedTrades[0].date || '') : '';
+    
+    // 分页处理
+    let resultTrades = sortedTrades;
+    let totalPages = 1;
+    let currentPage = 1;
+    
+    if (!allData && pageSize > 0) {
+      const total = sortedTrades.length;
+      totalPages = Math.ceil(total / pageSize);
+      currentPage = Math.min(Math.max(1, page), totalPages);
+      
+      // 按时间倒序排列（最新的在前），然后分页
+      const reversedTrades = [...sortedTrades].reverse();
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      resultTrades = reversedTrades.slice(startIndex, endIndex);
+    }
     
     res.json({
       success: true,
       data: resultTrades,
+      page: currentPage,
+      pageSize: pageSize,
+      totalPages: totalPages,
       total: sortedTrades.length,
-      showing: resultTrades.length
+      dataSource: 'MyData API',
+      tradeDate: tradeDate
     });
     
   } catch (error) {
