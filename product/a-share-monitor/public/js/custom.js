@@ -284,10 +284,14 @@ async function saveStockToDb(code, market) {
 // 从数据库删除（删除股票时调用）
 async function deleteStockFromDb(code, market) {
   try {
+    // 使用当前筛选的 type 值（删除当前分组的股票）
+    const currentType = (typeof GroupManager !== 'undefined' && GroupManager.currentFilter) ? GroupManager.currentFilter : 1;
+    console.log('📦 删除股票，使用 type:', currentType);
+    
     const response = await fetch('/api/custom-stocks/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stock_code: code, stock_market: market, type: 1 })
+      body: JSON.stringify({ stock_code: code, stock_market: market, type: currentType })
     });
     const result = await response.json();
     return result.success;
