@@ -119,37 +119,43 @@ app.post('/api/custom-groups/delete', (req, res) => {
     const { id } = req.body;
     if (!id) return res.status(400).json({ success: false, message: '参数错误' });
     
-    const groupCheck = db.exec(`SELECT type FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
+    const groupCheck = db.exec(`SELECT type, name FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
     if (groupCheck.length === 0) return res.status(404).json({ success: false, message: '分组不存在' });
     
     const groupType = groupCheck[0].values[0][0];
+    const groupName = groupCheck[0].values[0][1];
     if (groupType === 1) return res.status(400).json({ success: false, message: '不能删除默认自选股分组' });
     
-    // 将该分组的股票 type 改回 1（回归默认自选股）
-    console.log(`🔄 更新股票 type: user_id='${userId}', type=${groupType} → 1`);
-    db.run(`UPDATE custom_stocks SET type = 1 WHERE user_id = '${userId}' AND type = ${groupType}`);
+    // 查询该分组下的股票数量
+    const stockCount = db.exec(`SELECT COUNT(*) FROM custom_stocks WHERE user_id = '${userId}' AND type = ${groupType}`);
+    const count = stockCount.length > 0 ? stockCount[0].values[0][0] : 0;
     
-    console.log(`🗑️ 删除分组：id=${id}`);
-    db.run(`DELETE FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
-    
-    // 验证更新
-    const verifyAfter = db.exec(`SELECT stock_code, type FROM custom_stocks WHERE user_id = '${userId}' AND type = ${groupType}`);
-    if (verifyAfter.length > 0 && verifyAfter[0].values.length > 0) {
-      console.log(`⚠️ 警告：删除后仍有 type=${groupType} 的股票：`, verifyAfter[0].values);
-    } else {
-      console.log(`✅ 验证：type=${groupType} 的股票已全部更新为 type=1`);
+    if (count > 0) {
+      // 删除该分组下的所有股票
+      console.log(`🗑️ 删除分组下的股票：user_id='${userId}', type=${groupType}, 数量=${count}`);
+      db.run(`DELETE FROM custom_stocks WHERE user_id = '${userId}' AND type = ${groupType}`);
+      console.log(`✅ 已删除 ${count} 只股票`);
     }
     
-    const verifyType1 = db.exec(`SELECT COUNT(*) FROM custom_stocks WHERE user_id = '${userId}' AND type = 1`);
-    if (verifyType1.length > 0) {
-      console.log(`📊 当前 type=1 的股票数量：${verifyType1[0].values[0][0]}`);
+    // 删除分组
+    console.log(`🗑️ 删除分组：id=${id}, name=${groupName} (type=${groupType})`);
+    db.run(`DELETE FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
+    
+    // 验证删除
+    const verifyGroup = db.exec(`SELECT id FROM custom_groups WHERE id = ${id} AND user_id = '${userId}'`);
+    const verifyStocks = db.exec(`SELECT stock_code FROM custom_stocks WHERE user_id = '${userId}' AND type = ${groupType}`);
+    
+    if (verifyGroup.length === 0 && (verifyStocks.length === 0 || verifyStocks[0].values.length === 0)) {
+      console.log(`✅ 验证：分组和股票已全部删除`);
+    } else {
+      console.log(`⚠️ 警告：删除后仍有残留数据`);
     }
     
     saveDatabase(db);
     console.log(`💾 数据库已保存到 ${DB_PATH}`);
     
-    console.log(`✅ 用户 ${userId} 删除分组：${id} (type=${groupType})，股票已回归默认分组`);
-    res.json({ success: true, message: '分组删除成功' });
+    console.log(`✅ 用户 ${userId} 删除分组：${groupName} (type=${groupType})，已删除 ${count} 只股票`);
+    res.json({ success: true, message: `分组删除成功，已删除 ${count} 只股票` });
   } catch (error) {
     console.error('删除分组失败:', error.message);
     console.error('错误堆栈:', error.stack);

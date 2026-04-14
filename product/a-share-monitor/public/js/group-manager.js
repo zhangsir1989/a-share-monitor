@@ -110,7 +110,7 @@ async function updateGroup(groupId, name, icon, color) {
 }
 
 async function deleteGroup(groupId) {
-  if (!confirm('确定要删除这个分组吗？分组内的股票将回归默认自选股。')) {
+  if (!confirm('⚠️ 确定要删除这个分组吗？\n\n删除后：\n- 该分组下的所有股票将被删除\n- 此操作不可恢复')) {
     return false;
   }
   
@@ -148,7 +148,7 @@ async function deleteGroupByType(groupType) {
     return false;
   }
   
-  if (!confirm('确定要删除这个分组吗？分组内的股票将回归默认自选股。')) {
+  if (!confirm('⚠️ 确定要删除这个分组吗？\n\n删除后：\n- 该分组下的所有股票将被删除\n- 此操作不可恢复')) {
     return false;
   }
   
