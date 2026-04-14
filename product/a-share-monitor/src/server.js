@@ -996,7 +996,8 @@ app.get('/api/intraday/:code', async (req, res) => {
           }
         });
         
-        if (realtimeData[0]?.pc) prevClose = realtimeData[0].pc;
+        // ✅ 不更新 prevClose - 历史数据的第一个点的 pc 才是真正的昨收价
+        // 实时数据的 pc 是前一根 K 线的收盘价，不是昨收价
         dataSource = 'mydata-history+realtime';
       }
     } else {
