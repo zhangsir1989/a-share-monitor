@@ -41,7 +41,7 @@ function initAssistantAPI(app, db) {
       const prompt = buildPrompt(message, contextData, userId);
 
       // 调用大模型（使用 OpenClaw sessions_spawn 或外部 API）
-      const reply = await callLLM(prompt);
+      const reply = await callLLM(prompt, contextData);
 
       res.json({
         success: true,
@@ -134,7 +134,7 @@ function buildPrompt(userMessage, contextData, userId) {
 }
 
 // 调用大模型
-async function callLLM(prompt) {
+async function callLLM(prompt, contextData) {
   // 方案 A: 使用 OpenClaw sessions_spawn（推荐）
   // 方案 B: 调用外部 API（如通义千问、ChatGPT 等）
   
